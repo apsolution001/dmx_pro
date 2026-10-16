@@ -15,9 +15,9 @@
 
 ## 2. Channel types (v1)
 
-`Intensity.Red`, `Intensity.Green`, `Intensity.Blue`, `Intensity.White`, `Intensity.Amber`, `Intensity.UV`,
-`Dimmer` (master), `Strobe`, `ColorMacro`, `Program`, `Speed`, `Mode`, `Generic` (unknown/custom), and `Fine`
-(16-bit partner of another channel).
+`Red`, `Green`, `Blue`, `White`, `Amber`, `UV`, `Dimmer` (master), `Strobe`, `ColorMacro`, `Program`, `Speed`,
+`Mode`, `Generic` (unknown/custom), and `Fine` (16-bit low byte; `coarseKey` names its partner).
+Implemented in `src/DmxPro.Core/Profiles/ChannelType.cs`. Built-in profiles live in `profiles/`.
 
 UI generation rules:
 - Show a **color picker** only if the mode has R, G and B (optionally W/A/UV).
@@ -32,7 +32,7 @@ UI generation rules:
 ```json
 {
   "schemaVersion": 1,
-  "id": "generic-rgbw-par-8ch",
+  "id": "generic-rgbw-par",
   "manufacturer": "Generic",
   "model": "RGBW LED PAR",
   "type": "ColorChanger",
@@ -40,10 +40,10 @@ UI generation rules:
   "source": "Manufacturer manual v1.2, page 6",
   "channels": [
     { "key": "dimmer", "name": "Dimmer", "type": "Dimmer", "default": 255 },
-    { "key": "red",    "name": "Red",    "type": "Intensity.Red",   "default": 0 },
-    { "key": "green",  "name": "Green",  "type": "Intensity.Green", "default": 0 },
-    { "key": "blue",   "name": "Blue",   "type": "Intensity.Blue",  "default": 0 },
-    { "key": "white",  "name": "White",  "type": "Intensity.White", "default": 0 },
+    { "key": "red",    "name": "Red",    "type": "Red",   "default": 0 },
+    { "key": "green",  "name": "Green",  "type": "Green", "default": 0 },
+    { "key": "blue",   "name": "Blue",   "type": "Blue",  "default": 0 },
+    { "key": "white",  "name": "White",  "type": "White", "default": 0 },
     { "key": "strobe", "name": "Strobe", "type": "Strobe", "default": 0,
       "capabilities": [
         { "min": 0,  "max": 9,   "label": "No strobe", "safe": true },

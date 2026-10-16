@@ -2,6 +2,28 @@
 
 > Feature requested by the product owner: *upload a music file and make lights follow the music.*
 
+## 0. Primary feature: the Show Timeline (manual, decided 2026-10-16)
+
+The owner builds shows **by hand** on a multi-track timeline (like a video editor / QLC+ "Shows", but easier):
+
+```
+ Time ▶   0:00        0:15        0:30        0:45        1:00
+ Audio    [███████████ song.mp3 waveform ██████████████████████]
+ Beats    |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |    ← markers from analysis (snap targets)
+ Track 1  [Scene: Blue wash ][Chaser: RGB chase   ][Scene: Red]
+ Track 2              [Pulse ×4]        [Flash white]  [Color cycle ...]
+```
+
+- **Track types:** Audio (one or more files), Function tracks (any function: scene, chaser, color cycle, pulse…).
+- **Add item:** drag an existing function/scene from the library onto a track at any time.
+- **Create for a time range:** select a range on a track → "New function here" → pick type (scene, chaser, fade, pulse…)
+  → the new function's duration = the selected range; it is saved in the library and reusable.
+- **Edit:** move, trim start/end, split, copy/paste, duplicate, delete, per-item fade in/out and intensity.
+- **Snap** to beats, bars, grid, or other items' edges. Zoom and scroll; playhead; loop region.
+- **Playback** uses the audio clock (see §4); scrubbing recomputes the light state instantly.
+- **Overlaps:** items on different tracks run together and merge with HTP/LTP rules; lower track = higher priority for LTP (documented in UI).
+- Auto-generation (§3) becomes an optional helper ("Fill selection with beat-synced chase"), not the core.
+
 ## 1. Two different modes
 
 | Mode                            | Input                          | How                                                       | Latency |

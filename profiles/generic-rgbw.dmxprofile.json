@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "id": "generic-rgbw",
+  "manufacturer": "Generic",
+  "model": "RGBW fixture",
+  "type": "Color Changer",
+  "revision": 1,
+  "verified": false,
+  "source": "Generic template (8ch mode is the illustrative layout from the spec, NOT universal). Confirm against your fixture's DMX chart.",
+  "channels": [
+    { "key": "red", "name": "Red", "type": "Red", "default": 0 },
+    { "key": "green", "name": "Green", "type": "Green", "default": 0 },
+    { "key": "blue", "name": "Blue", "type": "Blue", "default": 0 },
+    { "key": "white", "name": "White", "type": "White", "default": 0 },
+    { "key": "dimmer", "name": "Master dimmer", "type": "Dimmer", "default": 255 },
+    {
+      "key": "strobe", "name": "Strobe", "type": "Strobe", "default": 0,
+      "capabilities": [
+        { "min": 0, "max": 9, "label": "No strobe", "safe": true },
+        { "min": 10, "max": 255, "label": "Strobe slow to fast" }
+      ]
+    },
+    {
+      "key": "macro", "name": "Color macro", "type": "ColorMacro", "default": 0,
+      "capabilities": [
+        { "min": 0, "max": 9, "label": "Off (RGBW channels active)", "safe": true },
+        { "min": 10, "max": 255, "label": "Built-in colors / programs" }
+      ]
+    },
+    { "key": "speed", "name": "Speed", "type": "Speed", "default": 0 }
+  ],
+  "modes": [
+    { "name": "4ch RGBW", "channels": [ "red", "green", "blue", "white" ] },
+    { "name": "5ch Dimmer RGBW", "channels": [ "dimmer", "red", "green", "blue", "white" ] },
+    { "name": "8ch Full", "channels": [ "red", "green", "blue", "white", "dimmer", "strobe", "macro", "speed" ] }
+  ]
+}

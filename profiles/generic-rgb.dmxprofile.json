@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "generic-rgb",
+  "manufacturer": "Generic",
+  "model": "RGB fixture",
+  "type": "Color Changer",
+  "revision": 1,
+  "verified": false,
+  "source": "Generic template. Confirm channel order against your fixture's DMX chart before use.",
+  "channels": [
+    { "key": "dimmer", "name": "Dimmer", "type": "Dimmer", "default": 255 },
+    { "key": "red", "name": "Red", "type": "Red", "default": 0 },
+    { "key": "green", "name": "Green", "type": "Green", "default": 0 },
+    { "key": "blue", "name": "Blue", "type": "Blue", "default": 0 }
+  ],
+  "modes": [
+    { "name": "3ch RGB", "channels": [ "red", "green", "blue" ] },
+    { "name": "4ch Dimmer RGB", "channels": [ "dimmer", "red", "green", "blue" ] }
+  ]
+}

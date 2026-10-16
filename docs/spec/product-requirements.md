@@ -16,7 +16,7 @@
 | R1| **Create functions**          | All function types from spec §4, with a friendly editor                                 |
 | R2| **Virtual Console**           | Spec §6, drag-and-drop editor, pages, operator lock                                     |
 | R3| **Scenes**                    | Spec §5 Scene Creator                                                                   |
-| R4| **Music upload → light show** | Upload audio, analyze beats/energy, auto-generate an editable show timeline (see `knowledge/06-music-to-light.md`) |
+| R4| **Show Timeline with music** | Multi-track timeline: add music tracks, place existing functions/scenes at any time, create a new function directly for a selected time range, move/trim/copy items. Manual-first; beat markers from audio analysis help snapping. See `knowledge/06-music-to-light.md` §0 |
 | R5| **Save / Load files**         | Project save, Save As, Open, recent files, autosave + crash recovery                    |
 | R6| **Copy functions**            | Duplicate / copy-paste functions, scenes, widgets (also between projects via clipboard) |
 
@@ -35,3 +35,7 @@
 | Date       | Decision                                              | Reason                          |
 |------------|-------------------------------------------------------|---------------------------------|
 | 2026-10-16 | Project created; docs + AI setup files added          | Kick-off                        |
+| 2026-10-16 | Outputs: **Art-Net, sACN, Enttec DMX USB Pro, Open DMX (FTDI)** — owner has all three hardware types | Owner can test all of them |
+| 2026-10-16 | Music = **manual Show Timeline** first (tracks: audio, functions, scenes; create function for a time range). Auto-generation is an optional later helper | Owner wants full manual control |
+| 2026-10-16 | Target user: anyone with basic DMX knowledge, primarily the owner. App must be **fully dynamic**: user adds any light (profile editor), builds functions manually while connected to real lights | Owner answer |
+| 2026-10-16 | **Import QLC+ `.qxf`** fixture definitions (Apache-2.0, attribute source) | Large ready-made library |
