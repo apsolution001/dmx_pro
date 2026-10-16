@@ -20,6 +20,7 @@ public partial class App : Application
             services.AddSingleton<ProfileLibraryService>();
             services.AddSingleton<IFileDialogService, FileDialogService>();
             services.AddSingleton<IDialogService, DialogService>();
+            services.AddSingleton<IThemeService, ThemeService>();
 
             services.AddSingleton<ProfilesViewModel>();
             services.AddSingleton<ShellViewModel>();

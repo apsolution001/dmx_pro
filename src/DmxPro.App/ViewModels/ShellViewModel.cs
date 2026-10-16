@@ -15,6 +15,8 @@ public sealed partial class ShellViewModel : ObservableObject
     private readonly IFileDialogService _fileDialogs;
     private readonly IDialogService _dialogs;
     private readonly AppPaths _paths;
+    private readonly IThemeService _theme;
+    private readonly ProfilesViewModel _profiles;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CurrentPage))]
@@ -22,6 +24,10 @@ public sealed partial class ShellViewModel : ObservableObject
 
     [ObservableProperty]
     private string? _infoMessage;
+
+    /// <summary>Full screen hides the title bar and maximizes (F11); the window applies it.</summary>
+    [ObservableProperty]
+    private bool _isFullScreen;
 
     [ObservableProperty]
     private InfoBarSeverity _infoSeverity = InfoBarSeverity.Informational;
@@ -31,8 +37,11 @@ public sealed partial class ShellViewModel : ObservableObject
         IFileDialogService fileDialogs,
         IDialogService dialogs,
         AppPaths paths,
+        IThemeService theme,
         ProfilesViewModel profiles)
     {
+        _theme = theme;
+        _profiles = profiles;
         _projects = projects;
         _fileDialogs = fileDialogs;
         _dialogs = dialogs;
@@ -63,11 +72,19 @@ public sealed partial class ShellViewModel : ObservableObject
             new("Input / Output", SymbolRegular.PlugConnected24, new ComingSoonViewModel(
                 "Input / Output", "Connect to real hardware.", "Phase 7",
                 ["Art-Net", "sACN (E1.31)", "Enttec DMX USB Pro", "Open DMX (FTDI)"])),
+            new("Settings", SymbolRegular.Settings24, new ComingSoonViewModel(
+                "Settings", "Theme, safety and folder preferences.", "Phase 9",
+                ["Safe frame on exit (blackout / defaults)", "Allow strobe + max strobe rate", "Autosave interval", "Profile folders"])),
         ];
         _selectedItem = NavigationItems[1];
     }
 
+    /// <summary>Raised when the user picks File ▸ Exit; the window closes itself (with the save prompt).</summary>
+    public event EventHandler? CloseRequested;
+
     public ObservableCollection<NavigationItem> NavigationItems { get; }
+
+    public bool IsDarkTheme => _theme.IsDark;
 
     public PageViewModel CurrentPage => SelectedItem.Page;
 
@@ -78,6 +95,56 @@ public sealed partial class ShellViewModel : ObservableObject
     public string OutputStatusText => "Output disabled";
 
     partial void OnSelectedItemChanged(NavigationItem value) => value.Page.OnNavigatedTo();
+
+    /// <summary>Navigates to the page at the given index of <see cref="NavigationItems"/> (View menu, Ctrl+1…).</summary>
+    [RelayCommand]
+    private void NavigateTo(string index)
+    {
+        if (int.TryParse(index, out var i) && i >= 0 && i < NavigationItems.Count)
+        {
+            SelectedItem = NavigationItems[i];
+        }
+    }
+
+    [RelayCommand]
+    private async Task ImportProfileAsync()
+    {
+        SelectedItem = NavigationItems.First(n => n.Page == _profiles);
+        await _profiles.ImportCommand.ExecuteAsync(null);
+    }
+
+    [RelayCommand]
+    private void SetTheme(string theme)
+    {
+        _theme.SetDark(theme == "Dark");
+        OnPropertyChanged(nameof(IsDarkTheme));
+    }
+
+    [RelayCommand]
+    private void ToggleFullScreen() => IsFullScreen = !IsFullScreen;
+
+    [RelayCommand]
+    private void Exit() => CloseRequested?.Invoke(this, EventArgs.Empty);
+
+    [RelayCommand]
+    private Task ShowShortcutsAsync() => _dialogs.ShowInfoAsync(
+        "Keyboard shortcuts",
+        "Ctrl+N   New project\n" +
+        "Ctrl+O   Open project\n" +
+        "Ctrl+S   Save\n" +
+        "Ctrl+Shift+S   Save as\n" +
+        "Ctrl+1 … Ctrl+9   Go to page (Fixtures … Settings)\n" +
+        "F11   Full screen\n\n" +
+        "Coming with later phases: Ctrl+Z/Y undo/redo, Ctrl+C/V/D copy/paste/duplicate, Ctrl+K search, " +
+        "B blackout, Esc release all, Space play/pause, F12 operator mode.");
+
+    [RelayCommand]
+    private Task ShowAboutAsync() => _dialogs.ShowInfoAsync(
+        "About DMX Pro",
+        $"DMX Pro {typeof(ShellViewModel).Assembly.GetName().Version?.ToString(3)} (preview)\n" +
+        "A modern DMX lighting controller for RGB/RGBW fixtures.\n\n" +
+        "Imported QLC+ fixture definitions come from the QLC+ fixture library (Apache License 2.0).\n" +
+        "UI built with WPF-UI (MIT) and CommunityToolkit.Mvvm (MIT).");
 
     [RelayCommand]
     private async Task NewProjectAsync()

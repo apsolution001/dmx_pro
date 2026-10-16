@@ -13,5 +13,7 @@ public interface IDialogService
 {
     Task ShowErrorAsync(string title, string message);
 
+    Task ShowInfoAsync(string title, string message);
+
     Task<SaveChangesChoice> AskSaveChangesAsync(string projectName);
 }

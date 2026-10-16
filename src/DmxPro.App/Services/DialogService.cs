@@ -10,6 +10,12 @@ public sealed class DialogService : IDialogService
         await box.ShowDialogAsync();
     }
 
+    public async Task ShowInfoAsync(string title, string message)
+    {
+        var box = new MessageBox { Title = title, Content = message, CloseButtonText = "Close", MinWidth = 420 };
+        await box.ShowDialogAsync();
+    }
+
     public async Task<SaveChangesChoice> AskSaveChangesAsync(string projectName)
     {
         var box = new MessageBox

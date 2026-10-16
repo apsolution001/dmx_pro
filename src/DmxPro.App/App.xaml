@@ -17,6 +17,7 @@
 
             <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
             <conv:NullToVisibilityConverter x:Key="NullToVisibility" />
+            <conv:InverseBooleanConverter x:Key="InvertBool" />
 
             <!-- Each page ViewModel is rendered by its View. -->
             <DataTemplate DataType="{x:Type vm:ProfilesViewModel}">

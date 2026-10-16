@@ -23,18 +23,144 @@
         <KeyBinding Command="{Binding OpenProjectCommand}" Gesture="Ctrl+O" />
         <KeyBinding Command="{Binding SaveProjectCommand}" Gesture="Ctrl+S" />
         <KeyBinding Command="{Binding SaveProjectAsCommand}" Gesture="Ctrl+Shift+S" />
+        <KeyBinding Command="{Binding ToggleFullScreenCommand}" Gesture="F11" />
+        <KeyBinding Command="{Binding NavigateToCommand}" CommandParameter="8" Gesture="Ctrl+OemComma" />
+        <KeyBinding Command="{Binding NavigateToCommand}" CommandParameter="0" Gesture="Ctrl+1" />
+        <KeyBinding Command="{Binding NavigateToCommand}" CommandParameter="1" Gesture="Ctrl+2" />
+        <KeyBinding Command="{Binding NavigateToCommand}" CommandParameter="2" Gesture="Ctrl+3" />
+        <KeyBinding Command="{Binding NavigateToCommand}" CommandParameter="3" Gesture="Ctrl+4" />
+        <KeyBinding Command="{Binding NavigateToCommand}" CommandParameter="4" Gesture="Ctrl+5" />
+        <KeyBinding Command="{Binding NavigateToCommand}" CommandParameter="5" Gesture="Ctrl+6" />
+        <KeyBinding Command="{Binding NavigateToCommand}" CommandParameter="6" Gesture="Ctrl+7" />
+        <KeyBinding Command="{Binding NavigateToCommand}" CommandParameter="7" Gesture="Ctrl+8" />
+        <KeyBinding Command="{Binding NavigateToCommand}" CommandParameter="8" Gesture="Ctrl+9" />
     </Window.InputBindings>
 
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <ui:TitleBar Title="{Binding WindowTitle}" Grid.Row="0" />
+        <ui:TitleBar
+            x:Name="AppTitleBar"
+            Title="{Binding WindowTitle}"
+            Grid.Row="0" />
 
-        <Grid Grid.Row="1">
+        <!-- Top menu bar: plan in docs/ui-plan.md §2. Unbuilt items are disabled with the phase they arrive in. -->
+        <Menu
+            x:Name="MainMenu"
+            Grid.Row="1"
+            Margin="4,0,0,0"
+            AutomationProperties.Name="Main menu"
+            ToolTipService.ShowOnDisabled="True">
+            <MenuItem Header="_File">
+                <MenuItem Header="_New project" Command="{Binding NewProjectCommand}" InputGestureText="Ctrl+N" />
+                <MenuItem Header="_Open project…" Command="{Binding OpenProjectCommand}" InputGestureText="Ctrl+O" />
+                <MenuItem Header="Open _recent" IsEnabled="False" ToolTip="Coming in phase 9" />
+                <Separator />
+                <MenuItem Header="_Save" Command="{Binding SaveProjectCommand}" InputGestureText="Ctrl+S" />
+                <MenuItem Header="Save _as…" Command="{Binding SaveProjectAsCommand}" InputGestureText="Ctrl+Shift+S" />
+                <Separator />
+                <MenuItem Header="Import QLC+ workspace (.qxw)…" IsEnabled="False" ToolTip="Coming in phase later" />
+                <MenuItem Header="Export show report (PDF)…" IsEnabled="False" ToolTip="Coming in phase later" />
+                <Separator />
+                <MenuItem Header="E_xit" Command="{Binding ExitCommand}" InputGestureText="Alt+F4" />
+            </MenuItem>
+            <MenuItem Header="_Edit">
+                <MenuItem Header="_Undo" InputGestureText="Ctrl+Z" IsEnabled="False" ToolTip="Coming in phase 9" />
+                <MenuItem Header="_Redo" InputGestureText="Ctrl+Y" IsEnabled="False" ToolTip="Coming in phase 9" />
+                <Separator />
+                <MenuItem Header="Cu_t" InputGestureText="Ctrl+X" IsEnabled="False" ToolTip="Coming in phase 4" />
+                <MenuItem Header="_Copy" InputGestureText="Ctrl+C" IsEnabled="False" ToolTip="Coming in phase 4" />
+                <MenuItem Header="_Paste" InputGestureText="Ctrl+V" IsEnabled="False" ToolTip="Coming in phase 4" />
+                <MenuItem Header="_Duplicate" InputGestureText="Ctrl+D" IsEnabled="False" ToolTip="Coming in phase 2" />
+                <MenuItem Header="De_lete" InputGestureText="Del" IsEnabled="False" ToolTip="Coming in phase 2" />
+                <MenuItem Header="Rena_me" InputGestureText="F2" IsEnabled="False" ToolTip="Coming in phase 2" />
+                <Separator />
+                <MenuItem Header="Select _all" InputGestureText="Ctrl+A" IsEnabled="False" ToolTip="Coming in phase 2" />
+                <MenuItem Header="_Search everything…" InputGestureText="Ctrl+K" IsEnabled="False" ToolTip="Coming in phase 9" />
+            </MenuItem>
+            <MenuItem Header="_View">
+                <MenuItem Header="_Fixtures" Command="{Binding NavigateToCommand}" CommandParameter="0" InputGestureText="Ctrl+1" />
+                <MenuItem Header="Fixture _Library" Command="{Binding NavigateToCommand}" CommandParameter="1" InputGestureText="Ctrl+2" />
+                <MenuItem Header="F_unctions" Command="{Binding NavigateToCommand}" CommandParameter="2" InputGestureText="Ctrl+3" />
+                <MenuItem Header="_Scenes" Command="{Binding NavigateToCommand}" CommandParameter="3" InputGestureText="Ctrl+4" />
+                <MenuItem Header="_Virtual Console" Command="{Binding NavigateToCommand}" CommandParameter="4" InputGestureText="Ctrl+5" />
+                <MenuItem Header="Show _Timeline" Command="{Binding NavigateToCommand}" CommandParameter="5" InputGestureText="Ctrl+6" />
+                <MenuItem Header="T_est &amp; Preview" Command="{Binding NavigateToCommand}" CommandParameter="6" InputGestureText="Ctrl+7" />
+                <MenuItem Header="_Input / Output" Command="{Binding NavigateToCommand}" CommandParameter="7" InputGestureText="Ctrl+8" />
+                <MenuItem Header="Se_ttings" Command="{Binding NavigateToCommand}" CommandParameter="8" InputGestureText="Ctrl+9" />
+                <Separator />
+                <MenuItem Header="Stage _preview panel" InputGestureText="Ctrl+P" IsEnabled="False" ToolTip="Coming in phase 3" />
+                <MenuItem Header="_DMX monitor" InputGestureText="Ctrl+M" IsEnabled="False" ToolTip="Coming in phase 6" />
+                <Separator />
+                <MenuItem Header="_Dark theme" Command="{Binding SetThemeCommand}" CommandParameter="Dark" IsCheckable="False" IsChecked="{Binding IsDarkTheme, Mode=OneWay}" />
+                <MenuItem Header="Lig_ht theme" Command="{Binding SetThemeCommand}" CommandParameter="Light" IsCheckable="False" IsChecked="{Binding IsDarkTheme, Mode=OneWay, Converter={StaticResource InvertBool}}" />
+                <Separator />
+                <MenuItem Header="F_ull screen" Command="{Binding ToggleFullScreenCommand}" InputGestureText="F11" IsCheckable="False" IsChecked="{Binding IsFullScreen, Mode=OneWay}" />
+            </MenuItem>
+            <MenuItem Header="Fi_xtures">
+                <MenuItem Header="_Add fixture…" InputGestureText="Ctrl+Shift+A" IsEnabled="False" ToolTip="Coming in phase 2" />
+                <MenuItem Header="Add _group…" IsEnabled="False" ToolTip="Coming in phase 2" />
+                <MenuItem Header="Auto-_patch selected" IsEnabled="False" ToolTip="Coming in phase 2" />
+                <Separator />
+                <MenuItem Header="_Import fixture profile (.qxf / .json)…" Command="{Binding ImportProfileCommand}" />
+                <MenuItem Header="_New fixture profile…" IsEnabled="False" ToolTip="Coming in phase 2" />
+                <MenuItem Header="Fixture _library" Command="{Binding NavigateToCommand}" CommandParameter="1" />
+            </MenuItem>
+            <MenuItem Header="F_unctions">
+                <MenuItem Header="New _scene" IsEnabled="False" ToolTip="Coming in phase 3" />
+                <MenuItem Header="New _chaser" IsEnabled="False" ToolTip="Coming in phase 4" />
+                <MenuItem Header="New se_quence" IsEnabled="False" ToolTip="Coming in phase 4" />
+                <MenuItem Header="New color c_ycle" IsEnabled="False" ToolTip="Coming in phase 4" />
+                <MenuItem Header="New _fade" IsEnabled="False" ToolTip="Coming in phase 4" />
+                <MenuItem Header="New _pulse" IsEnabled="False" ToolTip="Coming in phase 4" />
+                <MenuItem Header="New f_lash" IsEnabled="False" ToolTip="Coming in phase 4" />
+                <MenuItem Header="New st_robe" IsEnabled="False" ToolTip="Coming in phase 4" />
+                <Separator />
+                <MenuItem Header="Create _starter scenes" IsEnabled="False" ToolTip="Coming in phase 3" />
+                <Separator />
+                <MenuItem Header="S_top all functions" InputGestureText="Shift+Esc" IsEnabled="False" ToolTip="Coming in phase 4" />
+            </MenuItem>
+            <MenuItem Header="_Show">
+                <MenuItem Header="_New show (timeline)…" IsEnabled="False" ToolTip="Coming in phase 8" />
+                <MenuItem Header="Add _audio track…" IsEnabled="False" ToolTip="Coming in phase 8" />
+                <MenuItem Header="Add _function track" IsEnabled="False" ToolTip="Coming in phase 8" />
+                <Separator />
+                <MenuItem Header="_Play / Pause" InputGestureText="Space" IsEnabled="False" ToolTip="Coming in phase 8" />
+                <MenuItem Header="_Stop &amp; return to start" InputGestureText="Home" IsEnabled="False" ToolTip="Coming in phase 8" />
+                <Separator />
+                <MenuItem Header="Analyze _beats" IsEnabled="False" ToolTip="Coming in phase 8" />
+            </MenuItem>
+            <MenuItem Header="_Output">
+                <MenuItem Header="_Enable DMX output" InputGestureText="Ctrl+E" IsEnabled="False" ToolTip="Coming in phase 7" />
+                <MenuItem Header="_Disable DMX output" InputGestureText="Ctrl+Shift+E" IsEnabled="False" ToolTip="Coming in phase 7" />
+                <Separator />
+                <MenuItem Header="_Blackout" InputGestureText="B" IsEnabled="False" ToolTip="Coming in phase 4" />
+                <MenuItem Header="_Release all" InputGestureText="Esc" IsEnabled="False" ToolTip="Coming in phase 4" />
+                <Separator />
+                <MenuItem Header="_Configure outputs…" Command="{Binding NavigateToCommand}" CommandParameter="7" />
+            </MenuItem>
+            <MenuItem Header="_Tools">
+                <MenuItem Header="_Test fixture…" Command="{Binding NavigateToCommand}" CommandParameter="6" />
+                <MenuItem Header="_Profile editor" IsEnabled="False" ToolTip="Coming in phase 2" />
+                <MenuItem Header="_Operator mode (lock editing)" InputGestureText="F12" IsEnabled="False" ToolTip="Coming in phase 5" />
+                <Separator />
+                <MenuItem Header="_Settings" Command="{Binding NavigateToCommand}" CommandParameter="8" InputGestureText="Ctrl+," />
+            </MenuItem>
+            <MenuItem Header="_Help">
+                <MenuItem Header="_Getting started" InputGestureText="F1" IsEnabled="False" ToolTip="Coming in phase 9" />
+                <MenuItem Header="_Keyboard shortcuts" Command="{Binding ShowShortcutsCommand}" />
+                <MenuItem Header="_DMX basics" IsEnabled="False" ToolTip="Coming in phase later" />
+                <Separator />
+                <MenuItem Header="_About DMX Pro" Command="{Binding ShowAboutCommand}" />
+            </MenuItem>
+        </Menu>
+
+        <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="232" />
                 <ColumnDefinition Width="*" />
@@ -118,7 +244,7 @@
 
         <!-- Status bar: always visible (spec §1 "clear status"). -->
         <Border
-            Grid.Row="2"
+            Grid.Row="3"
             Padding="16,6"
             Background="{DynamicResource LayerFillColorDefaultBrush}"
             BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"

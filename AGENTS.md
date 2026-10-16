@@ -19,7 +19,7 @@ Save/Load projects · Copy/paste functions.
 | Anything                     | `docs/spec/feature-specification.md`, `docs/spec/product-requirements.md`, `docs/standards/safety-rules.md` |
 | Architecture / new project   | `docs/architecture.md`                                         |
 | C# code                      | `docs/standards/coding-standards.md`                           |
-| XAML / UI                    | `docs/standards/ui-ux-guidelines.md`                           |
+| XAML / UI                    | `docs/ui-plan.md` (menus + screen layouts), `docs/standards/ui-ux-guidelines.md` |
 | Profiles / channels          | `docs/knowledge/05-fixture-profiles.md`, `docs/knowledge/01-dmx512-fundamentals.md` |
 | Output (network / USB)       | `docs/knowledge/03-network-dmx-artnet-sacn.md`, `docs/knowledge/04-usb-dmx-interfaces.md` |
 | Music / audio                | `docs/knowledge/06-music-to-light.md`                          |
