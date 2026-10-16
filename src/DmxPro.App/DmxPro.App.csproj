@@ -12,6 +12,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- WPF projects leave System.IO out of implicit usings (it clashes with System.Windows.Shapes.Path in XAML). -->
+    <Using Include="System.IO" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="WPF-UI" />
     <PackageReference Include="CommunityToolkit.Mvvm" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />
