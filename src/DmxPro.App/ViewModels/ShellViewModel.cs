@@ -17,6 +17,7 @@ public sealed partial class ShellViewModel : ObservableObject
     private readonly AppPaths _paths;
     private readonly IThemeService _theme;
     private readonly ProfilesViewModel _profiles;
+    private readonly FixturesViewModel _fixtures;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CurrentPage))]
@@ -38,21 +39,26 @@ public sealed partial class ShellViewModel : ObservableObject
         IDialogService dialogs,
         AppPaths paths,
         IThemeService theme,
+        FixturesViewModel fixtures,
         ProfilesViewModel profiles)
     {
+        _fixtures = fixtures;
         _theme = theme;
         _profiles = profiles;
         _projects = projects;
         _fileDialogs = fileDialogs;
         _dialogs = dialogs;
         _paths = paths;
-        _projects.StateChanged += (_, _) => OnPropertyChanged(nameof(WindowTitle));
+        _projects.StateChanged += (_, _) =>
+        {
+            OnPropertyChanged(nameof(WindowTitle));
+            OnPropertyChanged(nameof(FileStatusText));
+        };
+        _projects.ContentChanged += (_, _) => OnPropertyChanged(nameof(PatchStatusText));
 
         NavigationItems =
         [
-            new("Fixtures", SymbolRegular.Lightbulb24, new ComingSoonViewModel(
-                "Fixtures", "Patch your lights: profile, mode, universe and start address.", "Phase 2",
-                ["Add / duplicate / delete fixtures", "Automatic free-address finder", "Overlap and range warnings", "Groups"])),
+            new("Fixtures", SymbolRegular.Lightbulb24, fixtures),
             new("Fixture Library", SymbolRegular.Library24, profiles),
             new("Functions", SymbolRegular.Flash24, new ComingSoonViewModel(
                 "Functions", "Reusable behaviors: chasers, sequences, color cycles, fades, pulses, flash, strobe.", "Phase 4",
@@ -76,7 +82,7 @@ public sealed partial class ShellViewModel : ObservableObject
                 "Settings", "Theme, safety and folder preferences.", "Phase 9",
                 ["Safe frame on exit (blackout / defaults)", "Allow strobe + max strobe rate", "Autosave interval", "Profile folders"])),
         ];
-        _selectedItem = NavigationItems[1];
+        _selectedItem = NavigationItems[0];
     }
 
     /// <summary>Raised when the user picks File ▸ Exit; the window closes itself (with the save prompt).</summary>
@@ -92,7 +98,19 @@ public sealed partial class ShellViewModel : ObservableObject
         $"{(_projects.FilePath is null ? _projects.Current.Name : Path.GetFileNameWithoutExtension(_projects.FilePath))}{(_projects.IsDirty ? " •" : string.Empty)} — DMX Pro";
 
     /// <summary>Output is always disabled at start (safety rule 1). Real output arrives in phase 7.</summary>
-    public string OutputStatusText => "Output disabled";
+    public string OutputStatusText => "DMX output disabled";
+
+    public string PatchStatusText
+    {
+        get
+        {
+            var project = _projects.Current;
+            var universes = project.Fixtures.Select(f => f.Universe).Distinct().Count();
+            return $"{project.Fixtures.Count} fixtures · {universes} universe(s) · {project.Groups.Count} groups";
+        }
+    }
+
+    public string FileStatusText => _projects.FilePath ?? "Not saved yet";
 
     partial void OnSelectedItemChanged(NavigationItem value) => value.Page.OnNavigatedTo();
 
@@ -104,6 +122,13 @@ public sealed partial class ShellViewModel : ObservableObject
         {
             SelectedItem = NavigationItems[i];
         }
+    }
+
+    [RelayCommand]
+    private void AddFixture()
+    {
+        SelectedItem = NavigationItems.First(n => n.Page == _fixtures);
+        _fixtures.AddFixtureCommand.Execute(null);
     }
 
     [RelayCommand]

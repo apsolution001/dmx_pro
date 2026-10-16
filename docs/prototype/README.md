@@ -1,7 +1,10 @@
 # DMX Pro — HTML UI Prototype
 
 A clickable, working mockup of the **whole app** (`index.html` + `styles.css` + `app.js`, no dependencies).
-It is the visual and behavioral reference: the WPF app is built to look and act like this.
+
+> **Behavior reference only.** It shows what each screen does. The real app's *look* is a native Windows desktop
+> app laid out like QLC+ (toolbars, vertical tab strip, split panels, tables/trees) — see
+> `docs/standards/ui-ux-guidelines.md`. Where the two differ, the guidelines win.
 
 **Open it:** double-click `index.html` (any modern browser). Best at 1440×900 or larger.
 

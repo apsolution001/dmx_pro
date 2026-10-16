@@ -52,6 +52,70 @@ public sealed class Project : IProfileResolver
         return copy;
     }
 
+    /// <summary>
+    /// Patches <paramref name="count"/> fixtures of one profile/mode one after another, starting at
+    /// <paramref name="startAddress"/>, with <paramref name="gap"/> unused channels between them. The profile is
+    /// embedded in the project. Several fixtures are named "<paramref name="name"/> 1", "… 2", ….
+    /// </summary>
+    public IReadOnlyList<Fixture> AddFixtures(
+        FixtureProfile profile,
+        string modeName,
+        int count,
+        int universe,
+        int startAddress,
+        string name,
+        int gap = 0)
+    {
+        var mode = profile.FindMode(modeName)
+            ?? throw new ArgumentException($"Profile '{profile.DisplayName}' has no mode '{modeName}'.", nameof(modeName));
+        ArgumentOutOfRangeException.ThrowIfLessThan(count, 1);
+        ArgumentOutOfRangeException.ThrowIfNegative(gap);
+
+        EmbedProfile(profile);
+        var added = new List<Fixture>(count);
+        var address = startAddress;
+        for (var i = 0; i < count; i++)
+        {
+            var fixture = new Fixture
+            {
+                Name = count > 1 ? $"{name} {i + 1}" : name,
+                ProfileId = profile.Id,
+                ModeName = mode.Name,
+                Universe = universe,
+                StartAddress = address,
+            };
+            Fixtures.Add(fixture);
+            added.Add(fixture);
+            address += mode.ChannelCount + gap;
+        }
+
+        return added;
+    }
+
+    /// <summary>Copies a fixture to the next free address in its universe (same address if the universe is full).</summary>
+    public Fixture DuplicateFixture(Guid fixtureId)
+    {
+        var source = FindFixture(fixtureId) ?? throw new ArgumentException("Fixture not found.", nameof(fixtureId));
+        var copy = source.Duplicate();
+        copy.Name = $"{source.Name} (copy)";
+        var channels = FindProfile(source.ProfileId)?.FindMode(source.ModeName)?.ChannelCount ?? 1;
+        copy.StartAddress = PatchValidator.FindFreeAddress(Fixtures, this, source.Universe, channels) ?? source.StartAddress;
+        Fixtures.Insert(Fixtures.IndexOf(source) + 1, copy);
+        foreach (var group in Groups.Where(g => g.FixtureIds.Contains(source.Id)))
+        {
+            group.FixtureIds.Add(copy.Id);
+        }
+
+        return copy;
+    }
+
+    public FixtureGroup CreateGroup(string name, IEnumerable<Guid> fixtureIds)
+    {
+        var group = new FixtureGroup { Name = name, FixtureIds = fixtureIds.Distinct().ToList() };
+        Groups.Add(group);
+        return group;
+    }
+
     /// <summary>Removes a fixture and every group reference to it.</summary>
     public bool RemoveFixture(Guid fixtureId)
     {

@@ -8,12 +8,12 @@
     xmlns:vm="clr-namespace:DmxPro.App.ViewModels"
     Title="{Binding WindowTitle}"
     Width="1440"
-    Height="880"
+    Height="900"
     MinWidth="1024"
     MinHeight="640"
     d:DataContext="{d:DesignInstance Type=vm:ShellViewModel}"
     ExtendsContentIntoTitleBar="True"
-    WindowBackdropType="Mica"
+    WindowBackdropType="None"
     WindowCornerPreference="Round"
     WindowStartupLocation="CenterScreen"
     mc:Ignorable="d">
@@ -24,6 +24,7 @@
         <KeyBinding Command="{Binding SaveProjectCommand}" Gesture="Ctrl+S" />
         <KeyBinding Command="{Binding SaveProjectAsCommand}" Gesture="Ctrl+Shift+S" />
         <KeyBinding Command="{Binding ToggleFullScreenCommand}" Gesture="F11" />
+        <KeyBinding Command="{Binding AddFixtureCommand}" Gesture="Ctrl+Shift+A" />
         <KeyBinding Command="{Binding NavigateToCommand}" CommandParameter="8" Gesture="Ctrl+OemComma" />
         <KeyBinding Command="{Binding NavigateToCommand}" CommandParameter="0" Gesture="Ctrl+1" />
         <KeyBinding Command="{Binding NavigateToCommand}" CommandParameter="1" Gesture="Ctrl+2" />
@@ -36,8 +37,10 @@
         <KeyBinding Command="{Binding NavigateToCommand}" CommandParameter="8" Gesture="Ctrl+9" />
     </Window.InputBindings>
 
+    <!-- Desktop layout modelled on QLC+: menu, main toolbar, vertical tab strip, page area, status bar. -->
     <Grid>
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -53,7 +56,7 @@
         <Menu
             x:Name="MainMenu"
             Grid.Row="1"
-            Margin="4,0,0,0"
+            Margin="2,0,0,0"
             AutomationProperties.Name="Main menu"
             ToolTipService.ShowOnDisabled="True">
             <MenuItem Header="_File">
@@ -103,7 +106,7 @@
                 <MenuItem Header="F_ull screen" Command="{Binding ToggleFullScreenCommand}" InputGestureText="F11" IsCheckable="False" IsChecked="{Binding IsFullScreen, Mode=OneWay}" />
             </MenuItem>
             <MenuItem Header="Fi_xtures">
-                <MenuItem Header="_Add fixture…" InputGestureText="Ctrl+Shift+A" IsEnabled="False" ToolTip="Coming in phase 2" />
+                <MenuItem Header="_Add fixture…" Command="{Binding AddFixtureCommand}" InputGestureText="Ctrl+Shift+A" />
                 <MenuItem Header="Add _group…" IsEnabled="False" ToolTip="Coming in phase 2" />
                 <MenuItem Header="Auto-_patch selected" IsEnabled="False" ToolTip="Coming in phase 2" />
                 <Separator />
@@ -160,115 +163,185 @@
             </MenuItem>
         </Menu>
 
-        <Grid Grid.Row="2">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="232" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-
-            <!-- Navigation rail -->
-            <DockPanel Grid.Column="0" Margin="8,4,4,8">
-                <StackPanel DockPanel.Dock="Top" Margin="4,0,4,12" Orientation="Horizontal">
+        <!-- Main toolbar -->
+        <Border Grid.Row="2" Style="{StaticResource ToolbarStrip}">
+            <DockPanel LastChildFill="False">
+                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
                     <ui:Button
-                        Margin="0,0,4,0"
+                        Padding="6"
                         Appearance="Transparent"
                         AutomationProperties.Name="New project"
                         Command="{Binding NewProjectCommand}"
                         Icon="{ui:SymbolIcon DocumentAdd24}"
                         ToolTip="New project (Ctrl+N)" />
                     <ui:Button
-                        Margin="0,0,4,0"
+                        Padding="6"
                         Appearance="Transparent"
                         AutomationProperties.Name="Open project"
                         Command="{Binding OpenProjectCommand}"
                         Icon="{ui:SymbolIcon FolderOpen24}"
                         ToolTip="Open project (Ctrl+O)" />
                     <ui:Button
-                        Margin="0,0,4,0"
+                        Padding="6"
                         Appearance="Transparent"
-                        AutomationProperties.Name="Save project"
+                        AutomationProperties.Name="Save"
                         Command="{Binding SaveProjectCommand}"
                         Icon="{ui:SymbolIcon Save24}"
-                        ToolTip="Save project (Ctrl+S)" />
+                        ToolTip="Save (Ctrl+S)" />
+                    <ui:Button
+                        Padding="6"
+                        Appearance="Transparent"
+                        AutomationProperties.Name="Save as"
+                        Command="{Binding SaveProjectAsCommand}"
+                        Icon="{ui:SymbolIcon SaveEdit24}"
+                        ToolTip="Save as (Ctrl+Shift+S)" />
+                    <Rectangle Style="{StaticResource ToolbarSeparator}" />
+                    <ui:Button
+                        Padding="6"
+                        Appearance="Transparent"
+                        AutomationProperties.Name="Undo"
+                        Icon="{ui:SymbolIcon ArrowUndo24}"
+                        IsEnabled="False"
+                        ToolTipService.ShowOnDisabled="True"
+                        ToolTip="Undo — coming in phase 9" />
+                    <ui:Button
+                        Padding="6"
+                        Appearance="Transparent"
+                        AutomationProperties.Name="Redo"
+                        Icon="{ui:SymbolIcon ArrowRedo24}"
+                        IsEnabled="False"
+                        ToolTipService.ShowOnDisabled="True"
+                        ToolTip="Redo — coming in phase 9" />
+                    <Rectangle Style="{StaticResource ToolbarSeparator}" />
+                    <ui:Button
+                        Padding="6"
+                        Appearance="Transparent"
+                        AutomationProperties.Name="DMX monitor"
+                        Icon="{ui:SymbolIcon Pulse24}"
+                        IsEnabled="False"
+                        ToolTipService.ShowOnDisabled="True"
+                        ToolTip="DMX monitor — coming in phase 6" />
+                    <ui:Button
+                        Padding="6"
+                        Appearance="Transparent"
+                        AutomationProperties.Name="Stop all functions"
+                        Icon="{ui:SymbolIcon Stop24}"
+                        IsEnabled="False"
+                        ToolTipService.ShowOnDisabled="True"
+                        ToolTip="Stop all functions — coming in phase 4" />
+                    <ui:Button
+                        Padding="6"
+                        Appearance="Transparent"
+                        AutomationProperties.Name="Blackout"
+                        Icon="{ui:SymbolIcon WeatherMoon24}"
+                        IsEnabled="False"
+                        ToolTipService.ShowOnDisabled="True"
+                        ToolTip="Blackout — coming in phase 4" />
+                    <Rectangle Style="{StaticResource ToolbarSeparator}" />
+                    <ui:Button
+                        Padding="6"
+                        Appearance="Transparent"
+                        AutomationProperties.Name="Full screen"
+                        Command="{Binding ToggleFullScreenCommand}"
+                        Icon="{ui:SymbolIcon FullScreenMaximize24}"
+                        ToolTip="Full screen (F11)" />
                 </StackPanel>
+            </DockPanel>
+        </Border>
 
+        <Grid Grid.Row="3">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="96" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Vertical tab strip (icon above label), like QLC+'s main tabs -->
+            <Border
+                Grid.Column="0"
+                Background="{DynamicResource ControlFillColorDefaultBrush}"
+                BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
+                BorderThickness="0,0,1,0">
                 <ListBox
-                    AutomationProperties.Name="Main navigation"
+                    Padding="4"
+                    AutomationProperties.Name="Main sections"
                     Background="Transparent"
                     BorderThickness="0"
                     ItemsSource="{Binding NavigationItems}"
+                    ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                     SelectedItem="{Binding SelectedItem}">
+                    <ListBox.ItemContainerStyle>
+                        <Style BasedOn="{StaticResource {x:Type ListBoxItem}}" TargetType="ListBoxItem">
+                            <Setter Property="Margin" Value="0,0,0,2" />
+                            <Setter Property="Padding" Value="2,8" />
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        </Style>
+                    </ListBox.ItemContainerStyle>
                     <ListBox.ItemTemplate>
                         <DataTemplate DataType="{x:Type vm:NavigationItem}">
-                            <StackPanel Margin="4,6" Orientation="Horizontal">
-                                <ui:SymbolIcon FontSize="20" Symbol="{Binding Icon}" />
+                            <StackPanel HorizontalAlignment="Center" ToolTip="{Binding Page.Subtitle}">
+                                <ui:SymbolIcon
+                                    HorizontalAlignment="Center"
+                                    FontSize="26"
+                                    Symbol="{Binding Icon}" />
                                 <TextBlock
-                                    Margin="12,0,0,0"
-                                    VerticalAlignment="Center"
-                                    FontSize="14"
-                                    Text="{Binding Title}" />
+                                    Margin="0,4,0,0"
+                                    HorizontalAlignment="Center"
+                                    FontSize="11"
+                                    Text="{Binding Title}"
+                                    TextAlignment="Center"
+                                    TextWrapping="Wrap" />
                             </StackPanel>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
-            </DockPanel>
+            </Border>
 
             <!-- Page area -->
-            <Grid Grid.Column="1" Margin="16,4,24,16">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-
-                <StackPanel Grid.Row="0" Margin="0,0,0,16">
-                    <TextBlock Style="{StaticResource PageTitleText}" Text="{Binding CurrentPage.Title}" />
-                    <TextBlock
-                        Margin="0,4,0,0"
-                        Style="{StaticResource SecondaryText}"
-                        Text="{Binding CurrentPage.Subtitle}" />
-                </StackPanel>
-
+            <DockPanel Grid.Column="1">
                 <ui:InfoBar
-                    Grid.Row="1"
-                    Margin="0,0,0,12"
+                    Margin="6,6,6,0"
+                    DockPanel.Dock="Top"
                     IsClosable="True"
                     IsOpen="{Binding InfoMessage, Mode=OneWay, Converter={StaticResource NullToVisibility}, ConverterParameter=Bool}"
                     Message="{Binding InfoMessage}"
                     Severity="{Binding InfoSeverity}"
                     Visibility="{Binding InfoMessage, Converter={StaticResource NullToVisibility}}" />
-
-                <ContentControl Grid.Row="2" Content="{Binding CurrentPage}" Focusable="False" />
-            </Grid>
+                <ContentControl Content="{Binding CurrentPage}" Focusable="False" />
+            </DockPanel>
         </Grid>
 
         <!-- Status bar: always visible (spec §1 "clear status"). -->
         <Border
-            Grid.Row="3"
-            Padding="16,6"
-            Background="{DynamicResource LayerFillColorDefaultBrush}"
+            Grid.Row="4"
+            Padding="10,3"
+            Background="{DynamicResource ControlFillColorDefaultBrush}"
             BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
             BorderThickness="0,1,0,0">
             <DockPanel LastChildFill="False">
-                <Border
+                <StackPanel
                     DockPanel.Dock="Left"
-                    Style="{StaticResource Badge}"
+                    Orientation="Horizontal"
                     ToolTip="DMX output starts disabled every time. Configure and enable it in Input / Output.">
-                    <StackPanel Orientation="Horizontal">
-                        <Ellipse
-                            Width="8"
-                            Height="8"
-                            Margin="0,0,6,0"
-                            VerticalAlignment="Center"
-                            Fill="{DynamicResource TextFillColorTertiaryBrush}" />
-                        <TextBlock FontSize="12" Text="{Binding OutputStatusText}" />
-                    </StackPanel>
-                </Border>
+                    <Ellipse
+                        Width="8"
+                        Height="8"
+                        Margin="0,0,6,0"
+                        VerticalAlignment="Center"
+                        Fill="{DynamicResource TextFillColorTertiaryBrush}" />
+                    <TextBlock FontSize="12" Text="{Binding OutputStatusText}" />
+                </StackPanel>
+                <Rectangle Margin="12,0" Style="{StaticResource ToolbarSeparator}" Height="14" />
                 <TextBlock
-                    DockPanel.Dock="Right"
                     VerticalAlignment="Center"
-                    Style="{StaticResource CaptionText}"
-                    Text="DMX Pro 0.1 · preview" />
+                    FontSize="12"
+                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                    Text="{Binding PatchStatusText}" />
+                <TextBlock
+                    VerticalAlignment="Center"
+                    DockPanel.Dock="Right"
+                    FontSize="12"
+                    Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                    Text="{Binding FileStatusText}" />
             </DockPanel>
         </Border>
     </Grid>

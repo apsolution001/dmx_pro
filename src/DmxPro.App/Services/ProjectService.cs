@@ -19,19 +19,25 @@ public sealed class ProjectService
     /// <summary>Raised when the file path or dirty state changes.</summary>
     public event EventHandler? StateChanged;
 
+    /// <summary>Raised after any edit to the current project's content (fixtures, groups, …).</summary>
+    public event EventHandler? ContentChanged;
+
     public Project Current { get; private set; } = new();
 
     public string? FilePath { get; private set; }
 
     public bool IsDirty { get; private set; }
 
-    public void MarkDirty()
+    /// <summary>Call after every edit: marks the project unsaved and notifies listeners.</summary>
+    public void MarkChanged()
     {
         if (!IsDirty)
         {
             IsDirty = true;
             StateChanged?.Invoke(this, EventArgs.Empty);
         }
+
+        ContentChanged?.Invoke(this, EventArgs.Empty);
     }
 
     public void New()
@@ -61,5 +67,6 @@ public sealed class ProjectService
         IsDirty = false;
         ProjectChanged?.Invoke(this, EventArgs.Empty);
         StateChanged?.Invoke(this, EventArgs.Empty);
+        ContentChanged?.Invoke(this, EventArgs.Empty);
     }
 }

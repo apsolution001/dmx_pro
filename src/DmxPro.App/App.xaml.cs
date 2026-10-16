@@ -22,6 +22,7 @@ public partial class App : Application
             services.AddSingleton<IDialogService, DialogService>();
             services.AddSingleton<IThemeService, ThemeService>();
 
+            services.AddSingleton<FixturesViewModel>();
             services.AddSingleton<ProfilesViewModel>();
             services.AddSingleton<ShellViewModel>();
             services.AddSingleton<MainWindow>();

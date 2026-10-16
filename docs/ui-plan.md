@@ -1,10 +1,33 @@
 # DMX Pro — UI Plan (top menu + every screen)
 
 > The blueprint for the whole app UI. Build screens to match this; update this file when a screen changes.
-> **Clickable reference:** `docs/prototype/index.html` shows every screen working; build WPF to match it.
+> **Look:** native Windows desktop app laid out like QLC+ (see `docs/standards/ui-ux-guidelines.md`).
+> **Behavior reference:** `docs/prototype/index.html` shows what every screen does (its web-style visuals are superseded).
 > Phase numbers refer to `docs/roadmap.md`. Items not built yet are shown **disabled** in the app with "Coming in phase N".
 
 ## 1. Main window layout
+
+Implemented (QLC+ structure):
+
+```
+┌ Title bar ─────────────────────────────────────────────────────────────────────── ─ ☐ ✕ ┐
+│ File  Edit  View  Fixtures  Functions  Show  Output  Tools  Help                         │
+│ [New][Open][Save][Save as] | [Undo][Redo] | [Monitor][Stop all][Blackout] | [Full screen] │ main toolbar
+├──────┬───────────────────────────────────────────────────────────────────────────────────┤
+│  💡  │ [+ Add fixture] [🗑][⧉][✨] | [Group]                          [search…]             │ page toolbar
+│Fixtur│ ┌ fixture table ───────────────────────┐║┌ Properties ──────────────────┐         │
+│  📚  │ │ ✓ Name  Profile  Mode  U  Address  Ch│║│ Name / Profile / Mode /       │         │
+│Librar│ │ ...                                  │║│ Universe / Address / Notes    │         │
+│  ⚡  │ └──────────────────────────────────────┘║│ Channel map                   │         │
+│Funct.│ ═════════════════ (splitter) ═══════════║└──────────────────────────────┘         │
+│  …   │ ┌ Address map  [Universe 1 ▾] ─────────┐║┌ Groups [+][→][🗑] ───────────┐         │
+│      │ │ ■■■■■■■■□□□□ … 32 × 16               │║│ Front: Stage L, Stage R …     │         │
+├──────┴───────────────────────────────────────────────────────────────────────────────────┤
+│ ● DMX output disabled │ 6 fixtures · 2 universe(s) · 2 groups        C:\…\show.dmxpro    │ status bar
+└───────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+Earlier web-style sketch (superseded look, same content):
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────────────────────┐

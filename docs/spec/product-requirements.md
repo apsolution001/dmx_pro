@@ -39,3 +39,4 @@
 | 2026-10-16 | Music = **manual Show Timeline** first (tracks: audio, functions, scenes; create function for a time range). Auto-generation is an optional later helper | Owner wants full manual control |
 | 2026-10-16 | Target user: anyone with basic DMX knowledge, primarily the owner. App must be **fully dynamic**: user adds any light (profile editor), builds functions manually while connected to real lights | Owner answer |
 | 2026-10-16 | **Import QLC+ `.qxf`** fixture definitions (Apache-2.0, attribute source) | Large ready-made library |
+| 2026-10-16 | **UI = native Windows desktop app laid out like QLC+** (toolbars, left vertical tab strip, split panels, tables/trees, modal dialogs). HTML prototype kept as behavior reference only | Owner: "proper Windows app UI, not HTML app UI; follow QLC+" |

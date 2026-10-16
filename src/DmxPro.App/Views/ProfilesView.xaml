@@ -9,181 +9,218 @@
     xmlns:vm="clr-namespace:DmxPro.App.ViewModels"
     d:DataContext="{d:DesignInstance Type=vm:ProfilesViewModel}"
     mc:Ignorable="d">
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="340" />
-            <ColumnDefinition Width="16" />
-            <ColumnDefinition Width="*" />
-        </Grid.ColumnDefinitions>
+    <DockPanel>
+        <!-- Page toolbar -->
+        <Border DockPanel.Dock="Top" Style="{StaticResource ToolbarStrip}">
+            <DockPanel LastChildFill="False">
+                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+                    <ui:Button
+                        Appearance="Primary"
+                        Command="{Binding ImportCommand}"
+                        Content="Import profile…"
+                        Icon="{ui:SymbolIcon ArrowImport24}"
+                        ToolTip="Import QLC+ (.qxf) or DMX Pro (.dmxprofile.json) files" />
+                    <Rectangle Style="{StaticResource ToolbarSeparator}" />
+                    <ui:Button
+                        Appearance="Transparent"
+                        Content="New profile"
+                        Icon="{ui:SymbolIcon Add24}"
+                        IsEnabled="False"
+                        ToolTip="Profile editor — coming next"
+                        ToolTipService.ShowOnDisabled="True" />
+                    <ui:Button
+                        Appearance="Transparent"
+                        Content="Edit"
+                        Icon="{ui:SymbolIcon Edit24}"
+                        IsEnabled="False"
+                        ToolTip="Profile editor — coming next"
+                        ToolTipService.ShowOnDisabled="True" />
+                </StackPanel>
+                <ui:TextBox
+                    Width="260"
+                    DockPanel.Dock="Right"
+                    Icon="{ui:SymbolIcon Search24}"
+                    PlaceholderText="Search manufacturer, model, type"
+                    Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
+            </DockPanel>
+        </Border>
 
         <ui:InfoBar
-            Grid.Row="0"
-            Grid.ColumnSpan="3"
-            Margin="0,0,0,12"
+            Margin="6,6,6,0"
+            DockPanel.Dock="Top"
             IsClosable="True"
             IsOpen="{Binding StatusMessage, Mode=OneWay, Converter={StaticResource NullToVisibility}, ConverterParameter=Bool}"
             Message="{Binding StatusMessage}"
-            Visibility="{Binding StatusMessage, Converter={StaticResource NullToVisibility}}">
-            <ui:InfoBar.Style>
-                <Style BasedOn="{StaticResource {x:Type ui:InfoBar}}" TargetType="ui:InfoBar">
-                    <Setter Property="Severity" Value="Success" />
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding StatusIsError}" Value="True">
-                            <Setter Property="Severity" Value="Warning" />
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </ui:InfoBar.Style>
-        </ui:InfoBar>
+            Severity="{Binding StatusSeverity}"
+            Visibility="{Binding StatusMessage, Converter={StaticResource NullToVisibility}}" />
 
-        <!-- Profile list -->
-        <DockPanel Grid.Row="1" Grid.Column="0">
-            <ui:Button
-                Margin="0,0,0,8"
-                HorizontalAlignment="Stretch"
-                Appearance="Primary"
-                Command="{Binding ImportCommand}"
-                Content="Import profile (.qxf / .json)…"
-                DockPanel.Dock="Top"
-                Icon="{ui:SymbolIcon ArrowImport24}" />
-            <ui:TextBox
-                Margin="0,0,0,8"
-                DockPanel.Dock="Top"
-                Icon="{ui:SymbolIcon Search24}"
-                PlaceholderText="Search manufacturer, model, type…"
-                Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
-            <ListView
-                AutomationProperties.Name="Fixture profiles"
-                ItemsSource="{Binding Profiles}"
-                SelectedItem="{Binding SelectedProfile}"
-                VirtualizingPanel.IsVirtualizing="True">
-                <ListView.ItemTemplate>
-                    <DataTemplate DataType="{x:Type profiles:FixtureProfile}">
-                        <Grid Margin="4,6">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel>
-                                <TextBlock FontWeight="SemiBold" Text="{Binding Model}" />
-                                <TextBlock Style="{StaticResource CaptionText}">
-                                    <Run Text="{Binding Manufacturer, Mode=OneWay}" />
-                                    <Run Text=" · " />
-                                    <Run Text="{Binding Type, Mode=OneWay}" />
-                                </TextBlock>
-                            </StackPanel>
-                            <ui:SymbolIcon
-                                x:Name="VerifiedIcon"
-                                Grid.Column="1"
-                                Margin="8,0,0,0"
-                                Foreground="{DynamicResource SystemFillColorCautionBrush}"
-                                Symbol="Warning24"
-                                ToolTip="Unverified: confirm channels on the real light" />
-                        </Grid>
-                        <DataTemplate.Triggers>
-                            <DataTrigger Binding="{Binding Verified}" Value="True">
-                                <Setter TargetName="VerifiedIcon" Property="Symbol" Value="CheckmarkCircle24" />
-                                <Setter TargetName="VerifiedIcon" Property="Foreground" Value="{DynamicResource SystemFillColorSuccessBrush}" />
-                                <Setter TargetName="VerifiedIcon" Property="ToolTip" Value="Verified on the real fixture" />
-                            </DataTrigger>
-                        </DataTemplate.Triggers>
-                    </DataTemplate>
-                </ListView.ItemTemplate>
-            </ListView>
-        </DockPanel>
+        <Grid Margin="6">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="320" MinWidth="220" />
+                <ColumnDefinition Width="5" />
+                <ColumnDefinition Width="*" MinWidth="400" />
+            </Grid.ColumnDefinitions>
 
-        <!-- Empty state -->
-        <TextBlock
-            Grid.Row="1"
-            Grid.Column="2"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Center"
-            Style="{StaticResource SecondaryText}"
-            Text="No profile selected. Pick one on the left or import a QLC+ fixture file."
-            Visibility="{Binding SelectedProfile, Converter={StaticResource NullToVisibility}, ConverterParameter=Invert}" />
+            <!-- Manufacturer → model tree -->
+            <Border Grid.Column="0" Style="{StaticResource PanelBorder}">
+                <DockPanel>
+                    <Border DockPanel.Dock="Top" Style="{StaticResource PanelHeader}">
+                        <TextBlock Style="{StaticResource PanelTitle}" Text="Fixture definitions" />
+                    </Border>
+                    <TreeView
+                        AutomationProperties.Name="Fixture profiles"
+                        BorderThickness="0"
+                        ItemsSource="{Binding Manufacturers}"
+                        SelectedItemChanged="OnTreeSelectionChanged">
+                        <TreeView.Resources>
+                            <HierarchicalDataTemplate DataType="{x:Type vm:ManufacturerNode}" ItemsSource="{Binding Profiles}">
+                                <StackPanel Orientation="Horizontal">
+                                    <ui:SymbolIcon Margin="0,0,6,0" Symbol="Folder24" />
+                                    <TextBlock FontWeight="SemiBold" Text="{Binding Name}" />
+                                </StackPanel>
+                            </HierarchicalDataTemplate>
+                            <DataTemplate DataType="{x:Type profiles:FixtureProfile}">
+                                <StackPanel Orientation="Horizontal">
+                                    <ui:SymbolIcon
+                                        x:Name="VerifiedIcon"
+                                        Margin="0,0,6,0"
+                                        Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                                        Symbol="Warning24"
+                                        ToolTip="Unverified: confirm channels on the real light" />
+                                    <TextBlock Text="{Binding Model}" />
+                                </StackPanel>
+                                <DataTemplate.Triggers>
+                                    <DataTrigger Binding="{Binding Verified}" Value="True">
+                                        <Setter TargetName="VerifiedIcon" Property="Symbol" Value="CheckmarkCircle24" />
+                                        <Setter TargetName="VerifiedIcon" Property="Foreground" Value="{DynamicResource SystemFillColorSuccessBrush}" />
+                                        <Setter TargetName="VerifiedIcon" Property="ToolTip" Value="Verified on the real fixture" />
+                                    </DataTrigger>
+                                </DataTemplate.Triggers>
+                            </DataTemplate>
+                        </TreeView.Resources>
+                        <TreeView.ItemContainerStyle>
+                            <Style TargetType="TreeViewItem" BasedOn="{StaticResource {x:Type TreeViewItem}}">
+                                <Setter Property="IsExpanded" Value="True" />
+                            </Style>
+                        </TreeView.ItemContainerStyle>
+                    </TreeView>
+                </DockPanel>
+            </Border>
 
-        <!-- Profile details -->
-        <ui:Card
-            Grid.Row="1"
-            Grid.Column="2"
-            VerticalAlignment="Stretch"
-            VerticalContentAlignment="Stretch"
-            Visibility="{Binding HasSelection, Converter={StaticResource BoolToVisibility}}">
-            <DockPanel>
-                <StackPanel DockPanel.Dock="Top">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Style="{StaticResource SubtitleText}" Text="{Binding SelectedProfile.DisplayName}" />
-                        <Border Margin="12,0,0,0" Style="{StaticResource Badge}">
-                            <TextBlock FontSize="12" Text="{Binding SelectedProfile.Type}" />
-                        </Border>
-                    </StackPanel>
+            <GridSplitter Grid.Column="1" Style="{StaticResource VerticalSplitter}" />
+
+            <!-- Profile details -->
+            <Border Grid.Column="2" Style="{StaticResource PanelBorder}">
+                <DockPanel>
+                    <Border DockPanel.Dock="Top" Style="{StaticResource PanelHeader}">
+                        <TextBlock Style="{StaticResource PanelTitle}" Text="Profile" />
+                    </Border>
+
                     <TextBlock
-                        Margin="0,6,0,0"
-                        Style="{StaticResource SecondaryText}"
-                        Text="{Binding SelectedProfile.Source}" />
+                        Margin="12"
+                        Style="{StaticResource HintText}"
+                        Text="Pick a fixture definition on the left, or import a QLC+ fixture file."
+                        Visibility="{Binding SelectedProfile, Converter={StaticResource NullToVisibility}, ConverterParameter=Invert}" />
 
-                    <StackPanel Margin="0,16,0,12" Orientation="Horizontal">
-                        <TextBlock
-                            Margin="0,0,12,0"
-                            VerticalAlignment="Center"
-                            Text="DMX mode" />
-                        <ComboBox
-                            MinWidth="220"
-                            AutomationProperties.Name="DMX mode"
-                            DisplayMemberPath="Name"
-                            ItemsSource="{Binding Modes}"
-                            SelectedItem="{Binding SelectedMode}" />
-                        <TextBlock
-                            Margin="12,0,0,0"
-                            VerticalAlignment="Center"
-                            Style="{StaticResource CaptionText}">
-                            <Run Text="{Binding SelectedMode.ChannelCount, Mode=OneWay}" />
-                            <Run Text="channels" />
-                        </TextBlock>
-                    </StackPanel>
-                </StackPanel>
+                    <DockPanel Margin="12,10" Visibility="{Binding HasSelection, Converter={StaticResource BoolToVisibility}}">
+                        <Grid DockPanel.Dock="Top">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="110" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Style="{StaticResource FormLabel}" Text="Manufacturer" />
+                            <TextBlock Grid.Row="0" Grid.Column="1" Margin="0,0,0,8" Text="{Binding SelectedProfile.Manufacturer}" />
+                            <TextBlock Grid.Row="1" Style="{StaticResource FormLabel}" Text="Model" />
+                            <TextBlock Grid.Row="1" Grid.Column="1" Margin="0,0,0,8" FontWeight="SemiBold" Text="{Binding SelectedProfile.Model}" />
+                            <TextBlock Grid.Row="2" Style="{StaticResource FormLabel}" Text="Type" />
+                            <TextBlock Grid.Row="2" Grid.Column="1" Margin="0,0,0,8" Text="{Binding SelectedProfile.Type}" />
+                            <TextBlock Grid.Row="3" Style="{StaticResource FormLabel}" Text="Verified" />
+                            <TextBlock Grid.Row="3" Grid.Column="1" Margin="0,0,0,8">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value="⚠ No — test each channel on the real light" />
+                                        <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding SelectedProfile.Verified}" Value="True">
+                                                <Setter Property="Text" Value="✓ Yes" />
+                                                <Setter Property="Foreground" Value="{DynamicResource SystemFillColorSuccessBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <TextBlock Grid.Row="4" Style="{StaticResource FormLabel}" Text="Source" />
+                            <TextBlock
+                                Grid.Row="4"
+                                Grid.Column="1"
+                                Margin="0,0,0,8"
+                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                Text="{Binding SelectedProfile.Source}"
+                                TextWrapping="Wrap" />
+                            <TextBlock Grid.Row="5" Style="{StaticResource FormLabel}" Text="DMX mode" />
+                            <StackPanel Grid.Row="5" Grid.Column="1" Margin="0,0,0,8" Orientation="Horizontal">
+                                <ComboBox
+                                    MinWidth="220"
+                                    AutomationProperties.Name="DMX mode"
+                                    DisplayMemberPath="Name"
+                                    ItemsSource="{Binding Modes}"
+                                    SelectedItem="{Binding SelectedMode}" />
+                                <TextBlock
+                                    Margin="10,0,0,0"
+                                    VerticalAlignment="Center"
+                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                    Text="{Binding SelectedMode.ChannelCount, StringFormat={}{0} channels}" />
+                            </StackPanel>
+                        </Grid>
 
-                <DataGrid
-                    AutoGenerateColumns="False"
-                    CanUserAddRows="False"
-                    CanUserDeleteRows="False"
-                    HeadersVisibility="Column"
-                    IsReadOnly="True"
-                    ItemsSource="{Binding Channels}">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Width="56" Binding="{Binding Number}" Header="Ch" />
-                        <DataGridTemplateColumn Width="200" Header="Name">
-                            <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate DataType="{x:Type vm:ChannelRowViewModel}">
-                                    <StackPanel VerticalAlignment="Center" Orientation="Horizontal">
-                                        <TextBlock VerticalAlignment="Center" Text="{Binding Name}" />
-                                        <ui:SymbolIcon
-                                            Margin="6,0,0,0"
-                                            FontSize="14"
-                                            Foreground="{DynamicResource SystemFillColorCautionBrush}"
-                                            Symbol="Warning24"
-                                            ToolTip="Unknown meaning — available as a raw 0–255 channel only"
-                                            Visibility="{Binding IsGeneric, Converter={StaticResource BoolToVisibility}}" />
-                                    </StackPanel>
-                                </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
-                        </DataGridTemplateColumn>
-                        <DataGridTextColumn Width="140" Binding="{Binding Type}" Header="Type" />
-                        <DataGridTextColumn Width="80" Binding="{Binding Default}" Header="Default" />
-                        <DataGridTextColumn Width="*" Binding="{Binding Ranges}" Header="Ranges">
-                            <DataGridTextColumn.ElementStyle>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="TextWrapping" Value="Wrap" />
-                                </Style>
-                            </DataGridTextColumn.ElementStyle>
-                        </DataGridTextColumn>
-                    </DataGrid.Columns>
-                </DataGrid>
-            </DockPanel>
-        </ui:Card>
-    </Grid>
+                        <DataGrid
+                            Margin="0,4,0,0"
+                            AutoGenerateColumns="False"
+                            CanUserAddRows="False"
+                            CanUserDeleteRows="False"
+                            GridLinesVisibility="Horizontal"
+                            HeadersVisibility="Column"
+                            IsReadOnly="True"
+                            ItemsSource="{Binding Channels}">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Width="50" Binding="{Binding Number}" Header="Ch" />
+                                <DataGridTemplateColumn Width="200" Header="Name">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate DataType="{x:Type vm:ChannelRowViewModel}">
+                                            <StackPanel VerticalAlignment="Center" Orientation="Horizontal">
+                                                <TextBlock VerticalAlignment="Center" Text="{Binding Name}" />
+                                                <TextBlock
+                                                    Margin="6,0,0,0"
+                                                    Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                                                    Text="⚠"
+                                                    ToolTip="Unknown meaning — available as a raw 0–255 channel only"
+                                                    Visibility="{Binding IsGeneric, Converter={StaticResource BoolToVisibility}}" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Width="130" Binding="{Binding Type}" Header="Type" />
+                                <DataGridTextColumn Width="70" Binding="{Binding Default}" Header="Default" />
+                                <DataGridTextColumn Width="*" Binding="{Binding Ranges}" Header="Ranges">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="TextWrapping" Value="Wrap" />
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </DockPanel>
+                </DockPanel>
+            </Border>
+        </Grid>
+    </DockPanel>
 </UserControl>

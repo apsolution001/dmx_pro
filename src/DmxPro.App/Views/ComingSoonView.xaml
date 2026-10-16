@@ -8,37 +8,45 @@
     xmlns:vm="clr-namespace:DmxPro.App.ViewModels"
     d:DataContext="{d:DesignInstance Type=vm:ComingSoonViewModel}"
     mc:Ignorable="d">
-    <ui:Card MaxWidth="640" HorizontalAlignment="Left" VerticalAlignment="Top">
-        <StackPanel>
-            <StackPanel Orientation="Horizontal">
-                <ui:SymbolIcon FontSize="24" Symbol="Wand24" />
-                <TextBlock
-                    Margin="12,0,12,0"
-                    VerticalAlignment="Center"
-                    Style="{StaticResource SubtitleText}"
-                    Text="Coming next" />
-                <Border Style="{StaticResource Badge}">
-                    <TextBlock FontSize="12" Text="{Binding Phase}" />
-                </Border>
-            </StackPanel>
+    <DockPanel>
+        <Border DockPanel.Dock="Top" Style="{StaticResource ToolbarStrip}">
             <TextBlock
-                Margin="0,12,0,8"
-                Style="{StaticResource SecondaryText}"
-                Text="This page is planned on the roadmap. It will include:" />
-            <ItemsControl ItemsSource="{Binding PlannedFeatures}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <StackPanel Margin="0,4" Orientation="Horizontal">
-                            <ui:SymbolIcon
-                                Margin="0,0,8,0"
-                                FontSize="16"
-                                Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"
-                                Symbol="CheckmarkCircle24" />
-                            <TextBlock VerticalAlignment="Center" Text="{Binding}" />
-                        </StackPanel>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-        </StackPanel>
-    </ui:Card>
+                Margin="4,6"
+                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                Text="{Binding Subtitle}" />
+        </Border>
+        <Border Margin="6" Style="{StaticResource PanelBorder}">
+            <StackPanel
+                MaxWidth="520"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center">
+                <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
+                    <ui:SymbolIcon FontSize="22" Symbol="Wand24" />
+                    <TextBlock
+                        Margin="10,0,0,0"
+                        Style="{StaticResource PanelTitle}"
+                        Text="{Binding Title}" />
+                    <TextBlock
+                        Margin="8,0,0,0"
+                        VerticalAlignment="Center"
+                        Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                        Text="{Binding Phase, StringFormat=— coming in {0}}" />
+                </StackPanel>
+                <ItemsControl Margin="0,14,0,0" ItemsSource="{Binding PlannedFeatures}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Margin="0,3" Orientation="Horizontal">
+                                <ui:SymbolIcon
+                                    Margin="0,0,8,0"
+                                    FontSize="14"
+                                    Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                    Symbol="CheckmarkCircle24" />
+                                <TextBlock Text="{Binding}" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+    </DockPanel>
 </UserControl>

@@ -1,6 +1,21 @@
 # UI / UX Guidelines (WPF, Fluent, modern)
 
-## Visual style
+## Visual style — native Windows desktop app, laid out like QLC+ (decided 2026-10-16)
+
+The owner wants a **proper Windows application**, not a web-page look. Structure every screen like QLC+:
+
+- **Window:** title bar → menu bar → main icon toolbar → body → status bar. Solid background (no Mica/glass).
+- **Main sections:** vertical **tab strip on the left** (icon above a short label), one section visible at a time.
+- **Each page:** its own **toolbar strip** at the top (primary action as a labelled button, the rest icon buttons
+  with tooltips, groups split by separators), then **docked panels** separated by **GridSplitters** the user can drag.
+- **Panels:** thin border + a header row with the panel title (styles `PanelBorder`, `PanelHeader`, `PanelTitle`).
+- **Data:** tables (`DataGrid`), trees (`TreeView`, e.g. manufacturer → model) and property forms
+  (label column + control column, `FormLabel`) — not cards, hero headers or big page titles.
+- **Dialogs:** real modal windows for multi-field tasks (e.g. *Add fixture*), `MessageBox` for confirmations.
+- Shared styles live in `src/DmxPro.App/App.xaml`. The HTML prototype in `docs/prototype/` is a **behavior**
+  reference (what each screen does); its web-style visuals are superseded by these rules.
+
+### Theme details
 
 - **WPF-UI** Fluent controls, Mica backdrop on Windows 11, **dark theme default** (operators work in dark venues),
   light theme switchable. Accent color from Windows or user choice.
@@ -12,8 +27,8 @@
 
 ## Layout patterns
 
-- Left NavigationView with the main tabs; each page = header (title + primary actions) + content.
-- List/detail pages: list on the left (search on top), editor on the right. No modal dialogs for everyday editing.
+- Vertical tab strip with the main sections; each page = toolbar strip + split panels.
+- List/detail pages: list or tree on the left (search in the toolbar), properties panel on the right.
 - Use dialogs (`ContentDialog`) only for confirmation of destructive actions and wizards.
 - Status bar always visible: Output state, Grand Master, Blackout, Release All, BPM.
 

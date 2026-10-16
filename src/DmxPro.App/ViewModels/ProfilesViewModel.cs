@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using DmxPro.App.Services;
 using DmxPro.Core.Profiles;
 using DmxPro.Core.Validation;
+using Wpf.Ui.Controls;
 
 namespace DmxPro.App.ViewModels;
 
@@ -27,7 +28,7 @@ public sealed partial class ProfilesViewModel : PageViewModel
     private string? _statusMessage;
 
     [ObservableProperty]
-    private bool _statusIsError;
+    private InfoBarSeverity _statusSeverity = InfoBarSeverity.Success;
 
     public ProfilesViewModel(ProfileLibraryService libraryService, IFileDialogService fileDialogs)
     {
@@ -41,6 +42,9 @@ public sealed partial class ProfilesViewModel : PageViewModel
     public override string Subtitle => "Profiles define what every channel of a light does. Import QLC+ (.qxf) files or DMX Pro profiles.";
 
     public ObservableCollection<FixtureProfile> Profiles { get; } = [];
+
+    /// <summary>Manufacturer → model tree shown on the left.</summary>
+    public ObservableCollection<ManufacturerNode> Manufacturers { get; } = [];
 
     public ObservableCollection<FixtureMode> Modes { get; } = [];
 
@@ -89,7 +93,7 @@ public sealed partial class ProfilesViewModel : PageViewModel
 
         var (imported, issues) = await _libraryService.ImportAsync(files);
         var errors = issues.Where(i => i.Severity == ValidationSeverity.Error).ToList();
-        StatusIsError = errors.Count > 0;
+        StatusSeverity = errors.Count > 0 ? InfoBarSeverity.Warning : InfoBarSeverity.Success;
         StatusMessage = imported.Count switch
         {
             0 => $"Nothing imported. {string.Join(" ", errors.Select(e => e.Message))}",
@@ -114,6 +118,12 @@ public sealed partial class ProfilesViewModel : PageViewModel
                      p.Type.Contains(query, StringComparison.OrdinalIgnoreCase)))
         {
             Profiles.Add(profile);
+        }
+
+        Manufacturers.Clear();
+        foreach (var node in ManufacturerNode.Build(Profiles, string.Empty))
+        {
+            Manufacturers.Add(node);
         }
 
         SelectedProfile = Profiles.FirstOrDefault(p => p.Id == selectedId) ?? Profiles.FirstOrDefault();

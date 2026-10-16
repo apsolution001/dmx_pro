@@ -6,7 +6,7 @@ Follows spec §13, extended with Music Show. Each phase ends with tests green an
 |-------|----------------------|--------------------------------------------------------------------------|---------|
 | 0     | Knowledge & setup    | Research docs, spec in Markdown, AI agent rules/standards                | ✅ Done |
 | 1     | Foundation           | Solution, DI, Fluent shell + navigation, project model, save/open, profile model + editor, built-in profiles, QLC+ `.qxf` import, top menu bar (`docs/ui-plan.md`) | ✅ Done (profile editor moves to phase 2) |
-| 2     | Fixture patching     | Fixture list, add/edit form, address calculator, overlap validation, groups, profile editor | ⏳ Next |
+| 2     | Fixture patching     | Fixture list, add/edit form, address calculator, overlap validation, groups, profile editor | ⏳ In progress — fixtures page, Add Fixture dialog, address map, groups done; profile editor next |
 | 3     | Scene Creator        | Profile-driven controls, color picker, RGBW policy, fades, save/duplicate, stage preview | ⬜ |
 | 4     | Engine & Functions   | Engine tick, HTP/LTP merge, chaser, sequence, color cycle, fade, pulse, flash, strobe; copy/paste | ⬜ |
 | 5     | Virtual Console      | Widgets, pages, drag/resize/snap, operator lock, keyboard mapping        | ⬜ |
