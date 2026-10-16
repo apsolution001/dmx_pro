@@ -1,0 +1,26 @@
+# .NET / Visual Studio
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.userprefs
+TestResults/
+*.coverage
+*.nupkg
+publish/
+
+# Rider / VS Code
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Local Claude settings
+.claude/settings.local.json
+
+# App runtime data
+*.autosave
