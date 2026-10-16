@@ -25,3 +25,13 @@ jobs:
 
       - name: Check formatting
         run: dotnet format DmxPro.sln --verify-no-changes --no-restore
+
+      - name: Publish Windows app (self-contained, no .NET install needed)
+        run: dotnet publish src/DmxPro.App/DmxPro.App.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish/DmxPro
+
+      - name: Upload app download
+        uses: actions/upload-artifact@v4
+        with:
+          name: DmxPro-win-x64
+          path: publish/DmxPro
+          retention-days: 30

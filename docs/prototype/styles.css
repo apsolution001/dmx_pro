@@ -40,6 +40,45 @@
   color-scheme: dark;
 }
 
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --ApplicationBackground: #f3f3f3;
+    --LayerFillColorDefault: rgba(255, 255, 255, 0.50);
+    --SolidBackgroundFillColorBase: #f3f3f3;
+    --SolidBackgroundFillColorTertiary: #f9f9f9;
+    --CardBackgroundFillColorDefault: rgba(255, 255, 255, 0.70);
+    --CardBackgroundFillColorSecondary: rgba(246, 246, 246, 0.50);
+    --CardStrokeColorDefault: rgba(0, 0, 0, 0.0578);
+    --ControlFillColorDefault: rgba(255, 255, 255, 0.70);
+    --ControlFillColorSecondary: rgba(249, 249, 249, 0.50);
+    --ControlFillColorTertiary: rgba(249, 249, 249, 0.30);
+    --ControlFillColorInputActive: #ffffff;
+    --ControlStrokeColorDefault: rgba(0, 0, 0, 0.0578);
+    --ControlStrokeColorSecondary: rgba(0, 0, 0, 0.1622);
+    --DividerStrokeColorDefault: rgba(0, 0, 0, 0.0803);
+    --SubtleFillColorSecondary: rgba(0, 0, 0, 0.0373);
+    --SubtleFillColorTertiary: rgba(0, 0, 0, 0.0241);
+    --TextFillColorPrimary: rgba(0, 0, 0, 0.896);
+    --TextFillColorSecondary: rgba(0, 0, 0, 0.606);
+    --TextFillColorTertiary: rgba(0, 0, 0, 0.446);
+    --TextFillColorDisabled: rgba(0, 0, 0, 0.361);
+    --AccentFillColorDefault: #005fb8;
+    --AccentFillColorSecondary: rgba(0, 95, 184, 0.9);
+    --AccentTextFillColorPrimary: #003e92;
+    --TextOnAccentFillColorPrimary: #ffffff;
+    --SystemFillColorSuccess: #0f7b0f;
+    --SystemFillColorCaution: #9d5d00;
+    --SystemFillColorCritical: #c42b1c;
+    --SystemFillColorCriticalBackground: #fde7e9;
+    --SystemFillColorSuccessBackground: #dff6dd;
+    --SystemFillColorCautionBackground: #fff4ce;
+    --SystemFillColorAttentionBackground: rgba(246, 246, 246, 0.5);
+    --Shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+    --StageBackground: #18181b;
+    color-scheme: light;
+  }
+}
+
 :root[data-theme="light"] {
   --ApplicationBackground: #f3f3f3;
   --LayerFillColorDefault: rgba(255, 255, 255, 0.50);
@@ -96,7 +135,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .window {
   display: grid;
   grid-template-rows: 32px 32px 1fr 40px;
-  height: 100vh;
+  height: 100%;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
 }
 .window.fullscreen { grid-template-rows: 0 32px 1fr 40px; }
 .window.fullscreen .titlebar { visibility: hidden; }
@@ -510,3 +551,37 @@ kbd {
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: var(--ControlStrokeColorSecondary); border-radius: 5px; border: 3px solid transparent; background-clip: content-box; }
 ::-webkit-scrollbar-track { background: transparent; }
+
+/* ---------- Narrow screens (tablet / phone preview of the prototype) ---------- */
+@media (max-width: 900px) {
+  .window { grid-template-rows: 32px auto 1fr auto; }
+  .titlebar .caption-btn { display: none; }
+  .menubar { overflow-x: auto; }
+  .menu-dropdown { position: fixed; top: 64px; left: 16px; right: 16px; min-width: 0; }
+  .body { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  .nav { flex-direction: row; padding: 4px 0; overflow-x: auto; }
+  .nav .quick { display: none; }
+  .nav-list { flex-direction: row; }
+  .nav-bottom { border: 0; padding: 0; }
+  .nav-item { width: auto; white-space: nowrap; }
+  .nav-item .kbd { display: none; }
+  .nav-item.active::before { left: 12px; right: 12px; top: auto; bottom: 0; width: auto; height: 3px; }
+  .page { padding: 4px 8px 12px; border-radius: 8px; border: 1px solid var(--CardStrokeColorDefault); }
+  .page-header { flex-wrap: wrap; align-items: flex-start; }
+  .page-header h1 { font-size: 22px; line-height: 28px; }
+  .page-header .actions { margin-left: 0; justify-content: flex-start; }
+  .split, .split.list-detail, .split.lib, .split.three, .split.fn, .tl,
+  .split[style] { grid-template-columns: minmax(0, 1fr) !important; height: auto; }
+  .view.active { height: auto; }
+  .card.scroll, .tl-scroll { max-height: 70vh; }
+  .addr-map { grid-template-columns: repeat(32, 1fr); }
+  .vc-area, .vc-area.editing { grid-template-columns: minmax(0, 1fr); height: auto; }
+  .vc-canvas { overflow: auto; min-height: 340px; }
+  .vc-toolbar { flex-wrap: wrap; }
+  .statusbar { flex-wrap: wrap; gap: 8px 12px; padding: 6px 0; }
+  .statusbar .right, .statusbar .sep { display: none; }
+  .master input { width: 90px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}

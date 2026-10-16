@@ -22,7 +22,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="..\..\profiles\*.dmxprofile.json" LinkBase="profiles" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Shipped as a real folder next to DmxPro.exe (also in single-file publish) so users can see and add profiles. -->
+    <Content Include="..\..\profiles\*.dmxprofile.json" LinkBase="profiles" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
   </ItemGroup>
 
 </Project>

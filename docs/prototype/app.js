@@ -254,7 +254,7 @@ const MENUS = [
 ];
 
 /* ============================================================== Shell */
-function theme() { return document.documentElement.dataset.theme; }
+function theme() { return document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'); }
 function setTheme(t) { document.documentElement.dataset.theme = t; $('#setTheme').value = t; }
 
 function buildMenus() {
@@ -1369,6 +1369,7 @@ buildMenus();
 buildNav();
 drawWheel();
 wire();
+$('#setTheme').value = theme();
 updateTitle();
 go('fixtures');
 hydrateIcons();

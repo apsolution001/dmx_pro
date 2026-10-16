@@ -14,6 +14,14 @@ A modern, easy-to-use **Windows DMX lighting controller** for RGB/RGBW fixtures 
 - **Input / Output** — Art-Net, sACN (E1.31), Enttec USB-DMX
 - **Projects** — save/load, autosave, crash recovery
 
+## See it
+
+- **UI prototype (any browser):** open `docs/prototype/index.html`. It's a clickable mockup of every screen.
+- **Real app (Windows 10/11):**
+  1. Go to the repo's **Actions** tab → latest green **CI** run → **Artifacts** → download **DmxPro-win-x64**.
+  2. Unzip it and run `DmxPro.exe` (no .NET install needed). If Windows SmartScreen warns, choose *More info → Run anyway*.
+  - Or build it yourself: install the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0), then `dotnet run --project src/DmxPro.App`.
+
 ## Documentation
 
 | Doc | Content |
