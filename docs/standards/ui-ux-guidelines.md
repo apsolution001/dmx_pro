@@ -1,4 +1,4 @@
-# UI / UX Guidelines (WPF, Fluent, modern)
+# UI / UX Guidelines (WPF desktop, QLC+ layout)
 
 ## Visual style — native Windows desktop app, laid out like QLC+ (decided 2026-10-16)
 
@@ -17,9 +17,9 @@ The owner wants a **proper Windows application**, not a web-page look. Structure
 
 ### Theme details
 
-- **WPF-UI** Fluent controls, Mica backdrop on Windows 11, **dark theme default** (operators work in dark venues),
+- **WPF-UI** controls on a solid background (no Mica), **dark theme default** (operators work in dark venues),
   light theme switchable. Accent color from Windows or user choice.
-- Spacing grid **4 px**; standard paddings 8/12/16/24. Corner radius 4 (controls) / 8 (cards).
+- Spacing grid **4 px**; standard paddings 8/12/16/24. Corner radius 4 on controls; panels are square-edged with 1 px borders.
 - Typography: Segoe UI Variable; sizes 12 (caption), 14 (body), 20 (subtitle), 28 (title).
 - Icons: Fluent System Icons (`SymbolRegular`) via WPF-UI. Never mix icon sets.
 - Colors and brushes **only from theme resources** (`{DynamicResource ...}`) — no hardcoded hex in views,
