@@ -1,6 +1,7 @@
 # DMX Pro — UI Plan (top menu + every screen)
 
 > The blueprint for the whole app UI. Build screens to match this; update this file when a screen changes.
+> **Clickable reference:** `docs/prototype/index.html` shows every screen working; build WPF to match it.
 > Phase numbers refer to `docs/roadmap.md`. Items not built yet are shown **disabled** in the app with "Coming in phase N".
 
 ## 1. Main window layout

@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DMX Pro — UI Prototype</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<!--
+  DMX Pro UI prototype. This is the reference the WPF app is built from (see README.md next to this file).
+  Structure ↔ XAML:  .window = MainWindow · .menubar = Menu · .nav = navigation ListBox · .view = page UserControl
+                      .card = ui:Card · .btn = ui:Button · .input = ui:TextBox/ComboBox · .infobar = ui:InfoBar
+  Icons: <i data-symbol="X"> uses the WPF-UI SymbolRegular name X.
+-->
+<div class="window" id="window">
+
+  <!-- ===== Title bar ===== -->
+  <header class="titlebar">
+    <span class="logo"></span>
+    <span id="windowTitle">Wedding show • — DMX Pro</span>
+    <span class="spacer"></span>
+    <span class="caption-btn" title="Minimize">&#x2014;</span>
+    <span class="caption-btn" title="Maximize">&#x2610;</span>
+    <span class="caption-btn close" title="Close">&#x2715;</span>
+  </header>
+
+  <!-- ===== Top menu bar (built from MENUS in app.js) ===== -->
+  <nav class="menubar" id="menubar" aria-label="Main menu"></nav>
+
+  <!-- ===== Body ===== -->
+  <div class="body">
+    <aside class="nav" aria-label="Navigation">
+      <div class="quick">
+        <button class="btn subtle icon" title="New project (Ctrl+N)" data-action="new"><i data-symbol="DocumentAdd24"></i></button>
+        <button class="btn subtle icon" title="Open project (Ctrl+O)" data-action="open"><i data-symbol="FolderOpen24"></i></button>
+        <button class="btn subtle icon" title="Save (Ctrl+S)" data-action="save"><i data-symbol="Save24"></i></button>
+        <button class="btn subtle icon" title="Search everything (Ctrl+K)" data-action="palette"><i data-symbol="Search24"></i></button>
+      </div>
+      <div class="nav-list" id="navList"></div>
+      <div class="nav-bottom" id="navBottom"></div>
+    </aside>
+
+    <main class="page">
+      <div class="page-header">
+        <div>
+          <h1 id="pageTitle">Fixtures</h1>
+          <p id="pageSubtitle"></p>
+        </div>
+        <div class="actions" id="pageActions"></div>
+      </div>
+      <div class="infobar" id="infobar" hidden>
+        <i data-symbol="Info24"></i><span class="msg" id="infobarMsg"></span>
+        <button class="btn subtle icon small" data-action="closeInfobar" title="Close">&#x2715;</button>
+      </div>
+
+      <div class="page-content">
+
+        <!-- ================= 1. FIXTURES ================= -->
+        <section class="view" id="view-fixtures">
+          <div class="split list-detail">
+            <div class="col">
+              <div class="row">
+                <div class="search grow"><i data-symbol="Search24"></i><input class="input" id="fxSearch" placeholder="Search fixtures, profiles, groups…"></div>
+                <select class="input" id="fxUniverseFilter" style="width:150px"></select>
+              </div>
+              <div class="card scroll" style="padding:0; flex:1">
+                <table class="table" id="fxTable">
+                  <thead><tr><th></th><th>Name</th><th>Profile</th><th>Mode</th><th class="num">U</th><th class="num">Address</th><th>Groups</th></tr></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+              <div class="card">
+                <div class="row"><span class="h3" style="margin:0">Address map</span>
+                  <select class="input" id="fxMapUniverse" style="width:130px; min-height:24px; padding:0 8px"></select>
+                  <span class="grow"></span>
+                  <span class="legend"><span><i style="background:var(--SubtleFillColorSecondary)"></i>free</span><span><i style="background:var(--AccentFillColorDefault)"></i>used</span><span><i style="background:var(--SystemFillColorCritical)"></i>overlap</span></span>
+                </div>
+                <div class="addr-map" id="addrMap"></div>
+                <div class="caption" style="margin-top:6px">Each square is one DMX address (1–512). Click a square to select the fixture there.</div>
+              </div>
+            </div>
+
+            <div class="col">
+              <div class="card scroll" id="fxDetails" style="flex:1"></div>
+              <div class="card">
+                <div class="row"><span class="h3 grow" style="margin:0">Groups</span>
+                  <button class="btn small" data-action="addGroup"><i data-symbol="Add24"></i>Group</button></div>
+                <div id="groupList" class="list" style="margin-top:8px"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= 2. FIXTURE LIBRARY ================= -->
+        <section class="view" id="view-library">
+          <div class="split lib">
+            <div class="col">
+              <div class="row">
+                <button class="btn primary grow" data-action="importProfile"><i data-symbol="ArrowImport24"></i>Import .qxf / .json…</button>
+                <button class="btn" data-action="newProfile" title="New profile"><i data-symbol="Add24"></i></button>
+              </div>
+              <div class="search"><i data-symbol="Search24"></i><input class="input" id="libSearch" placeholder="Search manufacturer, model, type…"></div>
+              <div class="card scroll" style="padding:4px; flex:1"><div class="list" id="libList"></div></div>
+            </div>
+            <div class="card scroll" id="libDetails"></div>
+          </div>
+        </section>
+
+        <!-- ================= 3. FUNCTIONS ================= -->
+        <section class="view" id="view-functions">
+          <div class="split fn">
+            <div class="col">
+              <div class="row">
+                <div class="search grow"><i data-symbol="Search24"></i><input class="input" id="fnSearch" placeholder="Search functions…"></div>
+                <select class="input" id="fnTypeFilter" style="width:130px"></select>
+              </div>
+              <div class="card scroll" style="padding:4px; flex:1"><div class="list" id="fnList"></div></div>
+            </div>
+            <div class="col">
+              <div class="card scroll" id="fnEditor" style="flex:1"></div>
+              <div class="stage" id="fnStage" style="min-height:120px"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= 4. SCENES ================= -->
+        <section class="view" id="view-scenes">
+          <div class="split three">
+            <div class="col">
+              <div class="card scroll" style="flex:1">
+                <div class="h3">Scenes</div>
+                <div class="list" id="sceneList"></div>
+                <div class="h3" style="margin-top:16px">Targets</div>
+                <div id="sceneTargets"></div>
+              </div>
+            </div>
+            <div class="card scroll" id="sceneEditor">
+              <div class="row" style="margin-bottom:12px">
+                <input class="input" id="sceneName" style="max-width:260px; font-weight:600">
+                <span class="badge" id="sceneTargetCount"></span>
+                <span class="grow"></span>
+                <span class="caption">Fade in</span><input class="input" id="sceneFadeIn" style="width:72px" value="0.5 s">
+                <span class="caption">Fade out</span><input class="input" id="sceneFadeOut" style="width:72px" value="0.5 s">
+              </div>
+              <div class="row" style="align-items:flex-start; gap:24px; flex-wrap:wrap">
+                <div>
+                  <div class="wheel-wrap"><canvas id="wheel" width="440" height="440"></canvas><span class="wheel-knob" id="wheelKnob"></span></div>
+                  <div class="slider-row" style="grid-template-columns:70px 1fr 40px; margin-top:12px"><label>Brightness</label><input type="range" id="sceneBright" min="0" max="100" value="100"><span class="val" id="sceneBrightVal">100%</span></div>
+                  <div class="swatches" id="swatches"></div>
+                </div>
+                <div class="grow" style="min-width:280px">
+                  <div class="h3">Channels <span class="caption">(only what the selected fixtures' profiles have)</span></div>
+                  <div id="sceneSliders"></div>
+                  <div class="field" style="margin-top:12px"><label>White handling (RGBW fixtures)</label>
+                    <select class="input" id="sceneWhitePolicy"><option>Extract white from RGB (recommended)</option><option>RGB only</option><option>Manual white</option></select></div>
+                  <details style="margin-top:8px"><summary class="muted">Advanced: strobe, macro, speed, raw channels</summary><div id="sceneAdvanced" style="margin-top:12px"></div></details>
+                </div>
+              </div>
+              <div class="row" style="margin-top:20px; border-top:1px solid var(--DividerStrokeColorDefault); padding-top:16px">
+                <button class="btn primary" data-action="saveScene"><i data-symbol="Save24"></i>Save</button>
+                <button class="btn" data-action="saveSceneAs">Save as…</button>
+                <button class="btn" data-action="revertScene"><i data-symbol="ArrowUndo24"></i>Revert</button>
+                <span class="grow"></span>
+                <button class="btn" data-action="sceneToConsole"><i data-symbol="Board24"></i>Save + add to console</button>
+              </div>
+            </div>
+            <div class="col">
+              <div class="h3">Stage preview</div>
+              <div class="stage" id="sceneStage"></div>
+              <div class="card"><div class="h3">Notes</div><textarea class="input" rows="4" placeholder="e.g. Warm look for first dance"></textarea></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= 5. VIRTUAL CONSOLE ================= -->
+        <section class="view" id="view-console">
+          <div class="vc-toolbar">
+            <div class="tabs" id="vcPages" style="margin:0"></div>
+            <button class="btn subtle icon small" data-action="vcAddPage" title="Add page"><i data-symbol="Add24"></i></button>
+            <span class="grow"></span>
+            <span class="badge warn locked-banner"><i data-symbol="LockClosed24"></i>Operator mode — editing locked</span>
+            <button class="btn" id="vcEditBtn" data-action="vcEdit"><i data-symbol="Edit24"></i>Edit layout</button>
+            <button class="btn" id="vcLockBtn" data-action="vcLock"><i data-symbol="LockClosed24"></i>Operator mode</button>
+          </div>
+          <div class="vc-area" id="vcArea">
+            <div class="vc-canvas" id="vcCanvas"></div>
+            <div class="card palette" id="vcPalette" style="display:none">
+              <div class="h3">Add widget</div>
+              <button class="btn" data-action="vcAdd" data-kind="button"><i data-symbol="RectangleLandscape24"></i>Button (toggle)</button>
+              <button class="btn" data-action="vcAdd" data-kind="flash"><i data-symbol="Flash24"></i>Flash (while held)</button>
+              <button class="btn" data-action="vcAdd" data-kind="slider"><i data-symbol="Options24"></i>Slider</button>
+              <button class="btn" data-action="vcAdd" data-kind="speed"><i data-symbol="TopSpeed24"></i>Speed / tap tempo</button>
+              <button class="btn" data-action="vcAdd" data-kind="label"><i data-symbol="TextT24"></i>Label</button>
+              <div class="h3" style="margin-top:16px">Properties</div>
+              <div id="vcProps" class="caption">Select a widget.</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= 6. SHOW TIMELINE ================= -->
+        <section class="view" id="view-show">
+          <div class="tl">
+            <div class="tl-main">
+              <div class="transport">
+                <button class="btn primary icon" data-action="tlPlay" id="tlPlayBtn" title="Play / Pause (Space)"><i data-symbol="Play24"></i></button>
+                <button class="btn icon" data-action="tlStop" title="Stop (Home)"><i data-symbol="Stop24"></i></button>
+                <span class="timecode" id="tlTime">00:00.000</span><span class="caption" id="tlLen">/ 03:31</span>
+                <span class="grow"></span>
+                <span class="caption">Snap</span>
+                <select class="input" id="tlSnap" style="width:110px"><option>Beat</option><option>Bar</option><option>0.1 s</option><option>Off</option></select>
+                <span class="caption">Zoom</span><input type="range" id="tlZoom" min="20" max="160" value="60" style="width:120px">
+                <button class="btn" data-action="tlAddAudio"><i data-symbol="MusicNote224"></i>Audio</button>
+                <button class="btn" data-action="tlAddTrack"><i data-symbol="Add24"></i>Track</button>
+              </div>
+              <div class="tl-scroll" id="tlScroll"><div class="tl-grid" id="tlGrid"></div></div>
+              <div class="caption" style="margin-top:6px">Drag on an empty part of a track to select a time range · drag items to move · drag functions from the right panel onto a track.</div>
+            </div>
+            <div class="col">
+              <div class="card" id="tlProps"></div>
+              <div class="card scroll" style="flex:1">
+                <div class="h3">Library <span class="caption">(drag onto a track)</span></div>
+                <div class="list" id="tlLibrary"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= 7. TEST & PREVIEW ================= -->
+        <section class="view" id="view-test">
+          <div class="col">
+            <div class="card">
+              <div class="row wrap">
+                <div class="field" style="margin:0; min-width:240px"><label>Fixture</label><select class="input" id="testFixture"></select></div>
+                <div class="field" style="margin:0; min-width:180px"><label>Safe intensity</label>
+                  <select class="input" id="testIntensity"><option value="0.1">10 %</option><option value="0.25" selected>25 %</option><option value="0.5">50 %</option><option value="1">100 %</option></select></div>
+                <span class="grow"></span>
+                <span id="testWarnings" class="row wrap"></span>
+              </div>
+              <div class="row wrap test-buttons" style="margin-top:12px">
+                <button class="btn" data-action="testColor" data-c="red"><i style="color:#ff4040" data-symbol="Circle24"></i>Red only</button>
+                <button class="btn" data-action="testColor" data-c="green"><i style="color:#40ff60" data-symbol="Circle24"></i>Green only</button>
+                <button class="btn" data-action="testColor" data-c="blue"><i style="color:#4080ff" data-symbol="Circle24"></i>Blue only</button>
+                <button class="btn" data-action="testColor" data-c="white"><i style="color:#fff" data-symbol="Circle24"></i>White only</button>
+                <button class="btn" data-action="testSequence"><i data-symbol="ArrowRepeatAll24"></i>Color sequence</button>
+                <button class="btn" data-action="testOff"><i data-symbol="DismissCircle24"></i>All off</button>
+              </div>
+            </div>
+            <div class="split" style="grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr)">
+              <div class="card"><div class="h3">Raw channels <span class="caption">(names from the profile)</span></div><div id="testFaders" class="fader-grid"></div>
+                <div class="stage" id="testStage" style="min-height:100px; margin-top:12px"></div></div>
+              <div class="card"><div class="row"><span class="h3 grow" style="margin:0">DMX monitor</span><select class="input" id="monUniverse" style="width:130px; min-height:24px; padding:0 8px"></select></div>
+                <div class="caption" style="margin:6px 0">Values that would be sent. Highlighted = selected fixture's footprint.</div>
+                <div class="monitor" id="monitor"></div></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= 8. INPUT / OUTPUT ================= -->
+        <section class="view" id="view-io">
+          <div class="split" style="grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr)">
+            <div class="col">
+              <div class="card" style="padding:0">
+                <table class="table" id="ioTable"><thead><tr><th>Universe</th><th>Output</th><th>Status</th><th></th></tr></thead><tbody></tbody></table>
+              </div>
+              <div class="big-switch card" id="outSwitchCard">
+                <i data-symbol="PlugConnected24"></i>
+                <div class="grow"><div class="h3" style="margin:0">DMX output</div>
+                  <div class="caption" id="outSwitchHint">Output starts disabled every time the app opens.</div></div>
+                <label class="toggle"><input type="checkbox" id="outSwitch"><span class="track"></span><span id="outSwitchLabel">Off</span></label>
+              </div>
+              <div class="card">
+                <div class="h3">Blackout vs. disable</div>
+                <div class="caption">Blackout keeps sending DMX with all intensities at 0. Disabling output stops sending — many lights then keep their last color.</div>
+              </div>
+            </div>
+            <div class="card scroll" id="ioConfig"></div>
+          </div>
+        </section>
+
+        <!-- ================= 9. SETTINGS ================= -->
+        <section class="view" id="view-settings">
+          <div class="col" style="max-width:760px">
+            <div class="card"><div class="h3">Appearance</div>
+              <div class="row"><span class="grow">Theme</span><select class="input" id="setTheme" style="width:200px"><option value="dark">Dark</option><option value="light">Light</option></select></div></div>
+            <div class="card"><div class="h3">Safety</div>
+              <div class="row" style="margin-bottom:12px"><span class="grow">On exit send</span><select class="input" style="width:200px"><option>Blackout</option><option>Profile defaults</option><option>Nothing (keep last)</option></select></div>
+              <div class="row" style="margin-bottom:12px"><span class="grow">Allow strobe effects<div class="caption">Strobe can trigger photosensitive epilepsy.</div></span><label class="toggle"><input type="checkbox" checked><span class="track"></span></label></div>
+              <div class="row"><span class="grow">Maximum strobe rate</span><select class="input" style="width:200px"><option>5 Hz</option><option selected>10 Hz</option><option>No limit</option></select></div></div>
+            <div class="card"><div class="h3">Files</div>
+              <div class="row" style="margin-bottom:12px"><span class="grow">Autosave every</span><select class="input" style="width:200px"><option>1 min</option><option selected>2 min</option><option>5 min</option><option>Off</option></select></div>
+              <div class="field"><label>Projects folder</label><input class="input" value="C:\Users\you\Documents\DmxPro"></div>
+              <div class="field"><label>User profiles folder</label><input class="input" value="%APPDATA%\DmxPro\profiles"></div></div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- ===== Status bar ===== -->
+  <footer class="statusbar">
+    <span class="badge" id="outPill"><span class="dot" id="outDot"></span><span id="outText">Output disabled</span></span>
+    <span class="caption" id="fpsText">Universe 1 · 0 fps</span>
+    <span class="sep"></span>
+    <span class="master"><span>Master</span><input type="range" id="master" min="0" max="100" value="100"><span id="masterVal" style="width:36px">100%</span></span>
+    <span class="sep"></span>
+    <button class="btn danger small" id="blackoutBtn" data-action="blackout" title="Blackout (B)">BLACKOUT</button>
+    <button class="btn small" data-action="releaseAll" title="Release all (Esc)">RELEASE ALL</button>
+    <span class="sep"></span>
+    <span id="bpmText">♪ 120 BPM</span>
+    <span class="right">DMX Pro 0.1 · prototype</span>
+  </footer>
+</div>
+
+<!-- ===== Dialog host (ui:ContentDialog) ===== -->
+<div class="overlay" id="dialogHost"><div class="dialog" role="dialog" aria-modal="true">
+  <div class="d-body" id="dialogBody"></div>
+  <div class="d-foot" id="dialogFoot"></div>
+</div></div>
+
+<!-- ===== Command palette (Ctrl+K) ===== -->
+<div class="overlay" id="paletteHost"><div class="dialog palette-box"><div class="d-body">
+  <div class="search"><i data-symbol="Search24"></i><input class="input" id="paletteInput" placeholder="Type a page, fixture, function or action…"></div>
+  <div class="list palette-results" id="paletteResults"></div>
+</div></div></div>
+
+<div class="toast" id="toast"><i data-symbol="CheckmarkCircle24"></i><span id="toastMsg"></span></div>
+
+<script src="app.js"></script>
+</body>
+</html>

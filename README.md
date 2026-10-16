@@ -20,6 +20,7 @@ A modern, easy-to-use **Windows DMX lighting controller** for RGB/RGBW fixtures 
 |-----|---------|
 | [Feature specification](docs/spec/feature-specification.md) | Baseline requirements |
 | [Product requirements](docs/spec/product-requirements.md) | Extra requirements & decisions |
+| [UI prototype](docs/prototype/index.html) | Clickable HTML mockup of the whole app (open in a browser) |
 | [UI plan](docs/ui-plan.md) | Top menu and layout of every screen |
 | [Architecture](docs/architecture.md) | Solution layout, engine, threads, file format |
 | [Roadmap](docs/roadmap.md) | Phases and status |
