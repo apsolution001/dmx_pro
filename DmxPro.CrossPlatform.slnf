@@ -1,0 +1,9 @@
+{
+  "solution": {
+    "path": "DmxPro.sln",
+    "projects": [
+      "src\\DmxPro.Core\\DmxPro.Core.csproj",
+      "tests\\DmxPro.Core.Tests\\DmxPro.Core.Tests.csproj"
+    ]
+  }
+}

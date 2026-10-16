@@ -42,12 +42,19 @@ Save/Load projects · Copy/paste functions.
 ## Commands
 
 ```bash
-dotnet restore
-dotnet build DmxPro.sln -c Debug          # on Linux/macOS CI: add -p:EnableWindowsTargeting=true
+# Windows (full solution, including the WPF app)
+dotnet build DmxPro.sln
 dotnet test  DmxPro.sln
 dotnet format DmxPro.sln --verify-no-changes
-dotnet run --project src/DmxPro.App       # Windows only
+dotnet run --project src/DmxPro.App
+
+# Linux / macOS (no WPF build targets): cross-platform projects only
+dotnet test   DmxPro.CrossPlatform.slnf
+dotnet format DmxPro.CrossPlatform.slnf --verify-no-changes
 ```
+
+CI (`.github/workflows/ci.yml`) builds and tests the **full** solution on `windows-latest` on every push — it is the
+authority for XAML/WPF compile errors. When adding a new non-WPF project, add it to `DmxPro.CrossPlatform.slnf` too.
 
 ## Definition of done
 

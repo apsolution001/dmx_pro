@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>DmxPro.App</RootNamespace>
+    <AssemblyName>DmxPro</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Lets the solution build in Linux CI/cloud containers; the app itself runs on Windows only. -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="WPF-UI" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DmxPro.Core\DmxPro.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\..\profiles\*.dmxprofile.json" LinkBase="profiles" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

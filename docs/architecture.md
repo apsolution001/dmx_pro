@@ -72,7 +72,23 @@ Dependency direction (no cycles): `App → Engine → Core`, `App → Output →
 - Migrations: `IProjectMigrator` per schema version.
 - Autosave to `%LOCALAPPDATA%/DmxPro/autosave/` every 2 min + on crash; recovery prompt on start.
 
-## 6. UI navigation
+## 6. App structure (implemented in phase 1)
+
+```
+src/DmxPro.App/
+├─ App.xaml(.cs)        Generic Host + DI, theme (WPF-UI dark), page DataTemplates
+├─ MainWindow.xaml      FluentWindow: nav rail, page header, InfoBar, content, status bar
+├─ Services/            ProjectService (open/save/dirty), ProfileLibraryService, file & message dialogs, AppPaths
+├─ ViewModels/          ShellViewModel, PageViewModel base, one ViewModel per page
+├─ Views/               One UserControl per page (selected by DataTemplate on the ViewModel type)
+└─ Converters/
+```
+
+- Navigation is ViewModel-first: `ShellViewModel.SelectedItem.Page` is rendered via DataTemplates in `App.xaml`.
+- Profile folders: built-in `profiles/` (copied next to the exe) and user `%APPDATA%\DmxPro\profiles` (imports land here).
+- Projects default to `Documents\DmxPro`.
+
+## 7. UI navigation
 
 Left `NavigationView` (WPF-UI): **Fixtures · Functions · Scenes · Virtual Console · Music Show · Test & Preview ·
 Input/Output · Settings**. Top bar: project name, Save, Undo/Redo, command palette.

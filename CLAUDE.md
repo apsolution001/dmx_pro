@@ -14,5 +14,6 @@ All shared agent instructions live in `AGENTS.md` — follow it.
 - Subagents in `.claude/agents/`: `dmx-domain-expert` (protocol/profile questions and reviews),
   `wpf-ui-reviewer` (XAML/MVVM/UX review), `safety-reviewer` (checks safety rules on a diff).
 - Slash commands in `.claude/commands/`: `/new-feature`, `/review-safety`, `/add-profile`.
-- This repo is developed partly in Linux cloud containers: WPF cannot run there. Build with
-  `-p:EnableWindowsTargeting=true` and rely on unit tests for Core/Engine/Output/Audio logic.
+- This repo is developed partly in Linux cloud containers: the WPF app can neither build nor run there. Use
+  `DmxPro.CrossPlatform.slnf` locally, keep logic out of the App project so it is unit-testable, and after pushing
+  check the Windows CI run (GitHub Actions) for XAML/WPF compile errors.

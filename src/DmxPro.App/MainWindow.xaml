@@ -1,0 +1,149 @@
+<ui:FluentWindow
+    x:Class="DmxPro.App.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    xmlns:vm="clr-namespace:DmxPro.App.ViewModels"
+    Title="{Binding WindowTitle}"
+    Width="1440"
+    Height="880"
+    MinWidth="1024"
+    MinHeight="640"
+    d:DataContext="{d:DesignInstance Type=vm:ShellViewModel}"
+    ExtendsContentIntoTitleBar="True"
+    WindowBackdropType="Mica"
+    WindowCornerPreference="Round"
+    WindowStartupLocation="CenterScreen"
+    mc:Ignorable="d">
+
+    <Window.InputBindings>
+        <KeyBinding Command="{Binding NewProjectCommand}" Gesture="Ctrl+N" />
+        <KeyBinding Command="{Binding OpenProjectCommand}" Gesture="Ctrl+O" />
+        <KeyBinding Command="{Binding SaveProjectCommand}" Gesture="Ctrl+S" />
+        <KeyBinding Command="{Binding SaveProjectAsCommand}" Gesture="Ctrl+Shift+S" />
+    </Window.InputBindings>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar Title="{Binding WindowTitle}" Grid.Row="0" />
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="232" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Navigation rail -->
+            <DockPanel Grid.Column="0" Margin="8,4,4,8">
+                <StackPanel DockPanel.Dock="Top" Margin="4,0,4,12" Orientation="Horizontal">
+                    <ui:Button
+                        Margin="0,0,4,0"
+                        Appearance="Transparent"
+                        AutomationProperties.Name="New project"
+                        Command="{Binding NewProjectCommand}"
+                        Icon="{ui:SymbolIcon DocumentAdd24}"
+                        ToolTip="New project (Ctrl+N)" />
+                    <ui:Button
+                        Margin="0,0,4,0"
+                        Appearance="Transparent"
+                        AutomationProperties.Name="Open project"
+                        Command="{Binding OpenProjectCommand}"
+                        Icon="{ui:SymbolIcon FolderOpen24}"
+                        ToolTip="Open project (Ctrl+O)" />
+                    <ui:Button
+                        Margin="0,0,4,0"
+                        Appearance="Transparent"
+                        AutomationProperties.Name="Save project"
+                        Command="{Binding SaveProjectCommand}"
+                        Icon="{ui:SymbolIcon Save24}"
+                        ToolTip="Save project (Ctrl+S)" />
+                </StackPanel>
+
+                <ListBox
+                    AutomationProperties.Name="Main navigation"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    ItemsSource="{Binding NavigationItems}"
+                    SelectedItem="{Binding SelectedItem}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:NavigationItem}">
+                            <StackPanel Margin="4,6" Orientation="Horizontal">
+                                <ui:SymbolIcon FontSize="20" Symbol="{Binding Icon}" />
+                                <TextBlock
+                                    Margin="12,0,0,0"
+                                    VerticalAlignment="Center"
+                                    FontSize="14"
+                                    Text="{Binding Title}" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+
+            <!-- Page area -->
+            <Grid Grid.Column="1" Margin="16,4,24,16">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <StackPanel Grid.Row="0" Margin="0,0,0,16">
+                    <TextBlock Style="{StaticResource PageTitleText}" Text="{Binding CurrentPage.Title}" />
+                    <TextBlock
+                        Margin="0,4,0,0"
+                        Style="{StaticResource SecondaryText}"
+                        Text="{Binding CurrentPage.Subtitle}" />
+                </StackPanel>
+
+                <ui:InfoBar
+                    Grid.Row="1"
+                    Margin="0,0,0,12"
+                    IsClosable="True"
+                    IsOpen="{Binding InfoMessage, Mode=OneWay, Converter={StaticResource NullToVisibility}, ConverterParameter=Bool}"
+                    Message="{Binding InfoMessage}"
+                    Severity="{Binding InfoSeverity}"
+                    Visibility="{Binding InfoMessage, Converter={StaticResource NullToVisibility}}" />
+
+                <ContentControl Grid.Row="2" Content="{Binding CurrentPage}" Focusable="False" />
+            </Grid>
+        </Grid>
+
+        <!-- Status bar: always visible (spec §1 "clear status"). -->
+        <Border
+            Grid.Row="2"
+            Padding="16,6"
+            Background="{DynamicResource LayerFillColorDefaultBrush}"
+            BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
+            BorderThickness="0,1,0,0">
+            <DockPanel LastChildFill="False">
+                <Border
+                    DockPanel.Dock="Left"
+                    Style="{StaticResource Badge}"
+                    ToolTip="DMX output starts disabled every time. Configure and enable it in Input / Output.">
+                    <StackPanel Orientation="Horizontal">
+                        <Ellipse
+                            Width="8"
+                            Height="8"
+                            Margin="0,0,6,0"
+                            VerticalAlignment="Center"
+                            Fill="{DynamicResource TextFillColorTertiaryBrush}" />
+                        <TextBlock FontSize="12" Text="{Binding OutputStatusText}" />
+                    </StackPanel>
+                </Border>
+                <TextBlock
+                    DockPanel.Dock="Right"
+                    VerticalAlignment="Center"
+                    Style="{StaticResource CaptionText}"
+                    Text="DMX Pro 0.1 · preview" />
+            </DockPanel>
+        </Border>
+    </Grid>
+</ui:FluentWindow>

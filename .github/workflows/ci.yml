@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore DmxPro.sln
+
+      - name: Build (warnings are errors)
+        run: dotnet build DmxPro.sln --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test DmxPro.sln --configuration Release --no-build --logger "console;verbosity=normal"
+
+      - name: Check formatting
+        run: dotnet format DmxPro.sln --verify-no-changes --no-restore
