@@ -12,6 +12,12 @@ public sealed class ChannelCapability
     /// <summary>True when this range is a safe resting state (e.g. "no strobe", "manual color mode").</summary>
     public bool Safe { get; set; }
 
+    /// <summary>
+    /// Optional QLC+ capability preset this range was imported with (e.g. <c>ShutterOpen</c>, <c>StrobeSlowToFast</c>);
+    /// null for hand-written profiles. Read by <see cref="StrobeCapabilityClassifier"/>.
+    /// </summary>
+    public string? Preset { get; set; }
+
     public bool Contains(byte value) => value >= Min && value <= Max;
 
     public ChannelCapability Clone() => (ChannelCapability)MemberwiseClone();

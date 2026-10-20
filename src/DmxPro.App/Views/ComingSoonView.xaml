@@ -2,51 +2,44 @@
     x:Class="DmxPro.App.Views.ComingSoonView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:c="clr-namespace:DmxPro.App.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
     xmlns:vm="clr-namespace:DmxPro.App.ViewModels"
     d:DataContext="{d:DesignInstance Type=vm:ComingSoonViewModel}"
     mc:Ignorable="d">
-    <DockPanel>
-        <Border DockPanel.Dock="Top" Style="{StaticResource ToolbarStrip}">
+    <!-- No page header strip (the rail already names the page, QLC+ style): straight to the empty state, which says
+         what the section will do and when it arrives. -->
+    <Grid>
+        <StackPanel Style="{StaticResource EmptyStatePanel}" MaxWidth="440">
+            <c:DmxIcon
+                Kind="{Binding IconKind}"
+                Size="{StaticResource Dmx.EmptyStateIconSize}"
+                Style="{StaticResource EmptyStateIcon}" />
+            <TextBlock Style="{StaticResource EmptyStateTitle}" Text="{Binding Title}" />
             <TextBlock
-                Margin="4,6"
-                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                Margin="0,0,0,4"
+                Style="{StaticResource EmptyStateText}"
                 Text="{Binding Subtitle}" />
-        </Border>
-        <Border Margin="6" Style="{StaticResource PanelBorder}">
-            <StackPanel
-                MaxWidth="520"
+            <TextBlock Style="{StaticResource EmptyStateText}" Text="{Binding Phase, StringFormat=Coming in {0}. Planned:}" />
+            <ItemsControl
                 HorizontalAlignment="Center"
-                VerticalAlignment="Center">
-                <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
-                    <ui:SymbolIcon FontSize="22" Symbol="Wand24" />
-                    <TextBlock
-                        Margin="10,0,0,0"
-                        Style="{StaticResource PanelTitle}"
-                        Text="{Binding Title}" />
-                    <TextBlock
-                        Margin="8,0,0,0"
-                        VerticalAlignment="Center"
-                        Foreground="{DynamicResource TextFillColorTertiaryBrush}"
-                        Text="{Binding Phase, StringFormat=— coming in {0}}" />
-                </StackPanel>
-                <ItemsControl Margin="0,14,0,0" ItemsSource="{Binding PlannedFeatures}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <StackPanel Margin="0,3" Orientation="Horizontal">
-                                <ui:SymbolIcon
-                                    Margin="0,0,8,0"
-                                    FontSize="14"
-                                    Foreground="{DynamicResource TextFillColorTertiaryBrush}"
-                                    Symbol="CheckmarkCircle24" />
-                                <TextBlock Text="{Binding}" />
-                            </StackPanel>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </StackPanel>
-        </Border>
-    </DockPanel>
+                Focusable="False"
+                ItemsSource="{Binding PlannedFeatures}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Margin="0,2" Orientation="Horizontal">
+                            <c:DmxIcon
+                                Margin="0,0,6,0"
+                                VerticalAlignment="Center"
+                                Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                Kind="Check"
+                                Size="{StaticResource Dmx.SmallIconSize}" />
+                            <TextBlock VerticalAlignment="Center" Text="{Binding}" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+    </Grid>
 </UserControl>

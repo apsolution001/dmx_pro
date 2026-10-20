@@ -11,4 +11,8 @@ public sealed class AppPaths
 
     public string DefaultProjectsDirectory { get; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "DmxPro");
+
+    /// <summary>Cached music analyses (waveform, tempo): <c>%LOCALAPPDATA%\DmxPro\AudioCache</c>. Safe to delete.</summary>
+    public string AudioCacheDirectory { get; } = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DmxPro", "AudioCache");
 }

@@ -1,0 +1,143 @@
+<UserControl
+    x:Class="DmxPro.App.Views.SceneFixtureTab"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:c="clr-namespace:DmxPro.App.Controls"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:vm="clr-namespace:DmxPro.App.ViewModels"
+    d:DataContext="{d:DesignInstance Type=vm:SceneFixtureTabViewModel}"
+    d:DesignHeight="420"
+    d:DesignWidth="480"
+    AutomationProperties.Name="{Binding Header}"
+    mc:Ignorable="d">
+
+    <!--
+        Fader bank of ONE fixture in the Scene editor (QLC+ fixture console, modernised). Shown side by side with
+        other banks inside SceneChannelsTab, so its width is the width of its faders (header trims to fit) and it
+        stretches to the available height. Every channel of the fixture's profile mode gets a fader, in channel order.
+        Each ChannelFader draws its own include checkbox, icon, value box (type 0-255), slider, number and name, and
+        dims itself when the channel is not included in the scene; the DMX address sits underneath, with a caution
+        mark when the profile does not say what the channel does.
+    -->
+    <DockPanel>
+        <!--  One-line header: [⚠] name detail (trims) [Enable all][Disable all]  -->
+        <Border
+            Width="{Binding ActualWidth, ElementName=FaderRow}"
+            Padding="6,1,2,1"
+            Background="{DynamicResource ControlFillColorDefaultBrush}"
+            BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
+            BorderThickness="0,0,0,1"
+            DockPanel.Dock="Top"
+            SnapsToDevicePixels="True">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <Button
+                        AutomationProperties.Name="Enable all channels"
+                        Command="{Binding EnableAllCommand}"
+                        Style="{StaticResource PanelHeaderButton}"
+                        ToolTip="Enable all: include every channel of this fixture in the scene">
+                        <c:DmxIcon Kind="SelectAll" Size="{StaticResource Dmx.DenseIconSize}" />
+                    </Button>
+                    <Button
+                        AutomationProperties.Name="Disable all channels"
+                        Command="{Binding DisableAllCommand}"
+                        Style="{StaticResource PanelHeaderButton}"
+                        ToolTip="Disable all: exclude every channel of this fixture from the scene (values are kept)">
+                        <c:DmxIcon Kind="Remove" Size="{StaticResource Dmx.DenseIconSize}" />
+                    </Button>
+                </StackPanel>
+                <c:DmxIcon
+                    Margin="0,0,4,0"
+                    VerticalAlignment="Center"
+                    AutomationProperties.Name="Unverified profile"
+                    DockPanel.Dock="Left"
+                    Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                    Kind="Unverified"
+                    Size="{StaticResource Dmx.DenseIconSize}"
+                    ToolTip="Unverified profile: channel meanings are not confirmed. Check each channel on the real fixture."
+                    Visibility="{Binding ProfileUnverified, Converter={StaticResource BoolToVisibility}}" />
+                <TextBlock
+                    VerticalAlignment="Center"
+                    TextTrimming="CharacterEllipsis"
+                    TextWrapping="NoWrap"
+                    ToolTip="{Binding Detail}">
+                    <Run FontWeight="SemiBold" Text="{Binding Header, Mode=OneWay}" />
+                    <Run
+                        FontSize="{StaticResource Dmx.FontSize.Caption}"
+                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                        Text="{Binding Detail, Mode=OneWay}" />
+                </TextBlock>
+            </DockPanel>
+        </Border>
+
+        <!--  Missing profile or mode: nothing to show, say why.  -->
+        <TextBlock
+            MaxWidth="200"
+            Margin="4,2"
+            DockPanel.Dock="Top"
+            Style="{StaticResource HintText}"
+            Text="No channels: this light's profile or mode is missing. Fix it on the Fixtures page."
+            TextWrapping="Wrap"
+            Visibility="{Binding HasNoChannels, Converter={StaticResource BoolToVisibility}}" />
+
+        <!--
+            Faders: a plain horizontal StackPanel (a fixture has few channels; the outer bank list virtualizes).
+            MinWidth keeps the header buttons usable for 1-channel fixtures.
+        -->
+        <ItemsControl
+            x:Name="FaderRow"
+            MinWidth="120"
+            Margin="0,2,0,0"
+            Padding="2,0,0,0"
+            HorizontalAlignment="Left"
+            AutomationProperties.Name="{Binding Header, StringFormat={}{0} channel faders}"
+            Focusable="False"
+            ItemsSource="{Binding Channels}"
+            KeyboardNavigation.TabNavigation="Continue">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel Orientation="Horizontal" />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="{x:Type vm:SceneChannelFaderViewModel}">
+                    <!--  Fader + its DMX address (and a caution mark for channels whose meaning is unknown).  -->
+                    <DockPanel
+                        Width="{StaticResource Dmx.FaderWidth}"
+                        Margin="0,0,1,0"
+                        ToolTip="{Binding ToolTip}">
+                        <StackPanel
+                            Margin="0,0,0,2"
+                            HorizontalAlignment="Center"
+                            DockPanel.Dock="Bottom"
+                            Orientation="Horizontal">
+                            <c:DmxIcon
+                                Margin="0,0,2,0"
+                                VerticalAlignment="Center"
+                                AutomationProperties.Name="Unknown channel meaning"
+                                Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                                Kind="Warning"
+                                Size="{StaticResource Dmx.DenseIconSize}"
+                                Visibility="{Binding IsUnknown, Converter={StaticResource BoolToVisibility}}" />
+                            <TextBlock
+                                VerticalAlignment="Center"
+                                FontSize="{StaticResource Dmx.FontSize.Caption}"
+                                Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                Text="{Binding DmxAddress, StringFormat='{}{0:000}'}"
+                                ToolTip="{Binding AddressText}" />
+                        </StackPanel>
+                        <c:ChannelFader
+                            AutomationProperties.Name="{Binding AutomationName}"
+                            IconKind="{Binding IconKind}"
+                            IsIncluded="{Binding IsIncluded}"
+                            Label="{Binding Name}"
+                            Number="{Binding Number}"
+                            TrackColor="{Binding ColorHex}"
+                            Value="{Binding Value}" />
+                    </DockPanel>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </DockPanel>
+</UserControl>

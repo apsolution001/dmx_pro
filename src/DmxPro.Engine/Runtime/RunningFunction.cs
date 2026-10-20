@@ -1,0 +1,58 @@
+namespace DmxPro.Engine.Runtime;
+
+/// <summary>A pooled running function instance (engine thread only).</summary>
+internal sealed class RunningFunction
+{
+    public bool InUse { get; set; }
+
+    public FunctionProgram Program { get; set; } = null!;
+
+    public Guid FunctionId { get; set; }
+
+    public EngineLayer Layer { get; set; }
+
+    public float Intensity { get; set; }
+
+    /// <summary>Speed factor of the function's own time (steps, cycles, rates); fades in/out stay real time.</summary>
+    public float Speed { get; set; } = 1f;
+
+    /// <summary>Strobe limits reported by the last render (for snapshots).</summary>
+    public StrobeLimit StrobeLimit { get; set; }
+
+    /// <summary>Fade level 0..1 (before intensity).</summary>
+    public float Level { get; set; }
+
+    public bool Stopping { get; set; }
+
+    public double ElapsedSeconds { get; set; }
+
+    /// <summary>Engine time when started (LTP order).</summary>
+    public double Stamp { get; set; }
+
+    public long Seq { get; set; }
+
+    /// <summary>
+    /// Advances the fade by <paramref name="dt"/> seconds and the function time by <paramref name="dt"/> × speed.
+    /// Returns false once fully faded out, or when the function has finished by itself (single-shot chaser, timed
+    /// flash: its content has already ended, so it is released at once).
+    /// </summary>
+    public bool Advance(double dt)
+    {
+        ElapsedSeconds += dt * Speed;
+        if (!Stopping && ElapsedSeconds >= Program.DurationSeconds)
+        {
+            return false;
+        }
+
+        if (Stopping)
+        {
+            var fadeOut = Program.FadeOutSeconds;
+            Level = fadeOut <= 0 ? 0f : (float)(Level - (dt / fadeOut));
+            return Level > 0f;
+        }
+
+        var fadeIn = Program.FadeInSeconds;
+        Level = fadeIn <= 0 ? 1f : (float)Math.Min(1.0, Level + (dt / fadeIn));
+        return true;
+    }
+}

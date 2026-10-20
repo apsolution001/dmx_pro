@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "generic-rgbwa",
+  "manufacturer": "Generic",
+  "model": "RGBWA fixture",
+  "type": "Color Changer",
+  "revision": 1,
+  "verified": false,
+  "source": "Generic template. Confirm channel order against your fixture's DMX chart before use.",
+  "channels": [
+    { "key": "red", "name": "Red", "type": "Red", "default": 0 },
+    { "key": "green", "name": "Green", "type": "Green", "default": 0 },
+    { "key": "blue", "name": "Blue", "type": "Blue", "default": 0 },
+    { "key": "white", "name": "White", "type": "White", "default": 0 },
+    { "key": "amber", "name": "Amber", "type": "Amber", "default": 0 },
+    { "key": "dimmer", "name": "Master dimmer", "type": "Dimmer", "default": 255 }
+  ],
+  "modes": [
+    { "name": "5ch RGBWA", "channels": [ "red", "green", "blue", "white", "amber" ] },
+    { "name": "6ch Dimmer RGBWA", "channels": [ "dimmer", "red", "green", "blue", "white", "amber" ] }
+  ]
+}

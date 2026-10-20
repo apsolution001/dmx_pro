@@ -63,6 +63,14 @@ UI generation rules:
 }
 ```
 
+### User-defined layouts (2026-10-19)
+
+- Optional `"userDefined": true` marks a profile created in the channel layout editor; written **only when true**.
+- Stored in `%APPDATA%\DmxPro\profiles\<id>.dmxprofile.json`; id `custom-<slug>-<8 hex>`, manufacturer `Custom`,
+  one mode named `"{n}ch"`, always `verified: false`. Editing bumps the revision and resets to unverified.
+- No strobe ranges are invented: with no documented strobing range the engine holds a custom strobe channel at its default.
+- Built-in generic profiles are templates only; channel order differs per light, so never assume channel 1 is Red.
+
 ## 4. Color handling (RGB → RGBW)
 
 The spec says: do **not** assume one conversion is best. Offer per-fixture/project policy:

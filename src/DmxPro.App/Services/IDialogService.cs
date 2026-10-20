@@ -22,4 +22,7 @@ public interface IDialogService
 
     /// <summary>Shows the Add Fixture dialog; returns true when the user clicked Add.</summary>
     bool ShowAddFixture(ViewModels.AddFixtureViewModel viewModel);
+
+    /// <summary>Shows the channel layout editor; returns true when the layout was saved.</summary>
+    bool ShowChannelLayout(ViewModels.ChannelLayoutViewModel viewModel);
 }

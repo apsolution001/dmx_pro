@@ -2,135 +2,371 @@
     x:Class="DmxPro.App.Views.FixturesView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:c="clr-namespace:DmxPro.App.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
     xmlns:validation="clr-namespace:DmxPro.Core.Validation;assembly=DmxPro.Core"
     xmlns:vm="clr-namespace:DmxPro.App.ViewModels"
     d:DataContext="{d:DesignInstance Type=vm:FixturesViewModel}"
+    d:DesignHeight="800"
+    d:DesignWidth="1280"
     mc:Ignorable="d">
+    <UserControl.Resources>
+        <!-- Field-level validation message under a Properties input: icon + wrapped text. -->
+        <Style x:Key="FieldIssueText" TargetType="TextBlock">
+            <Setter Property="Margin" Value="4,0,0,0" />
+            <Setter Property="FontSize" Value="{StaticResource Dmx.FontSize.Small}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+        </Style>
+
+        <!-- Swatch in the address-map legend; same size and shape as a map cell (12 px). -->
+        <Style x:Key="LegendSwatch" TargetType="Border">
+            <Setter Property="Width" Value="12" />
+            <Setter Property="Height" Value="12" />
+            <Setter Property="Margin" Value="0,0,4,0" />
+            <Setter Property="CornerRadius" Value="2" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <Style x:Key="LegendText" TargetType="TextBlock">
+            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="FontSize" Value="{StaticResource Dmx.FontSize.Caption}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+        </Style>
+
+        <!-- Menu shared by the toolbar "Group" button and the table's context menu. -->
+        <Style
+            x:Key="AddToGroupMenuItem"
+            BasedOn="{StaticResource Dmx.MenuItem}"
+            TargetType="MenuItem">
+            <Setter Property="Header" Value="{Binding Name}" />
+            <Setter Property="Command" Value="{Binding DataContext.AddToGroupCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+            <Setter Property="CommandParameter" Value="{Binding}" />
+        </Style>
+    </UserControl.Resources>
+
     <DockPanel>
-        <!-- Page toolbar -->
-        <Border DockPanel.Dock="Top" Style="{StaticResource ToolbarStrip}">
+        <!-- ═════════════ Page toolbar ═════════════ -->
+        <Border DockPanel.Dock="Top" Style="{StaticResource PageToolbar}">
             <DockPanel LastChildFill="False">
-                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
-                    <ui:Button
-                        Appearance="Primary"
+                <StackPanel
+                    VerticalAlignment="Center"
+                    DockPanel.Dock="Left"
+                    Orientation="Horizontal">
+                    <Button
+                        AutomationProperties.Name="Add fixture"
                         Command="{Binding AddFixtureCommand}"
-                        Content="Add fixture"
-                        Icon="{ui:SymbolIcon Add24}"
-                        ToolTip="Add one or more fixtures (Ctrl+Shift+A)" />
-                    <ui:Button
-                        Margin="4,0,0,0"
-                        Appearance="Transparent"
+                        Style="{StaticResource ToolbarPrimaryButton}"
+                        ToolTip="Add one or more fixtures (Ctrl+Shift+A)">
+                        <StackPanel Orientation="Horizontal">
+                            <c:DmxIcon Kind="Add" Size="{StaticResource Dmx.ButtonIconSize}" />
+                            <TextBlock Style="{StaticResource ButtonLabel}" Text="Add fixture" />
+                        </StackPanel>
+                    </Button>
+
+                    <Rectangle Style="{StaticResource ToolbarSeparator}" />
+
+                    <Button
+                        AutomationProperties.Name="Duplicate selected fixtures"
+                        Command="{Binding DuplicateCommand}"
+                        Style="{StaticResource ToolbarButton}"
+                        ToolTip="Duplicate the selected fixtures to the next free address (Ctrl+D)">
+                        <c:DmxIcon Kind="Duplicate" Size="{StaticResource Dmx.ToolbarIconSize}" />
+                    </Button>
+                    <Button
                         AutomationProperties.Name="Delete selected fixtures"
                         Command="{Binding DeleteCommand}"
-                        CommandParameter="{Binding SelectedItems, ElementName=FixtureGrid}"
-                        Icon="{ui:SymbolIcon Delete24}"
-                        ToolTip="Delete selected fixtures" />
-                    <ui:Button
-                        Appearance="Transparent"
-                        AutomationProperties.Name="Duplicate fixture"
-                        Command="{Binding DuplicateCommand}"
-                        Icon="{ui:SymbolIcon Copy24}"
-                        ToolTip="Duplicate to the next free address" />
-                    <ui:Button
-                        Appearance="Transparent"
-                        AutomationProperties.Name="Move to free address"
-                        Command="{Binding AutoAddressCommand}"
-                        Icon="{ui:SymbolIcon Wand24}"
-                        ToolTip="Move the selected fixture to the first free address" />
+                        Style="{StaticResource ToolbarButton}"
+                        ToolTip="Delete the selected fixtures (Del)">
+                        <c:DmxIcon Kind="Delete" Size="{StaticResource Dmx.ToolbarIconSize}" />
+                    </Button>
+                    <Button
+                        AutomationProperties.Name="Auto-patch selected fixtures"
+                        Command="{Binding AutoPatchCommand}"
+                        Style="{StaticResource ToolbarButton}"
+                        ToolTip="Auto-patch: move the selected fixtures to the first free addresses of their universe">
+                        <c:DmxIcon Kind="AutoPatch" Size="{StaticResource Dmx.ToolbarIconSize}" />
+                    </Button>
+                    <Button
+                        AutomationProperties.Name="Edit channel layout"
+                        Command="{Binding EditChannelLayoutCommand}"
+                        Style="{StaticResource ToolbarButton}"
+                        ToolTip="Edit channel layout: set what each DMX channel of the selected light does, in its own order (Ctrl+L)">
+                        <c:DmxIcon Kind="Channel" Size="{StaticResource Dmx.ToolbarIconSize}" />
+                    </Button>
+
                     <Rectangle Style="{StaticResource ToolbarSeparator}" />
-                    <ui:Button
-                        Appearance="Transparent"
-                        AutomationProperties.Name="New group from selection"
-                        Command="{Binding NewGroupCommand}"
-                        CommandParameter="{Binding SelectedItems, ElementName=FixtureGrid}"
-                        Content="Group"
-                        Icon="{ui:SymbolIcon Group24}"
-                        ToolTip="Make a new group from the selected fixtures" />
+
+                    <Button
+                        AutomationProperties.Name="Group menu"
+                        Click="OnGroupMenuButtonClick"
+                        Style="{StaticResource ToolbarLabelButton}"
+                        ToolTip="Make a group from the selected fixtures, or add them to a group">
+                        <StackPanel Orientation="Horizontal">
+                            <c:DmxIcon Kind="Group" Size="{StaticResource Dmx.ButtonIconSize}" />
+                            <TextBlock Style="{StaticResource ButtonLabel}" Text="Group" />
+                            <c:DmxIcon
+                                Margin="4,0,0,0"
+                                Kind="ChevronDown"
+                                Size="{StaticResource Dmx.DenseIconSize}" />
+                        </StackPanel>
+                        <Button.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem
+                                    Command="{Binding NewGroupCommand}"
+                                    Header="New group from selection"
+                                    InputGestureText="Ctrl+G">
+                                    <MenuItem.Icon>
+                                        <c:DmxIcon Kind="Group" Size="{StaticResource Dmx.SmallIconSize}" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem
+                                    Header="Add selection to group"
+                                    IsEnabled="{Binding HasGroups}"
+                                    ItemContainerStyle="{StaticResource AddToGroupMenuItem}"
+                                    ItemsSource="{Binding Groups}">
+                                    <MenuItem.Icon>
+                                        <c:DmxIcon Kind="AddToGroup" Size="{StaticResource Dmx.SmallIconSize}" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                    </Button>
                 </StackPanel>
-                <ui:TextBox
-                    Width="260"
+
+                <StackPanel
+                    VerticalAlignment="Center"
                     DockPanel.Dock="Right"
-                    Icon="{ui:SymbolIcon Search24}"
-                    PlaceholderText="Search fixtures or profiles"
-                    Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" />
+                    Orientation="Horizontal">
+                    <ComboBox
+                        Width="120"
+                        Margin="0,0,4,0"
+                        AutomationProperties.Name="Show fixtures of universe"
+                        DisplayMemberPath="Label"
+                        ItemsSource="{Binding UniverseFilters}"
+                        SelectedItem="{Binding UniverseFilter}"
+                        Style="{StaticResource FormComboBox}"
+                        ToolTip="Show only the fixtures of one universe" />
+                    <Grid Width="200">
+                        <ui:TextBox
+                            Margin="0"
+                            Padding="26,3,8,0"
+                            AutomationProperties.Name="Search fixtures"
+                            PlaceholderText="Search fixtures"
+                            Style="{StaticResource FormTextBox}"
+                            Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}"
+                            ToolTip="Filter by fixture name or profile" />
+                        <c:DmxIcon
+                            Margin="8,0,0,0"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center"
+                            Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                            IsHitTestVisible="False"
+                            Kind="Search"
+                            Size="{StaticResource Dmx.SmallIconSize}" />
+                    </Grid>
+                </StackPanel>
             </DockPanel>
         </Border>
 
-        <Grid Margin="6">
+        <!-- ═════════════ Body: (table / map) | (properties / groups) ═════════════ -->
+        <Grid Margin="{StaticResource Dmx.PageBodyMargin}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" MinWidth="420" />
-                <ColumnDefinition Width="5" />
-                <ColumnDefinition Width="380" MinWidth="300" />
+                <ColumnDefinition Width="4" />
+                <ColumnDefinition Width="340" MinWidth="280" />
             </Grid.ColumnDefinitions>
 
-            <!-- Left: fixture table + address map -->
             <Grid Grid.Column="0">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*" MinHeight="160" />
-                    <RowDefinition Height="5" />
-                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="4" />
+                    <RowDefinition Height="Auto" MinHeight="96" />
                 </Grid.RowDefinitions>
 
+                <!-- Fixture table -->
                 <Border Grid.Row="0" Style="{StaticResource PanelBorder}">
-                    <DataGrid
-                        x:Name="FixtureGrid"
-                        AutoGenerateColumns="False"
-                        BorderThickness="0"
-                        CanUserAddRows="False"
-                        CanUserDeleteRows="False"
-                        GridLinesVisibility="Horizontal"
-                        HeadersVisibility="Column"
-                        IsReadOnly="True"
-                        ItemsSource="{Binding Fixtures}"
-                        SelectedItem="{Binding SelectedFixture}"
-                        SelectionMode="Extended"
-                        SelectionUnit="FullRow">
-                        <DataGrid.RowStyle>
-                            <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding Enabled}" Value="False">
-                                        <Setter Property="Opacity" Value="0.5" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </DataGrid.RowStyle>
-                        <DataGrid.Columns>
-                            <DataGridTemplateColumn Width="36" Header="">
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate DataType="{x:Type vm:FixtureRowViewModel}">
-                                        <ui:SymbolIcon
-                                            x:Name="StatusIcon"
-                                            FontSize="16"
-                                            Foreground="{DynamicResource SystemFillColorSuccessBrush}"
-                                            Symbol="CheckmarkCircle24"
-                                            ToolTip="Patched correctly" />
-                                        <DataTemplate.Triggers>
-                                            <DataTrigger Binding="{Binding WorstIssue}" Value="{x:Static validation:ValidationSeverity.Warning}">
-                                                <Setter TargetName="StatusIcon" Property="Symbol" Value="Warning24" />
-                                                <Setter TargetName="StatusIcon" Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
-                                                <Setter TargetName="StatusIcon" Property="ToolTip" Value="{Binding IssueText}" />
-                                            </DataTrigger>
-                                            <DataTrigger Binding="{Binding WorstIssue}" Value="{x:Static validation:ValidationSeverity.Error}">
-                                                <Setter TargetName="StatusIcon" Property="Symbol" Value="ErrorCircle24" />
-                                                <Setter TargetName="StatusIcon" Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
-                                                <Setter TargetName="StatusIcon" Property="ToolTip" Value="{Binding IssueText}" />
-                                            </DataTrigger>
-                                        </DataTemplate.Triggers>
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
-                            <DataGridTextColumn Width="2*" Binding="{Binding Name}" Header="Name" />
-                            <DataGridTextColumn Width="2*" Binding="{Binding ProfileName}" Header="Profile" />
-                            <DataGridTextColumn Width="1.2*" Binding="{Binding ModeName}" Header="Mode" />
-                            <DataGridTextColumn Width="48" Binding="{Binding Universe}" Header="U" />
-                            <DataGridTextColumn Width="90" Binding="{Binding AddressRange}" Header="Address" />
-                            <DataGridTextColumn Width="44" Binding="{Binding ChannelCount}" Header="Ch" />
-                            <DataGridTextColumn Width="1.5*" Binding="{Binding GroupNames}" Header="Groups" />
-                        </DataGrid.Columns>
-                    </DataGrid>
+                    <Grid>
+                        <DataGrid
+                            x:Name="FixtureGrid"
+                            AutomationProperties.Name="Patched fixtures"
+                            EnableRowVirtualization="True"
+                            IsReadOnly="True"
+                            ItemsSource="{Binding Fixtures}"
+                            PreviewKeyDown="OnFixtureGridPreviewKeyDown"
+                            SelectionChanged="OnFixtureGridSelectionChanged"
+                            SelectedItem="{Binding SelectedFixture}"
+                            SelectionMode="Extended"
+                            Style="{StaticResource DataTable}"
+                            VirtualizingPanel.IsVirtualizing="True"
+                            VirtualizingPanel.VirtualizationMode="Recycling">
+                            <DataGrid.InputBindings>
+                                <KeyBinding Command="{Binding DeleteCommand}" Gesture="Delete" />
+                                <KeyBinding Command="{Binding DuplicateCommand}" Gesture="Ctrl+D" />
+                                <KeyBinding Command="{Binding NewGroupCommand}" Gesture="Ctrl+G" />
+                                <KeyBinding Command="{Binding EditChannelLayoutCommand}" Gesture="Ctrl+L" />
+                            </DataGrid.InputBindings>
+                            <DataGrid.RowStyle>
+                                <!-- Row selection is synced with FixtureRowViewModel.IsSelected in code-behind (rows virtualize). -->
+                                <Style BasedOn="{StaticResource DataTableRow}" TargetType="DataGridRow">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Enabled}" Value="False">
+                                            <Setter Property="Opacity" Value="0.5" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </DataGrid.RowStyle>
+                            <DataGrid.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem
+                                        Command="{Binding DuplicateCommand}"
+                                        Header="Duplicate"
+                                        InputGestureText="Ctrl+D">
+                                        <MenuItem.Icon>
+                                            <c:DmxIcon Kind="Duplicate" Size="{StaticResource Dmx.SmallIconSize}" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Command="{Binding AutoPatchCommand}" Header="Auto-patch">
+                                        <MenuItem.Icon>
+                                            <c:DmxIcon Kind="AutoPatch" Size="{StaticResource Dmx.SmallIconSize}" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem
+                                        Command="{Binding EditChannelLayoutCommand}"
+                                        Header="Edit channel layout…"
+                                        InputGestureText="Ctrl+L">
+                                        <MenuItem.Icon>
+                                            <c:DmxIcon Kind="Channel" Size="{StaticResource Dmx.SmallIconSize}" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem
+                                        Command="{Binding DeleteCommand}"
+                                        Header="Delete"
+                                        InputGestureText="Del">
+                                        <MenuItem.Icon>
+                                            <c:DmxIcon Kind="Delete" Size="{StaticResource Dmx.SmallIconSize}" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <Separator />
+                                    <MenuItem
+                                        Command="{Binding NewGroupCommand}"
+                                        Header="New group from selection"
+                                        InputGestureText="Ctrl+G">
+                                        <MenuItem.Icon>
+                                            <c:DmxIcon Kind="Group" Size="{StaticResource Dmx.SmallIconSize}" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem
+                                        Header="Add to group"
+                                        IsEnabled="{Binding HasGroups}"
+                                        ItemContainerStyle="{StaticResource AddToGroupMenuItem}"
+                                        ItemsSource="{Binding Groups}">
+                                        <MenuItem.Icon>
+                                            <c:DmxIcon Kind="AddToGroup" Size="{StaticResource Dmx.SmallIconSize}" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                </ContextMenu>
+                            </DataGrid.ContextMenu>
+                            <DataGrid.Columns>
+                                <DataGridTemplateColumn Width="28" Header="">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate DataType="{x:Type vm:FixtureRowViewModel}">
+                                            <c:DmxIcon
+                                                x:Name="StatusIcon"
+                                                Foreground="{DynamicResource SystemFillColorSuccessBrush}"
+                                                Kind="Verified"
+                                                Size="{StaticResource Dmx.DenseIconSize}"
+                                                ToolTip="Patched correctly" />
+                                            <DataTemplate.Triggers>
+                                                <DataTrigger Binding="{Binding WorstIssue}" Value="{x:Static validation:ValidationSeverity.Warning}">
+                                                    <Setter TargetName="StatusIcon" Property="Kind" Value="Warning" />
+                                                    <Setter TargetName="StatusIcon" Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
+                                                    <Setter TargetName="StatusIcon" Property="ToolTip" Value="{Binding IssueText}" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding WorstIssue}" Value="{x:Static validation:ValidationSeverity.Error}">
+                                                    <Setter TargetName="StatusIcon" Property="Kind" Value="Error" />
+                                                    <Setter TargetName="StatusIcon" Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+                                                    <Setter TargetName="StatusIcon" Property="ToolTip" Value="{Binding IssueText}" />
+                                                </DataTrigger>
+                                            </DataTemplate.Triggers>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn
+                                    Width="2*"
+                                    MinWidth="120"
+                                    Binding="{Binding Name}"
+                                    Header="Name" />
+                                <DataGridTextColumn
+                                    Width="2*"
+                                    MinWidth="120"
+                                    Binding="{Binding ProfileName}"
+                                    Header="Profile" />
+                                <DataGridTextColumn
+                                    Width="1.2*"
+                                    MinWidth="70"
+                                    Binding="{Binding ModeName}"
+                                    Header="Mode" />
+                                <DataGridTextColumn
+                                    Width="44"
+                                    Binding="{Binding Universe}"
+                                    Header="Univ." />
+                                <DataGridTextColumn
+                                    Width="76"
+                                    Binding="{Binding AddressRange}"
+                                    Header="Address" />
+                                <DataGridTextColumn
+                                    Width="36"
+                                    Binding="{Binding ChannelCount}"
+                                    Header="Ch" />
+                                <DataGridTextColumn
+                                    Width="1.5*"
+                                    MinWidth="80"
+                                    Binding="{Binding GroupNames}"
+                                    Header="Groups" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <!-- Empty project -->
+                        <StackPanel Style="{StaticResource EmptyStatePanel}" Visibility="{Binding IsProjectEmpty, Converter={StaticResource BoolToVisibility}}">
+                            <c:DmxIcon
+                                Kind="Fixtures"
+                                Size="{StaticResource Dmx.EmptyStateIconSize}"
+                                Style="{StaticResource EmptyStateIcon}" />
+                            <TextBlock Style="{StaticResource EmptyStateTitle}" Text="No fixtures yet" />
+                            <TextBlock Style="{StaticResource EmptyStateText}" Text="Add the lights on your stage, then group them." />
+                            <Button
+                                HorizontalAlignment="Center"
+                                AutomationProperties.Name="Add fixture"
+                                Command="{Binding AddFixtureCommand}"
+                                Style="{StaticResource ToolbarPrimaryButton}">
+                                <StackPanel Orientation="Horizontal">
+                                    <c:DmxIcon Kind="Add" Size="{StaticResource Dmx.ButtonIconSize}" />
+                                    <TextBlock Style="{StaticResource ButtonLabel}" Text="Add fixture" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+
+                        <!-- Filter hides everything -->
+                        <StackPanel Style="{StaticResource EmptyStatePanel}" Visibility="{Binding NoFilterResults, Converter={StaticResource BoolToVisibility}}">
+                            <c:DmxIcon
+                                Kind="Search"
+                                Size="{StaticResource Dmx.EmptyStateIconSize}"
+                                Style="{StaticResource EmptyStateIcon}" />
+                            <TextBlock Style="{StaticResource EmptyStateTitle}" Text="No matching fixtures" />
+                            <TextBlock Style="{StaticResource EmptyStateText}" Text="No fixture matches the search or universe filter." />
+                            <Button
+                                HorizontalAlignment="Center"
+                                Command="{Binding ClearFiltersCommand}"
+                                Content="Clear filters"
+                                Style="{StaticResource ToolbarLabelButton}" />
+                        </StackPanel>
+                    </Grid>
                 </Border>
 
                 <GridSplitter Grid.Row="1" Style="{StaticResource HorizontalSplitter}" />
@@ -140,105 +376,206 @@
                     <DockPanel>
                         <Border DockPanel.Dock="Top" Style="{StaticResource PanelHeader}">
                             <DockPanel>
+                                <c:DmxIcon
+                                    Margin="0,0,4,0"
+                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                    Kind="AddressMap"
+                                    Size="{StaticResource Dmx.SmallIconSize}" />
                                 <TextBlock Style="{StaticResource PanelTitle}" Text="Address map" />
                                 <ComboBox
-                                    Width="110"
-                                    Margin="12,0,0,0"
-                                    AutomationProperties.Name="Universe shown on the map"
+                                    Width="120"
+                                    Margin="8,1,0,1"
+                                    AutomationProperties.Name="Universe shown on the address map"
                                     ItemStringFormat="Universe {0}"
                                     ItemsSource="{Binding Universes}"
-                                    SelectedItem="{Binding MapUniverse}" />
+                                    SelectedItem="{Binding MapUniverseSelection}"
+                                    Style="{StaticResource FormComboBox}" />
                                 <TextBlock
-                                    Margin="12,0,0,0"
+                                    Margin="8,0,6,0"
                                     HorizontalAlignment="Right"
                                     VerticalAlignment="Center"
-                                    Style="{StaticResource HintText}"
-                                    Text="{Binding MapSummary}" />
+                                    FontSize="{StaticResource Dmx.FontSize.Small}"
+                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                    Text="{Binding MapSummary}"
+                                    TextTrimming="CharacterEllipsis" />
                             </DockPanel>
                         </Border>
-                        <ItemsControl
-                            Margin="8"
-                            AutomationProperties.Name="DMX address map, 512 channels"
-                            ItemsSource="{Binding AddressCells}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <UniformGrid Columns="32" Rows="16" />
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate DataType="{x:Type vm:AddressCellViewModel}">
-                                    <Button
-                                        Height="12"
-                                        Margin="1"
-                                        Command="{Binding DataContext.SelectAddressCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                        CommandParameter="{Binding Address}"
-                                        Cursor="Hand"
-                                        Focusable="False"
-                                        ToolTip="{Binding ToolTip}">
-                                        <Button.Template>
-                                            <ControlTemplate TargetType="Button">
-                                                <Border
-                                                    x:Name="Cell"
-                                                    Background="{DynamicResource ControlFillColorSecondaryBrush}"
-                                                    BorderBrush="Transparent"
-                                                    BorderThickness="1"
-                                                    CornerRadius="2" />
-                                                <ControlTemplate.Triggers>
-                                                    <DataTrigger Binding="{Binding State}" Value="{x:Static vm:AddressCellState.Used}">
-                                                        <Setter TargetName="Cell" Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}" />
-                                                    </DataTrigger>
-                                                    <DataTrigger Binding="{Binding State}" Value="{x:Static vm:AddressCellState.Overlap}">
-                                                        <Setter TargetName="Cell" Property="Background" Value="{DynamicResource SystemFillColorCriticalBrush}" />
-                                                    </DataTrigger>
-                                                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                                        <Setter TargetName="Cell" Property="BorderBrush" Value="{DynamicResource TextFillColorPrimaryBrush}" />
-                                                    </DataTrigger>
-                                                </ControlTemplate.Triggers>
-                                            </ControlTemplate>
-                                        </Button.Template>
-                                    </Button>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+
+                        <ScrollViewer
+                            Margin="{StaticResource Dmx.PageBodyMargin}"
+                            HorizontalScrollBarVisibility="Auto"
+                            VerticalScrollBarVisibility="Auto">
+                            <StackPanel HorizontalAlignment="Left" Orientation="Horizontal">
+                                <!-- Row labels: first address of each 32-channel row. -->
+                                <ItemsControl
+                                    Margin="0,0,4,0"
+                                    Focusable="False"
+                                    IsTabStop="False"
+                                    ItemsSource="{Binding MapRowLabels}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock
+                                                Height="12"
+                                                MinWidth="24"
+                                                FontSize="{StaticResource Dmx.FontSize.Caption}"
+                                                Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                                LineHeight="12"
+                                                LineStackingStrategy="BlockLineHeight"
+                                                Text="{Binding}"
+                                                TextAlignment="Right" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <ItemsControl
+                                    AutomationProperties.Name="DMX address map, 512 channels"
+                                    Focusable="False"
+                                    ItemsSource="{Binding AddressCells}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <UniformGrid
+                                                Width="384"
+                                                Height="192"
+                                                Columns="32"
+                                                Rows="16" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type vm:AddressCellViewModel}">
+                                            <Button
+                                                Margin="1"
+                                                HorizontalAlignment="Stretch"
+                                                VerticalAlignment="Stretch"
+                                                Command="{Binding DataContext.SelectAddressCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding Address}"
+                                                Cursor="Hand"
+                                                Focusable="False"
+                                                ToolTip="{Binding ToolTip}">
+                                                <Button.Template>
+                                                    <ControlTemplate TargetType="Button">
+                                                        <Border
+                                                            x:Name="Cell"
+                                                            Background="{DynamicResource ControlStrongStrokeColorDisabledBrush}"
+                                                            BorderBrush="Transparent"
+                                                            BorderThickness="1"
+                                                            CornerRadius="2"
+                                                            SnapsToDevicePixels="True">
+                                                            <TextBlock
+                                                                x:Name="OverlapMark"
+                                                                HorizontalAlignment="Center"
+                                                                VerticalAlignment="Center"
+                                                                FontSize="{StaticResource Dmx.FontSize.Caption}"
+                                                                FontWeight="Bold"
+                                                                Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}"
+                                                                Text="!"
+                                                                Visibility="Collapsed" />
+                                                        </Border>
+                                                        <ControlTemplate.Triggers>
+                                                            <DataTrigger Binding="{Binding State}" Value="{x:Static vm:AddressCellState.Used}">
+                                                                <Setter TargetName="Cell" Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding State}" Value="{x:Static vm:AddressCellState.Overlap}">
+                                                                <Setter TargetName="Cell" Property="Background" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+                                                                <Setter TargetName="OverlapMark" Property="Visibility" Value="Visible" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                                <Setter TargetName="Cell" Property="BorderBrush" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+                                                                <Setter TargetName="Cell" Property="BorderThickness" Value="2" />
+                                                            </DataTrigger>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter TargetName="Cell" Property="Opacity" Value="0.8" />
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Button.Template>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <!-- Legend -->
+                                <StackPanel Margin="8,0,0,0" VerticalAlignment="Top">
+                                    <StackPanel Margin="0,0,0,2" Orientation="Horizontal">
+                                        <Border Background="{DynamicResource ControlStrongStrokeColorDisabledBrush}" Style="{StaticResource LegendSwatch}" />
+                                        <TextBlock Style="{StaticResource LegendText}" Text="Free" />
+                                    </StackPanel>
+                                    <StackPanel Margin="0,0,0,2" Orientation="Horizontal">
+                                        <Border Background="{DynamicResource AccentFillColorDefaultBrush}" Style="{StaticResource LegendSwatch}" />
+                                        <TextBlock Style="{StaticResource LegendText}" Text="Used" />
+                                    </StackPanel>
+                                    <StackPanel Margin="0,0,0,2" Orientation="Horizontal">
+                                        <Border
+                                            Background="{DynamicResource AccentFillColorDefaultBrush}"
+                                            BorderBrush="{DynamicResource TextFillColorPrimaryBrush}"
+                                            BorderThickness="2"
+                                            Style="{StaticResource LegendSwatch}" />
+                                        <TextBlock Style="{StaticResource LegendText}" Text="Selected fixture" />
+                                    </StackPanel>
+                                    <StackPanel Margin="0,0,0,2" Orientation="Horizontal">
+                                        <Border Background="{DynamicResource SystemFillColorCriticalBrush}" Style="{StaticResource LegendSwatch}">
+                                            <TextBlock
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"
+                                                FontSize="8"
+                                                FontWeight="Bold"
+                                                Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}"
+                                                Text="!" />
+                                        </Border>
+                                        <TextBlock Style="{StaticResource LegendText}" Text="Overlap" />
+                                    </StackPanel>
+                                    <TextBlock
+                                        MaxWidth="140"
+                                        Style="{StaticResource HintText}"
+                                        Text="Click a cell to select its fixture." />
+                                </StackPanel>
+                            </StackPanel>
+                        </ScrollViewer>
                     </DockPanel>
                 </Border>
             </Grid>
 
             <GridSplitter Grid.Column="1" Style="{StaticResource VerticalSplitter}" />
 
-            <!-- Right: properties + groups -->
             <Grid Grid.Column="2">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="*" MinHeight="200" />
-                    <RowDefinition Height="5" />
-                    <RowDefinition Height="220" MinHeight="120" />
+                    <RowDefinition Height="3*" MinHeight="200" />
+                    <RowDefinition Height="4" />
+                    <RowDefinition Height="2*" MinHeight="140" />
                 </Grid.RowDefinitions>
 
+                <!-- ═════════════ Properties (no title bar: the Name field already says what is shown) ═════════════ -->
                 <Border Grid.Row="0" Style="{StaticResource PanelBorder}">
-                    <DockPanel>
-                        <Border DockPanel.Dock="Top" Style="{StaticResource PanelHeader}">
-                            <TextBlock Style="{StaticResource PanelTitle}" Text="Properties" />
-                        </Border>
-
-                        <TextBlock
-                            Margin="12"
-                            Style="{StaticResource HintText}"
-                            Text="Select a fixture to edit it, or click Add fixture."
-                            Visibility="{Binding SelectedFixture, Converter={StaticResource NullToVisibility}, ConverterParameter=Invert}" />
+                    <Grid>
+                        <!-- Nothing selected -->
+                        <StackPanel
+                            Margin="8"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Orientation="Horizontal"
+                            Visibility="{Binding SelectedFixture, Converter={StaticResource NullToVisibility}, ConverterParameter=Invert}">
+                            <c:DmxIcon
+                                Margin="0,0,4,0"
+                                VerticalAlignment="Center"
+                                Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                Kind="Edit"
+                                Size="{StaticResource Dmx.SmallIconSize}" />
+                            <TextBlock
+                                VerticalAlignment="Center"
+                                Style="{StaticResource HintText}"
+                                Text="Select a fixture to edit it." />
+                        </StackPanel>
 
                         <ScrollViewer
                             DataContext="{Binding SelectedFixture}"
                             VerticalScrollBarVisibility="Auto"
                             Visibility="{Binding Converter={StaticResource NullToVisibility}}">
-                            <StackPanel Margin="12,10">
-                                <!-- Problems for this fixture -->
-                                <ItemsControl Margin="0,0,0,4" ItemsSource="{Binding DataContext.SelectedIssues, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                            <StackPanel Margin="6,4">
+                                <!-- Problems not tied to one field (missing profile/mode, …) -->
+                                <ItemsControl ItemsSource="{Binding DataContext.SelectedIssues, RelativeSource={RelativeSource AncestorType=UserControl}}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate DataType="{x:Type validation:ValidationIssue}">
                                             <Border
                                                 x:Name="IssueBox"
-                                                Margin="0,0,0,6"
-                                                Padding="8,6"
+                                                Margin="0,0,0,4"
+                                                Padding="6,2"
                                                 Background="{DynamicResource ControlFillColorDefaultBrush}"
                                                 BorderBrush="{DynamicResource SystemFillColorCautionBrush}"
                                                 BorderThickness="3,0,0,0">
@@ -255,7 +592,8 @@
 
                                 <Grid>
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="100" />
+                                        <!-- Labels are short words: size to the longest one instead of the wide form column. -->
+                                        <ColumnDefinition Width="Auto" MinWidth="56" />
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
                                     <Grid.RowDefinitions>
@@ -266,187 +604,553 @@
                                         <RowDefinition Height="Auto" />
                                         <RowDefinition Height="Auto" />
                                         <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="Auto" />
                                     </Grid.RowDefinitions>
 
-                                    <TextBlock Grid.Row="0" Style="{StaticResource FormLabel}" Text="Name" />
-                                    <TextBox
+                                    <!-- Name -->
+                                    <TextBlock
+                                        Grid.Row="0"
+                                        Style="{StaticResource FormLabel}"
+                                        Text="Name" />
+                                    <ui:TextBox
+                                        x:Name="NameBox"
                                         Grid.Row="0"
                                         Grid.Column="1"
-                                        Margin="0,0,0,8"
                                         AutomationProperties.Name="Fixture name"
-                                        Text="{Binding Name, UpdateSourceTrigger=LostFocus}" />
+                                        Style="{StaticResource FormTextBox}"
+                                        Text="{Binding Name, UpdateSourceTrigger=LostFocus}"
+                                        ToolTip="Fixture name (F2 in the table)" />
 
-                                    <TextBlock Grid.Row="1" Style="{StaticResource FormLabel}" Text="Profile" />
-                                    <ComboBox
+                                    <!-- Profile (read-only): name and verified badge on one line -->
+                                    <TextBlock
+                                        Grid.Row="1"
+                                        Style="{StaticResource FormLabel}"
+                                        Text="Profile" />
+                                    <DockPanel
                                         Grid.Row="1"
                                         Grid.Column="1"
-                                        Margin="0,0,0,8"
-                                        AutomationProperties.Name="Fixture profile"
-                                        DisplayMemberPath="DisplayName"
-                                        ItemsSource="{Binding DataContext.ProfileOptions, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                        SelectedItem="{Binding Profile}" />
+                                        Margin="0,0,0,4">
+                                        <Button
+                                            Margin="4,0,0,0"
+                                            VerticalAlignment="Center"
+                                            AutomationProperties.Name="Edit channel layout"
+                                            Command="{Binding DataContext.EditChannelLayoutCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            DockPanel.Dock="Right"
+                                            Style="{StaticResource PanelHeaderButton}"
+                                            ToolTip="Edit channel layout: what each DMX channel of this light does (Ctrl+L)">
+                                            <c:DmxIcon Kind="Edit" Size="{StaticResource Dmx.DenseIconSize}" />
+                                        </Button>
+                                        <!-- Click: mark the profile as verified after testing it on the real light. -->
+                                        <Button
+                                            Width="Auto"
+                                            Margin="4,0,0,0"
+                                            Padding="4,0"
+                                            VerticalAlignment="Center"
+                                            AutomationProperties.Name="Unverified profile. Mark as verified"
+                                            BorderBrush="{DynamicResource SystemFillColorCautionBrush}"
+                                            BorderThickness="1"
+                                            Command="{Binding DataContext.ToggleProfileVerifiedCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            DockPanel.Dock="Right"
+                                            Style="{StaticResource PanelHeaderButton}"
+                                            ToolTip="This profile has not been checked against the real fixture. Test each channel at low intensity, then click to mark it as verified."
+                                            Visibility="{Binding ProfileUnverified, Converter={StaticResource BoolToVisibility}}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <c:DmxIcon
+                                                    Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                                                    Kind="Unverified"
+                                                    Size="{StaticResource Dmx.DenseIconSize}" />
+                                                <TextBlock
+                                                    Margin="4,0,0,0"
+                                                    VerticalAlignment="Center"
+                                                    FontSize="{StaticResource Dmx.FontSize.Small}"
+                                                    Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                                                    Text="Unverified" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button
+                                            Width="Auto"
+                                            Margin="4,0,0,0"
+                                            Padding="4,0"
+                                            VerticalAlignment="Center"
+                                            AutomationProperties.Name="Verified profile. Mark as unverified"
+                                            Command="{Binding DataContext.ToggleProfileVerifiedCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            DockPanel.Dock="Right"
+                                            Style="{StaticResource PanelHeaderButton}"
+                                            ToolTip="This profile was checked against the real fixture. Click to mark it as unverified again."
+                                            Visibility="{Binding ProfileVerified, Converter={StaticResource BoolToVisibility}}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <c:DmxIcon
+                                                    Foreground="{DynamicResource SystemFillColorSuccessBrush}"
+                                                    Kind="Verified"
+                                                    Size="{StaticResource Dmx.DenseIconSize}" />
+                                                <TextBlock
+                                                    Margin="4,0,0,0"
+                                                    VerticalAlignment="Center"
+                                                    FontSize="{StaticResource Dmx.FontSize.Small}"
+                                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                    Text="Verified" />
+                                            </StackPanel>
+                                        </Button>
+                                        <TextBlock
+                                            VerticalAlignment="Center"
+                                            Text="{Binding ProfileName}"
+                                            TextTrimming="CharacterEllipsis"
+                                            ToolTip="{Binding ProfileName}" />
+                                    </DockPanel>
 
-                                    <TextBlock Grid.Row="2" Style="{StaticResource FormLabel}" Text="Mode" />
+                                    <!-- Mode -->
+                                    <TextBlock
+                                        Grid.Row="2"
+                                        Style="{StaticResource FormLabel}"
+                                        Text="Mode" />
                                     <ComboBox
                                         Grid.Row="2"
                                         Grid.Column="1"
-                                        Margin="0,0,0,8"
                                         AutomationProperties.Name="DMX mode"
                                         ItemsSource="{Binding ModeNames}"
-                                        SelectedItem="{Binding ModeName}" />
+                                        SelectedItem="{Binding ModeName}"
+                                        Style="{StaticResource FormComboBox}" />
 
-                                    <TextBlock Grid.Row="3" Style="{StaticResource FormLabel}" Text="Universe" />
-                                    <TextBox
+                                    <!-- Universe -->
+                                    <TextBlock
                                         Grid.Row="3"
-                                        Grid.Column="1"
-                                        Width="100"
-                                        Margin="0,0,0,8"
-                                        HorizontalAlignment="Left"
-                                        AutomationProperties.Name="Universe"
-                                        Text="{Binding Universe, UpdateSourceTrigger=LostFocus}" />
-
-                                    <TextBlock Grid.Row="4" Style="{StaticResource FormLabel}" Text="Address" />
-                                    <StackPanel
-                                        Grid.Row="4"
-                                        Grid.Column="1"
-                                        Margin="0,0,0,8"
-                                        Orientation="Horizontal">
-                                        <TextBox
-                                            Width="100"
-                                            AutomationProperties.Name="Start address"
-                                            Text="{Binding StartAddress, UpdateSourceTrigger=LostFocus}" />
-                                        <TextBlock
-                                            Margin="10,0,0,0"
-                                            VerticalAlignment="Center"
-                                            Foreground="{DynamicResource TextFillColorSecondaryBrush}">
-                                            <Run Text="uses" />
-                                            <Run Text="{Binding AddressRange, Mode=OneWay}" />
-                                        </TextBlock>
+                                        VerticalAlignment="Top"
+                                        Style="{StaticResource FormLabel}"
+                                        Text="Universe"
+                                        Margin="0,4,8,4" />
+                                    <StackPanel Grid.Row="3" Grid.Column="1">
+                                        <ui:NumberBox
+                                            Width="120"
+                                            HorizontalAlignment="Left"
+                                            AutomationProperties.Name="Universe"
+                                            Maximum="63999"
+                                            Minimum="1"
+                                            Style="{StaticResource FormNumberBox}"
+                                            Value="{Binding UniverseNumber, UpdateSourceTrigger=LostFocus}" />
+                                        <DockPanel Margin="0,0,0,4" Visibility="{Binding UniverseIssue, Converter={StaticResource NullToVisibility}}">
+                                            <c:DmxIcon
+                                                VerticalAlignment="Top"
+                                                Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                                                Kind="Error"
+                                                Size="{StaticResource Dmx.DenseIconSize}" />
+                                            <TextBlock
+                                                Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                                                Style="{StaticResource FieldIssueText}"
+                                                Text="{Binding UniverseIssue}" />
+                                        </DockPanel>
                                     </StackPanel>
 
-                                    <TextBlock Grid.Row="5" Style="{StaticResource FormLabel}" Text="Enabled" />
+                                    <!-- Start address -->
+                                    <TextBlock
+                                        Grid.Row="4"
+                                        VerticalAlignment="Top"
+                                        Style="{StaticResource FormLabel}"
+                                        Text="Address"
+                                        Margin="0,4,8,4" />
+                                    <StackPanel Grid.Row="4" Grid.Column="1">
+                                        <!-- Number box, next-free button and footprint on one line. -->
+                                        <DockPanel>
+                                            <ui:NumberBox
+                                                Width="120"
+                                                AutomationProperties.Name="Start address"
+                                                Maximum="512"
+                                                Minimum="1"
+                                                Style="{StaticResource FormNumberBox}"
+                                                Value="{Binding AddressNumber, UpdateSourceTrigger=LostFocus}" />
+                                            <Button
+                                                Margin="4,0,0,4"
+                                                VerticalAlignment="Center"
+                                                AutomationProperties.Name="Use next free address"
+                                                Command="{Binding DataContext.AutoAddressCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                Style="{StaticResource PanelHeaderButton}"
+                                                ToolTip="Move to the next free address in this universe">
+                                                <c:DmxIcon Kind="AutoAddress" Size="{StaticResource Dmx.SmallIconSize}" />
+                                            </Button>
+                                            <TextBlock
+                                                Margin="4,0,0,4"
+                                                VerticalAlignment="Center"
+                                                FontSize="{StaticResource Dmx.FontSize.Small}"
+                                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                Text="{Binding FootprintText}"
+                                                TextTrimming="CharacterEllipsis"
+                                                ToolTip="{Binding FootprintText}" />
+                                        </DockPanel>
+                                        <DockPanel Margin="0,0,0,4" Visibility="{Binding AddressIssue, Converter={StaticResource NullToVisibility}}">
+                                            <c:DmxIcon
+                                                VerticalAlignment="Top"
+                                                Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                                                Kind="Warning"
+                                                Size="{StaticResource Dmx.DenseIconSize}" />
+                                            <TextBlock
+                                                Text="{Binding AddressIssue}">
+                                                <TextBlock.Style>
+                                                    <Style BasedOn="{StaticResource FieldIssueText}" TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding AddressIssueIsError}" Value="True">
+                                                                <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </DockPanel>
+                                    </StackPanel>
+
+                                    <!-- Enabled -->
+                                    <TextBlock
+                                        Grid.Row="5"
+                                        Style="{StaticResource FormLabel}"
+                                        Text="Output" />
                                     <CheckBox
                                         Grid.Row="5"
                                         Grid.Column="1"
-                                        Margin="0,0,0,8"
+                                        Margin="0,0,0,4"
                                         Content="Send DMX to this fixture"
                                         IsChecked="{Binding Enabled}" />
 
+                                    <!-- Notes -->
                                     <TextBlock
                                         Grid.Row="6"
                                         VerticalAlignment="Top"
                                         Style="{StaticResource FormLabel}"
-                                        Text="Notes" />
-                                    <TextBox
+                                        Text="Notes"
+                                        Margin="0,4,8,4" />
+                                    <ui:TextBox
                                         Grid.Row="6"
                                         Grid.Column="1"
-                                        MinHeight="56"
-                                        Margin="0,0,0,8"
+                                        Height="44"
+                                        MinHeight="44"
+                                        VerticalContentAlignment="Top"
                                         AcceptsReturn="True"
                                         AutomationProperties.Name="Notes"
+                                        PlaceholderText="Position, cabling, quirks…"
+                                        Style="{StaticResource FormTextBox}"
                                         Text="{Binding Notes, UpdateSourceTrigger=LostFocus}"
-                                        TextWrapping="Wrap" />
+                                        TextWrapping="Wrap"
+                                        VerticalScrollBarVisibility="Auto" />
                                 </Grid>
 
-                                <TextBlock
-                                    Margin="0,8,0,4"
-                                    Style="{StaticResource PanelTitle}"
-                                    Text="Channel map" />
-                                <TextBlock
-                                    Margin="0,0,0,6"
-                                    Style="{StaticResource HintText}"
-                                    Text="From the fixture profile. ⚠ = meaning unknown, raw channel only." />
-                                <ItemsControl ItemsSource="{Binding Channels}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate DataType="{x:Type vm:ChannelMapRow}">
-                                            <Grid Margin="0,1">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="40" />
-                                                    <ColumnDefinition Width="56" />
-                                                    <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="Auto" />
-                                                </Grid.ColumnDefinitions>
-                                                <TextBlock Foreground="{DynamicResource TextFillColorTertiaryBrush}" Text="{Binding Number, StringFormat=CH{0}}" />
-                                                <TextBlock Grid.Column="1" Text="{Binding Address, StringFormat=DMX {0}}" />
-                                                <TextBlock Grid.Column="2" Text="{Binding Name}" />
-                                                <StackPanel Grid.Column="3" Orientation="Horizontal">
-                                                    <TextBlock Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="{Binding Type}" />
-                                                    <TextBlock
-                                                        Margin="4,0,0,0"
-                                                        Foreground="{DynamicResource SystemFillColorCautionBrush}"
-                                                        Text="⚠"
-                                                        ToolTip="Unknown meaning — test it before using"
-                                                        Visibility="{Binding IsGeneric, Converter={StaticResource BoolToVisibility}}" />
-                                                </StackPanel>
-                                            </Grid>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
+                                <!-- Channel map -->
+                                <TextBlock Style="{StaticResource FormSection}" Text="Channel map" />
+                                <Border Style="{StaticResource FormSectionBorder}" Padding="0">
+                                    <StackPanel>
+                                        <Grid
+                                            Height="{StaticResource Dmx.TableHeaderHeight}"
+                                            Margin="6,0"
+                                            TextElement.FontSize="{StaticResource Dmx.FontSize.Small}"
+                                            TextElement.FontWeight="SemiBold"
+                                            TextElement.Foreground="{DynamicResource TextFillColorSecondaryBrush}">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="28" />
+                                                <ColumnDefinition Width="40" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock VerticalAlignment="Center" Text="Ch" />
+                                            <TextBlock
+                                                Grid.Column="1"
+                                                VerticalAlignment="Center"
+                                                Text="DMX" />
+                                            <TextBlock
+                                                Grid.Column="2"
+                                                VerticalAlignment="Center"
+                                                Text="Channel" />
+                                            <TextBlock
+                                                Grid.Column="3"
+                                                VerticalAlignment="Center"
+                                                Text="Type" />
+                                        </Grid>
+                                        <Rectangle Height="1" Fill="{DynamicResource DividerStrokeColorDefaultBrush}" />
+                                        <ItemsControl ItemsSource="{Binding Channels}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="{x:Type vm:ChannelMapRow}">
+                                                    <Grid Height="{StaticResource Dmx.TableRowHeight}" Margin="6,0">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="28" />
+                                                            <ColumnDefinition Width="40" />
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock
+                                                            VerticalAlignment="Center"
+                                                            Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                                            Text="{Binding Number}" />
+                                                        <TextBlock
+                                                            Grid.Column="1"
+                                                            VerticalAlignment="Center"
+                                                            Text="{Binding Address}" />
+                                                        <TextBlock
+                                                            Grid.Column="2"
+                                                            VerticalAlignment="Center"
+                                                            Text="{Binding Name}"
+                                                            TextTrimming="CharacterEllipsis" />
+                                                        <StackPanel
+                                                            Grid.Column="3"
+                                                            VerticalAlignment="Center"
+                                                            Orientation="Horizontal">
+                                                            <c:DmxIcon
+                                                                Margin="0,0,4,0"
+                                                                Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                                                                Kind="Warning"
+                                                                Size="{StaticResource Dmx.DenseIconSize}"
+                                                                ToolTip="Meaning unknown: raw channel only. Test it before using."
+                                                                Visibility="{Binding IsGeneric, Converter={StaticResource BoolToVisibility}}" />
+                                                            <TextBlock
+                                                                FontSize="{StaticResource Dmx.FontSize.Small}"
+                                                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                                Text="{Binding Type}" />
+                                                        </StackPanel>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
                         </ScrollViewer>
-                    </DockPanel>
+                    </Grid>
                 </Border>
 
                 <GridSplitter Grid.Row="1" Style="{StaticResource HorizontalSplitter}" />
 
-                <!-- Groups -->
+                <!-- ═════════════ Groups ═════════════ -->
                 <Border Grid.Row="2" Style="{StaticResource PanelBorder}">
                     <DockPanel>
                         <Border DockPanel.Dock="Top" Style="{StaticResource PanelHeader}">
                             <DockPanel>
-                                <TextBlock Style="{StaticResource PanelTitle}" Text="Groups" />
-                                <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
-                                    <ui:Button
-                                        Padding="4"
-                                        Appearance="Transparent"
-                                        AutomationProperties.Name="New group from selection"
+                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                    <Button
+                                        AutomationProperties.Name="New group"
                                         Command="{Binding NewGroupCommand}"
-                                        CommandParameter="{Binding SelectedItems, ElementName=FixtureGrid}"
-                                        Icon="{ui:SymbolIcon Add24}"
-                                        ToolTip="New group from the selected fixtures" />
-                                    <ui:Button
-                                        Padding="4"
-                                        Appearance="Transparent"
-                                        AutomationProperties.Name="Add selection to group"
+                                        Style="{StaticResource PanelHeaderButton}"
+                                        ToolTip="New group from the selected fixtures (Ctrl+G)">
+                                        <c:DmxIcon Kind="Add" Size="{StaticResource Dmx.SmallIconSize}" />
+                                    </Button>
+                                    <Button
+                                        AutomationProperties.Name="Add selected fixtures to group"
                                         Command="{Binding AddToGroupCommand}"
-                                        CommandParameter="{Binding SelectedItems, ElementName=FixtureGrid}"
-                                        Icon="{ui:SymbolIcon ArrowImport24}"
-                                        ToolTip="Add the selected fixtures to the selected group" />
-                                    <ui:Button
-                                        Padding="4"
-                                        Appearance="Transparent"
+                                        Style="{StaticResource PanelHeaderButton}"
+                                        ToolTip="Add the fixtures selected in the table to this group">
+                                        <c:DmxIcon Kind="AddToGroup" Size="{StaticResource Dmx.SmallIconSize}" />
+                                    </Button>
+                                    <Button
+                                        AutomationProperties.Name="Remove fixture from group"
+                                        Command="{Binding RemoveFromGroupCommand}"
+                                        Style="{StaticResource PanelHeaderButton}"
+                                        ToolTip="Remove the selected fixture from its group (Del). The fixture stays patched.">
+                                        <c:DmxIcon Kind="Remove" Size="{StaticResource Dmx.SmallIconSize}" />
+                                    </Button>
+                                    <Button
+                                        AutomationProperties.Name="Move fixture up"
+                                        Command="{Binding MoveMemberUpCommand}"
+                                        Style="{StaticResource PanelHeaderButton}"
+                                        ToolTip="Move the fixture earlier in the group (Alt+Up)">
+                                        <c:DmxIcon Kind="MoveUp" Size="{StaticResource Dmx.SmallIconSize}" />
+                                    </Button>
+                                    <Button
+                                        AutomationProperties.Name="Move fixture down"
+                                        Command="{Binding MoveMemberDownCommand}"
+                                        Style="{StaticResource PanelHeaderButton}"
+                                        ToolTip="Move the fixture later in the group (Alt+Down)">
+                                        <c:DmxIcon Kind="MoveDown" Size="{StaticResource Dmx.SmallIconSize}" />
+                                    </Button>
+                                    <Button
+                                        AutomationProperties.Name="Rename group"
+                                        Command="{Binding RenameGroupCommand}"
+                                        Style="{StaticResource PanelHeaderButton}"
+                                        ToolTip="Rename the group (F2)">
+                                        <c:DmxIcon Kind="Rename" Size="{StaticResource Dmx.SmallIconSize}" />
+                                    </Button>
+                                    <Button
                                         AutomationProperties.Name="Delete group"
                                         Command="{Binding DeleteGroupCommand}"
-                                        Icon="{ui:SymbolIcon Delete24}"
-                                        ToolTip="Delete the selected group (fixtures stay)" />
+                                        Style="{StaticResource PanelHeaderButton}"
+                                        ToolTip="Delete the group. Its fixtures stay patched.">
+                                        <c:DmxIcon Kind="Delete" Size="{StaticResource Dmx.SmallIconSize}" />
+                                    </Button>
                                 </StackPanel>
+                                <TextBlock Style="{StaticResource PanelTitle}" Text="Groups" />
                             </DockPanel>
                         </Border>
-                        <ListBox
-                            AutomationProperties.Name="Fixture groups"
-                            BorderThickness="0"
-                            ItemsSource="{Binding Groups}"
-                            SelectedItem="{Binding SelectedGroup}">
-                            <ListBox.ItemTemplate>
-                                <DataTemplate DataType="{x:Type vm:GroupRowViewModel}">
-                                    <StackPanel>
-                                        <TextBox
-                                            Padding="2"
-                                            AutomationProperties.Name="Group name"
-                                            Background="Transparent"
-                                            BorderThickness="0"
-                                            FontWeight="SemiBold"
-                                            Text="{Binding Name, UpdateSourceTrigger=LostFocus}"
-                                            ToolTip="Click to rename" />
-                                        <TextBlock
-                                            Margin="2,0,0,0"
-                                            Style="{StaticResource HintText}"
-                                            Text="{Binding Members}" />
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ListBox.ItemTemplate>
-                        </ListBox>
+
+                        <Grid>
+                            <TreeView
+                                x:Name="GroupTree"
+                                AutomationProperties.Name="Fixture groups"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                ItemsSource="{Binding Groups}"
+                                PreviewMouseRightButtonDown="OnGroupTreePreviewMouseRightButtonDown">
+                                <TreeView.InputBindings>
+                                    <KeyBinding Command="{Binding RenameGroupCommand}" Gesture="F2" />
+                                    <KeyBinding Command="{Binding DeleteGroupNodeCommand}" Gesture="Delete" />
+                                    <KeyBinding Command="{Binding MoveMemberUpCommand}" Gesture="Alt+Up" />
+                                    <KeyBinding Command="{Binding MoveMemberDownCommand}" Gesture="Alt+Down" />
+                                </TreeView.InputBindings>
+                                <TreeView.ItemContainerStyle>
+                                    <Style BasedOn="{StaticResource {x:Type TreeViewItem}}" TargetType="TreeViewItem">
+                                        <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+                                        <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                                        <Setter Property="AutomationProperties.Name" Value="{Binding Name}" />
+                                        <Setter Property="ItemContainerStyle">
+                                            <Setter.Value>
+                                                <Style BasedOn="{StaticResource {x:Type TreeViewItem}}" TargetType="TreeViewItem">
+                                                    <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+                                                    <Setter Property="AutomationProperties.Name" Value="{Binding Name}" />
+                                                </Style>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </TreeView.ItemContainerStyle>
+                                <TreeView.Resources>
+                                    <HierarchicalDataTemplate DataType="{x:Type vm:GroupRowViewModel}" ItemsSource="{Binding Members}">
+                                        <DockPanel MinHeight="{StaticResource Dmx.ListRowMinHeight}" LastChildFill="True">
+                                            <c:DmxIcon
+                                                Margin="0,0,4,0"
+                                                VerticalAlignment="Center"
+                                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                Kind="Group"
+                                                Size="{StaticResource Dmx.DenseIconSize}" />
+                                            <TextBlock
+                                                Margin="8,0,0,0"
+                                                VerticalAlignment="Center"
+                                                DockPanel.Dock="Right"
+                                                FontSize="{StaticResource Dmx.FontSize.Small}"
+                                                Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                                Text="{Binding MemberCountText}" />
+                                            <Grid>
+                                                <TextBlock
+                                                    VerticalAlignment="Center"
+                                                    FontWeight="SemiBold"
+                                                    Text="{Binding Name}"
+                                                    TextTrimming="CharacterEllipsis"
+                                                    Visibility="{Binding IsNotEditing, Converter={StaticResource BoolToVisibility}}" />
+                                                <TextBox
+                                                    MinWidth="120"
+                                                    Padding="4,0"
+                                                    VerticalAlignment="Center"
+                                                    AutomationProperties.Name="Group name"
+                                                    IsVisibleChanged="OnRenameBoxIsVisibleChanged"
+                                                    LostKeyboardFocus="OnRenameBoxLostKeyboardFocus"
+                                                    Text="{Binding EditName, UpdateSourceTrigger=PropertyChanged}"
+                                                    Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibility}}">
+                                                    <TextBox.InputBindings>
+                                                        <KeyBinding Command="{Binding CommitRenameCommand}" Gesture="Enter" />
+                                                        <KeyBinding Command="{Binding CancelRenameCommand}" Gesture="Escape" />
+                                                    </TextBox.InputBindings>
+                                                </TextBox>
+                                            </Grid>
+                                        </DockPanel>
+                                    </HierarchicalDataTemplate>
+                                    <DataTemplate DataType="{x:Type vm:GroupMemberViewModel}">
+                                        <DockPanel MinHeight="{StaticResource Dmx.ListRowMinHeight}">
+                                            <TextBlock
+                                                MinWidth="16"
+                                                Margin="0,0,4,0"
+                                                VerticalAlignment="Center"
+                                                FontSize="{StaticResource Dmx.FontSize.Small}"
+                                                Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                                Text="{Binding Position}"
+                                                TextAlignment="Right"
+                                                ToolTip="Position in the group (chasers and effects step through this order)" />
+                                            <c:DmxIcon
+                                                Margin="0,0,4,0"
+                                                VerticalAlignment="Center"
+                                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                Kind="Fixtures"
+                                                Size="{StaticResource Dmx.DenseIconSize}" />
+                                            <TextBlock
+                                                Margin="8,0,0,0"
+                                                VerticalAlignment="Center"
+                                                DockPanel.Dock="Right"
+                                                FontSize="{StaticResource Dmx.FontSize.Small}"
+                                                Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                                Text="{Binding AddressText}" />
+                                            <TextBlock
+                                                VerticalAlignment="Center"
+                                                Text="{Binding Name}"
+                                                TextTrimming="CharacterEllipsis" />
+                                        </DockPanel>
+                                    </DataTemplate>
+                                </TreeView.Resources>
+                                <TreeView.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem
+                                            Command="{Binding NewGroupCommand}"
+                                            Header="New group from selection"
+                                            InputGestureText="Ctrl+G">
+                                            <MenuItem.Icon>
+                                                <c:DmxIcon Kind="Add" Size="{StaticResource Dmx.SmallIconSize}" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Command="{Binding AddToGroupCommand}" Header="Add selected fixtures">
+                                            <MenuItem.Icon>
+                                                <c:DmxIcon Kind="AddToGroup" Size="{StaticResource Dmx.SmallIconSize}" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem
+                                            Command="{Binding RemoveFromGroupCommand}"
+                                            Header="Remove from group"
+                                            InputGestureText="Del">
+                                            <MenuItem.Icon>
+                                                <c:DmxIcon Kind="Remove" Size="{StaticResource Dmx.SmallIconSize}" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <Separator />
+                                        <MenuItem
+                                            Command="{Binding MoveMemberUpCommand}"
+                                            Header="Move up"
+                                            InputGestureText="Alt+Up">
+                                            <MenuItem.Icon>
+                                                <c:DmxIcon Kind="MoveUp" Size="{StaticResource Dmx.SmallIconSize}" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem
+                                            Command="{Binding MoveMemberDownCommand}"
+                                            Header="Move down"
+                                            InputGestureText="Alt+Down">
+                                            <MenuItem.Icon>
+                                                <c:DmxIcon Kind="MoveDown" Size="{StaticResource Dmx.SmallIconSize}" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <Separator />
+                                        <MenuItem
+                                            Command="{Binding RenameGroupCommand}"
+                                            Header="Rename group"
+                                            InputGestureText="F2">
+                                            <MenuItem.Icon>
+                                                <c:DmxIcon Kind="Rename" Size="{StaticResource Dmx.SmallIconSize}" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Command="{Binding DeleteGroupCommand}" Header="Delete group…">
+                                            <MenuItem.Icon>
+                                                <c:DmxIcon Kind="Delete" Size="{StaticResource Dmx.SmallIconSize}" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </TreeView.ContextMenu>
+                            </TreeView>
+
+                            <!-- No groups -->
+                            <StackPanel
+                                Margin="8"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                IsHitTestVisible="False"
+                                Orientation="Horizontal"
+                                Visibility="{Binding HasNoGroups, Converter={StaticResource BoolToVisibility}}">
+                                <c:DmxIcon
+                                    Margin="0,0,4,0"
+                                    VerticalAlignment="Center"
+                                    Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                    Kind="Group"
+                                    Size="{StaticResource Dmx.SmallIconSize}" />
+                                <TextBlock
+                                    VerticalAlignment="Center"
+                                    Style="{StaticResource HintText}"
+                                    Text="No groups yet — select fixtures, then New group." />
+                            </StackPanel>
+                        </Grid>
                     </DockPanel>
                 </Border>
             </Grid>

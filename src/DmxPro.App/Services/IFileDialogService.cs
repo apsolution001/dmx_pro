@@ -8,4 +8,7 @@ public interface IFileDialogService
     string? ShowSaveProject(string initialDirectory, string suggestedName);
 
     IReadOnlyList<string> ShowOpenProfiles();
+
+    /// <summary>Picks one music file (formats of <c>DmxPro.Audio.AudioFormats</c>); null when cancelled.</summary>
+    string? ShowOpenAudio(string? initialDirectory);
 }

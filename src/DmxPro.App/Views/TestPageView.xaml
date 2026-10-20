@@ -1,0 +1,741 @@
+<UserControl
+    x:Class="DmxPro.App.Views.TestPageView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:c="clr-namespace:DmxPro.App.Controls"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    xmlns:vm="clr-namespace:DmxPro.App.ViewModels"
+    d:DataContext="{d:DesignInstance Type=vm:TestPageViewModel}"
+    d:DesignHeight="720"
+    d:DesignWidth="1200"
+    mc:Ignorable="d">
+
+    <!--
+        Test & Preview (phase 6), laid out like the QLC+ Simple Desk: pick a universe, its lights sit side by side as
+        groups of narrow channel columns (alternating bands), the Grand Master fader on the left. Moving a fader
+        overrides that channel ("under test", accent frame, its ✕ releases it); leaving the page releases every test
+        value (the ViewModel does that). The optional DMX monitor on the right shows the same universe's 512 values.
+
+        ┌ Universe [Universe 1 ▾] │ [✕ Release test values] 3 under test │ [▣] [search lights]     released on leave ┐
+        ├ ⚠ warnings strip (only when there are any)                                                                  ┤
+        │100%│ Stage L PAR              │ PAR 2                    │ Dimmer 1 │ …                       ║ DMX monitor │
+        │ ▮  │  ●   ●   ●   ●   ●       │  ●   ●   ●   ●           │  ●       │  (horizontal scroll,    ║  (optional) │
+        │ ▮  │ [0] [0] [0] [0] [0]      │ [0] [0] [0] [0]          │ [0]      │   wheel scrolls sideways)║            │
+        │ ▮  │  ┃   ┃   ┃   ┃   ┃       │  ┃   ┃   ┃   ┃           │  ┃       │                         ║             │
+        │ ▮  │  1   2   3   4   5       │  1   2   3   4           │  1       │                         ║             │
+        │[GM]│ [✕] [✕] [✕] [✕] [✕]      │ [✕] [✕] [✕] [✕]          │ [✕]      │                         ║             │
+        └──────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+    -->
+    <UserControl.Resources>
+        <!-- Per-channel release button at the foot of a column (QLC+ ✕); disabled while the channel is not under test. -->
+        <Style
+            x:Key="DeskReleaseButton"
+            BasedOn="{StaticResource PanelHeaderButton}"
+            TargetType="Button">
+            <Setter Property="Width" Value="22" />
+            <Setter Property="Height" Value="20" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="c:DmxIcon.MaxSize" Value="{StaticResource Dmx.DenseIconSize}" />
+        </Style>
+
+        <!-- Small release button in a light's header. -->
+        <Style
+            x:Key="DeskHeaderButton"
+            BasedOn="{StaticResource PanelHeaderButton}"
+            TargetType="Button">
+            <Setter Property="Width" Value="{StaticResource Dmx.MiniButtonSize}" />
+            <Setter Property="Height" Value="{StaticResource Dmx.MiniButtonSize}" />
+            <Setter Property="c:DmxIcon.MaxSize" Value="{StaticResource Dmx.DenseIconSize}" />
+        </Style>
+
+        <!-- Dense status mark in a light's header (unverified, missing profile, overlap). -->
+        <Style x:Key="TestMarkIcon" TargetType="c:DmxIcon">
+            <Setter Property="Margin" Value="0,0,3,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Size" Value="{StaticResource Dmx.DenseIconSize}" />
+        </Style>
+
+        <!-- Legend swatch of the DMX monitor; same corner radius as a monitor cell. -->
+        <Style x:Key="MonitorLegendSwatch" TargetType="Border">
+            <Setter Property="Width" Value="12" />
+            <Setter Property="Height" Value="12" />
+            <Setter Property="Margin" Value="0,0,4,0" />
+            <Setter Property="CornerRadius" Value="2" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <Style x:Key="MonitorLegendText" TargetType="TextBlock">
+            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="FontSize" Value="{StaticResource Dmx.FontSize.Caption}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+        </Style>
+
+        <!-- ═════════════ One channel column: fader, status line, release ✕ ═════════════ -->
+        <DataTemplate x:Key="DeskChannelTemplate" DataType="{x:Type vm:TestChannelViewModel}">
+            <Border
+                x:Name="Frame"
+                Width="{StaticResource Dmx.DeskChannelWidth}"
+                Margin="0,0,1,0"
+                VerticalAlignment="Top"
+                Background="Transparent"
+                BorderBrush="Transparent"
+                c:LazyToolTip.IsEnabled="True"
+                BorderThickness="1"
+                CornerRadius="3">
+                <DockPanel>
+                    <!-- Release this channel (back to what the show/defaults say); enabled only while under test. -->
+                    <Button
+                        Margin="0,1,0,3"
+                        AutomationProperties.Name="{Binding Name, StringFormat='Release test value of {0}'}"
+                        Command="{Binding ReleaseCommand}"
+                        DockPanel.Dock="Bottom"
+                        Style="{StaticResource DeskReleaseButton}"
+                        ToolTip="Release: stop testing this channel">
+                        <c:DmxIcon Kind="Close" Size="{StaticResource Dmx.DenseIconSize}" />
+                    </Button>
+
+                    <!-- Status line: [⚠ unknown] [strobe blocked] or "→N" when the real output differs. -->
+                    <StackPanel
+                        Height="14"
+                        HorizontalAlignment="Center"
+                        DockPanel.Dock="Bottom"
+                        Orientation="Horizontal">
+                        <c:DmxIcon
+                            VerticalAlignment="Center"
+                            AutomationProperties.Name="Unknown channel meaning"
+                            Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                            Kind="Warning"
+                            Size="{StaticResource Dmx.DenseIconSize}"
+                            ToolTip="The profile does not say what this channel does. Check it on the real light."
+                            Visibility="{Binding IsUnknown, Converter={StaticResource BoolToVisibility}}" />
+                        <c:DmxIcon
+                            VerticalAlignment="Center"
+                            AutomationProperties.Name="Strobe blocked by safety settings"
+                            Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                            Kind="Strobe"
+                            Size="{StaticResource Dmx.DenseIconSize}"
+                            ToolTip="Strobe is blocked or limited by the safety settings (Settings › Safety)."
+                            Visibility="{Binding IsStrobeBlocked, Converter={StaticResource BoolToVisibility}}" />
+                        <TextBlock
+                            VerticalAlignment="Center"
+                            AutomationProperties.Name="{Binding OutputNote}"
+                            FontSize="{StaticResource Dmx.FontSize.Caption}"
+                            FontWeight="SemiBold"
+                            Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                            Text="{Binding OutputValue, StringFormat='→{0}'}"
+                            ToolTip="{Binding OutputNote}"
+                            Visibility="{Binding OutputDiffers, Converter={StaticResource BoolToVisibility}}" />
+                    </StackPanel>
+
+                    <c:ChannelFader
+                        x:Name="Fader"
+                        AutomationProperties.Name="{Binding AutomationName}"
+                        IconKind="{Binding IconKind}"
+                        IsEnabled="{Binding IsAvailable}"
+                        Label="{Binding Name}"
+                        Number="{Binding Number}"
+                        Style="{StaticResource ChannelFader.Desk}"
+                        TrackColor="{Binding ColorHex}"
+                        Value="{Binding Value}" />
+                </DockPanel>
+            </Border>
+            <DataTemplate.Triggers>
+                <!-- Colour channels get a tinted icon, like the coloured bulbs of the QLC+ desk. -->
+                <DataTrigger Binding="{Binding HasIconColor}" Value="True">
+                    <Setter TargetName="Fader" Property="Foreground" Value="{Binding IconColorHex, Converter={StaticResource ChannelFader.HexToBrush}}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsOverridden}" Value="True">
+                    <Setter TargetName="Frame" Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+                    <Setter TargetName="Frame" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
+        <!-- ═════════════ One light: name header over its channel columns ═════════════ -->
+        <DataTemplate x:Key="DeskFixtureTemplate" DataType="{x:Type vm:TestFixtureRowViewModel}">
+            <DockPanel>
+                <!--
+                    Header: [marks] Name ........ [release light]. As wide as the channel columns below (bound, so a
+                    long name trims instead of widening the group).
+                -->
+                <Border
+                    Width="{Binding ActualWidth, ElementName=Body}"
+                    Height="22"
+                    Margin="0,0,0,2"
+                    Padding="4,0,2,0"
+                    Background="Transparent"
+                    DockPanel.Dock="Top"
+                    ToolTip="{Binding AutomationName}">
+                    <DockPanel>
+                        <Button
+                            Margin="2,0,0,0"
+                            VerticalAlignment="Center"
+                            AutomationProperties.Name="{Binding Name, StringFormat='Release test values of {0}'}"
+                            Command="{Binding ReleaseCommand}"
+                            DockPanel.Dock="Right"
+                            Style="{StaticResource DeskHeaderButton}"
+                            ToolTip="Release light: stop testing every channel of this light"
+                            Visibility="{Binding HasOverrides, Converter={StaticResource BoolToVisibility}}">
+                            <c:DmxIcon Kind="ReleaseAll" Size="{StaticResource Dmx.DenseIconSize}" />
+                        </Button>
+
+                        <c:DmxIcon
+                            AutomationProperties.Name="Unverified profile"
+                            DockPanel.Dock="Left"
+                            Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                            Kind="Unverified"
+                            Style="{StaticResource TestMarkIcon}"
+                            ToolTip="Unverified profile: channel meanings are not confirmed. Check each channel on the real light."
+                            Visibility="{Binding ProfileUnverified, Converter={StaticResource BoolToVisibility}}" />
+                        <c:DmxIcon
+                            AutomationProperties.Name="Profile missing"
+                            DockPanel.Dock="Left"
+                            Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                            Kind="Error"
+                            Style="{StaticResource TestMarkIcon}"
+                            ToolTip="Profile or mode missing: this light has no channels to test. Fix it on the Fixtures page."
+                            Visibility="{Binding IsMissingProfile, Converter={StaticResource BoolToVisibility}}" />
+                        <c:DmxIcon
+                            AutomationProperties.Name="Address overlap"
+                            DockPanel.Dock="Left"
+                            Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                            Kind="Warning"
+                            Style="{StaticResource TestMarkIcon}"
+                            ToolTip="{Binding OverlapText}"
+                            Visibility="{Binding HasOverlap, Converter={StaticResource BoolToVisibility}}" />
+
+                        <TextBlock
+                            x:Name="NameText"
+                            VerticalAlignment="Center"
+                            FontWeight="SemiBold"
+                            Text="{Binding Name}"
+                            TextTrimming="CharacterEllipsis"
+                            TextWrapping="NoWrap" />
+                    </DockPanel>
+                </Border>
+
+                <Grid x:Name="Body" HorizontalAlignment="Left">
+                    <!-- Missing profile or mode: nothing to show, say why. -->
+                    <TextBlock
+                        Width="120"
+                        Margin="6,4,6,0"
+                        Style="{StaticResource HintText}"
+                        Text="No channels: the profile or mode is missing. Fix it on the Fixtures page (Ctrl+1)."
+                        TextWrapping="Wrap"
+                        Visibility="{Binding HasNoChannels, Converter={StaticResource BoolToVisibility}}" />
+
+                    <ItemsControl
+                        x:Name="Faders"
+                        Margin="1,0,0,0"
+                        AutomationProperties.Name="{Binding Name, StringFormat={}{0} channel faders}"
+                        Focusable="False"
+                        ItemTemplate="{StaticResource DeskChannelTemplate}"
+                        ItemsSource="{Binding Channels}"
+                        KeyboardNavigation.TabNavigation="Continue">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                </Grid>
+            </DockPanel>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsDisabled}" Value="True">
+                    <Setter TargetName="Faders" Property="Opacity" Value="0.6" />
+                    <Setter TargetName="NameText" Property="Foreground" Value="{DynamicResource TextFillColorTertiaryBrush}" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
+        <!-- ═════════════ DMX monitor cell: address over value ═════════════ -->
+        <DataTemplate x:Key="MonitorCellTemplate" DataType="{x:Type vm:DmxMonitorCellViewModel}">
+            <Border
+                x:Name="Cell"
+                Margin="0,0,1,1"
+                Background="Transparent"
+                BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                c:LazyToolTip.IsEnabled="True"
+                CornerRadius="2"
+                SnapsToDevicePixels="True">
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock
+                        x:Name="AddressLabel"
+                        HorizontalAlignment="Center"
+                        FontSize="{StaticResource Dmx.FontSize.Caption}"
+                        Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                        Text="{Binding AddressText}" />
+                    <TextBlock
+                        x:Name="ValueLabel"
+                        HorizontalAlignment="Center"
+                        FontSize="{StaticResource Dmx.FontSize.Caption}"
+                        FontWeight="SemiBold"
+                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                        Text="{Binding ValueText}" />
+                </StackPanel>
+            </Border>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsPatched}" Value="True">
+                    <Setter TargetName="Cell" Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}" />
+                    <Setter TargetName="Cell" Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+                    <Setter TargetName="ValueLabel" Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsOverridden}" Value="True">
+                    <Setter TargetName="Cell" Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+                    <Setter TargetName="Cell" Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+                    <Setter TargetName="AddressLabel" Property="Foreground" Value="{DynamicResource TextOnAccentFillColorSecondaryBrush}" />
+                    <Setter TargetName="ValueLabel" Property="Foreground" Value="{DynamicResource TextOnAccentFillColorPrimaryBrush}" />
+                </DataTrigger>
+                <!-- Last so the outline shows on top of both other states. -->
+                <DataTrigger Binding="{Binding IsInSelectedFixture}" Value="True">
+                    <Setter TargetName="Cell" Property="BorderBrush" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <DockPanel>
+        <!-- ═════════════ Page toolbar ═════════════ -->
+        <Border DockPanel.Dock="Top" Style="{StaticResource PageToolbar}">
+            <DockPanel LastChildFill="False">
+                <StackPanel
+                    VerticalAlignment="Center"
+                    DockPanel.Dock="Left"
+                    Orientation="Horizontal">
+                    <TextBlock
+                        Margin="2,0,6,0"
+                        VerticalAlignment="Center"
+                        Text="Universe" />
+                    <ComboBox
+                        Width="140"
+                        AutomationProperties.Name="Universe shown on the desk"
+                        ItemStringFormat="Universe {0}"
+                        ItemsSource="{Binding Universes}"
+                        SelectedItem="{Binding SelectedUniverse}"
+                        Style="{StaticResource FormComboBox}"
+                        ToolTip="Universe shown on the desk and the DMX monitor" />
+
+                    <Rectangle Style="{StaticResource ToolbarSeparator}" />
+
+                    <Button
+                        AutomationProperties.Name="Release test values"
+                        Command="{Binding ReleaseAllTestsCommand}"
+                        Style="{StaticResource ToolbarLabelButton}"
+                        ToolTip="Release test values: stop testing every channel on this page (the Virtual Console's Release All also stops all functions)">
+                        <StackPanel Orientation="Horizontal">
+                            <c:DmxIcon Kind="ReleaseAll" Size="{StaticResource Dmx.ButtonIconSize}" />
+                            <TextBlock Style="{StaticResource ButtonLabel}" Text="Release test values" />
+                        </StackPanel>
+                    </Button>
+                    <TextBlock
+                        Margin="6,0,0,0"
+                        Style="{StaticResource StatusText}"
+                        Text="{Binding OverrideSummary}" />
+
+                    <Rectangle Style="{StaticResource ToolbarSeparator}" />
+
+                    <!-- Copy / paste a light's values (QLC+ "copy current values"); shared with the scene editors. -->
+                    <Button
+                        AutomationProperties.Name="Copy values of the selected light"
+                        Command="{Binding CopyLightCommand}"
+                        Style="{StaticResource ToolbarLabelButton}"
+                        ToolTip="Copy: remember the selected light's channel values (Ctrl+C). Click a light's name band to select it.">
+                        <StackPanel Orientation="Horizontal">
+                            <c:DmxIcon Kind="Copy" Size="{StaticResource Dmx.ButtonIconSize}" />
+                            <TextBlock Style="{StaticResource ButtonLabel}" Text="Copy" />
+                        </StackPanel>
+                    </Button>
+                    <Button
+                        AutomationProperties.Name="Paste values onto the selected light"
+                        Command="{Binding PasteLightCommand}"
+                        Style="{StaticResource ToolbarLabelButton}"
+                        ToolTip="Paste: set the selected light's channels to the copied values as test values (Ctrl+V). Matched by channel type, e.g. Red to Red.">
+                        <StackPanel Orientation="Horizontal">
+                            <c:DmxIcon Kind="Paste" Size="{StaticResource Dmx.ButtonIconSize}" />
+                            <TextBlock Style="{StaticResource ButtonLabel}" Text="Paste" />
+                        </StackPanel>
+                    </Button>
+                    <Button
+                        AutomationProperties.Name="Paste values onto all lights"
+                        Command="{Binding PasteToAllCommand}"
+                        Style="{StaticResource ToolbarLabelButton}"
+                        ToolTip="Paste to all: set every light on the desk (this universe, matching the search) to the copied values (Ctrl+Shift+V)">
+                        <StackPanel Orientation="Horizontal">
+                            <c:DmxIcon Kind="Paste" Size="{StaticResource Dmx.ButtonIconSize}" />
+                            <TextBlock Style="{StaticResource ButtonLabel}" Text="Paste to all" />
+                        </StackPanel>
+                    </Button>
+                    <TextBlock
+                        Margin="6,0,0,0"
+                        Style="{StaticResource StatusText}"
+                        Text="{Binding CopiedText}" />
+
+                    <Rectangle Style="{StaticResource ToolbarSeparator}" />
+
+                    <ToggleButton
+                        AutomationProperties.Name="Show DMX monitor"
+                        IsChecked="{Binding IsMonitorVisible}"
+                        Style="{StaticResource ToolbarToggleButton}"
+                        ToolTip="Show or hide the DMX monitor (the 512 values sent on this universe)">
+                        <c:DmxIcon Kind="Monitor" Size="{StaticResource Dmx.ToolbarIconSize}" />
+                    </ToggleButton>
+                </StackPanel>
+
+                <StackPanel
+                    VerticalAlignment="Center"
+                    DockPanel.Dock="Right"
+                    Orientation="Horizontal">
+                    <TextBlock
+                        Margin="0,0,8,0"
+                        Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                        Style="{StaticResource StatusText}"
+                        Text="Test values are released when you leave this page" />
+                    <Grid Width="200">
+                        <ui:TextBox
+                            Margin="0"
+                            Padding="26,3,8,0"
+                            AutomationProperties.Name="Search lights"
+                            PlaceholderText="Search lights"
+                            Style="{StaticResource FormTextBox}"
+                            Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                            ToolTip="Filter the lights by name or profile" />
+                        <c:DmxIcon
+                            Margin="8,0,0,0"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center"
+                            Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                            IsHitTestVisible="False"
+                            Kind="Search"
+                            Size="{StaticResource Dmx.SmallIconSize}" />
+                    </Grid>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- ═════════════ Warnings strip (only when there are warnings) ═════════════ -->
+        <Border
+            Padding="6,2"
+            Background="{DynamicResource SystemFillColorCautionBackgroundBrush}"
+            BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
+            BorderThickness="0,0,0,1"
+            DockPanel.Dock="Top"
+            Visibility="{Binding HasWarnings, Converter={StaticResource BoolToVisibility}}">
+            <ScrollViewer
+                MaxHeight="64"
+                Focusable="False"
+                HorizontalScrollBarVisibility="Disabled"
+                VerticalScrollBarVisibility="Auto">
+                <ItemsControl
+                    AutomationProperties.Name="Test warnings"
+                    Focusable="False"
+                    ItemsSource="{Binding Warnings}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:TestWarningViewModel}">
+                            <StackPanel
+                                MinHeight="18"
+                                Background="Transparent"
+                                Orientation="Horizontal"
+                                ToolTip="{Binding Detail}">
+                                <c:DmxIcon
+                                    x:Name="Icon"
+                                    Margin="0,0,6,0"
+                                    VerticalAlignment="Center"
+                                    Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                                    Kind="Warning"
+                                    Size="{StaticResource Dmx.DenseIconSize}" />
+                                <TextBlock
+                                    x:Name="Message"
+                                    VerticalAlignment="Center"
+                                    FontSize="{StaticResource Dmx.FontSize.Small}"
+                                    Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                    Text="{Binding Message}"
+                                    TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                            <DataTemplate.Triggers>
+                                <DataTrigger Binding="{Binding IsError}" Value="True">
+                                    <Setter TargetName="Icon" Property="Kind" Value="Error" />
+                                    <Setter TargetName="Icon" Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+                                    <Setter TargetName="Message" Property="FontWeight" Value="SemiBold" />
+                                </DataTrigger>
+                            </DataTemplate.Triggers>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Border>
+
+        <!-- ═════════════ Body: Grand Master | desk | DMX monitor ═════════════ -->
+        <Grid Margin="{StaticResource Dmx.PageBodyMargin}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" MinWidth="320" />
+                <!--
+                    Splitter + monitor columns collapse through MaxWidth (the splitter writes Width as a local value,
+                    so a Width trigger would stop working after the first drag).
+                -->
+                <ColumnDefinition Width="4">
+                    <ColumnDefinition.Style>
+                        <Style TargetType="ColumnDefinition">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsMonitorVisible}" Value="False">
+                                    <Setter Property="MaxWidth" Value="0" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ColumnDefinition.Style>
+                </ColumnDefinition>
+                <ColumnDefinition Width="400">
+                    <ColumnDefinition.Style>
+                        <Style TargetType="ColumnDefinition">
+                            <Setter Property="MinWidth" Value="200" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsMonitorVisible}" Value="False">
+                                    <Setter Property="MinWidth" Value="0" />
+                                    <Setter Property="MaxWidth" Value="0" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ColumnDefinition.Style>
+                </ColumnDefinition>
+            </Grid.ColumnDefinitions>
+
+            <!-- ═════════════ Grand Master (QLC+ "GM" strip) ═════════════ -->
+            <Border
+                Grid.Column="0"
+                Width="{StaticResource Dmx.DeskMasterWidth}"
+                Margin="0,0,4,0"
+                Style="{StaticResource PanelBorder}">
+                <DockPanel Margin="0,4">
+                    <TextBlock
+                        Margin="0,0,0,4"
+                        HorizontalAlignment="Center"
+                        DockPanel.Dock="Top"
+                        FontSize="{StaticResource Dmx.FontSize.Small}"
+                        FontWeight="SemiBold"
+                        Text="{Binding GrandMasterPercent, StringFormat='{}{0:0}%'}" />
+                    <Button
+                        Margin="4,4,4,0"
+                        HorizontalAlignment="Stretch"
+                        AutomationProperties.Name="Grand Master to 100 percent"
+                        Command="{Binding ResetGrandMasterCommand}"
+                        DockPanel.Dock="Bottom"
+                        Style="{StaticResource ToolbarLabelButton}"
+                        ToolTip="Grand Master: scales colours and dimmers of every light (shared with the Virtual Console). Click to set it back to 100 %.">
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            FontSize="{StaticResource Dmx.FontSize.Small}"
+                            FontWeight="SemiBold"
+                            Text="GM" />
+                    </Button>
+                    <Slider
+                        Height="Auto"
+                        AutomationProperties.Name="Grand Master, 0 to 100 percent"
+                        Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                        Maximum="100"
+                        Minimum="0"
+                        Style="{StaticResource ChannelFader.Slider}"
+                        ToolTip="Grand Master 0–100 %"
+                        Value="{Binding GrandMasterPercent}" />
+                </DockPanel>
+            </Border>
+
+            <!-- ═════════════ Desk: the universe's lights side by side (virtualized horizontally) ═════════════ -->
+            <Border Grid.Column="1" Style="{StaticResource PanelBorder}">
+                <Grid>
+                    <ListBox
+                        x:Name="FixtureList"
+                        AlternationCount="2"
+                        AutomationProperties.Name="Lights of the universe and their channels"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        ItemTemplate="{StaticResource DeskFixtureTemplate}"
+                        ItemsSource="{Binding FilteredFixtures}"
+                        KeyboardNavigation.TabNavigation="Continue"
+                        PreviewMouseWheel="OnDeskMouseWheel"
+                        ScrollViewer.CanContentScroll="True"
+                        ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                        ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                        SelectedItem="{Binding SelectedFixture}"
+                        SelectionMode="Single"
+                        VirtualizingPanel.IsVirtualizing="True"
+                        VirtualizingPanel.ScrollUnit="Pixel"
+                        VirtualizingPanel.VirtualizationMode="Recycling">
+                        <ListBox.InputBindings>
+                            <KeyBinding
+                                Command="{Binding CopyLightCommand}"
+                                Key="C"
+                                Modifiers="Control" />
+                            <KeyBinding
+                                Command="{Binding PasteLightCommand}"
+                                Key="V"
+                                Modifiers="Control" />
+                            <KeyBinding
+                                Command="{Binding PasteToAllCommand}"
+                                Key="V"
+                                Modifiers="Control+Shift" />
+                        </ListBox.InputBindings>
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VirtualizingStackPanel Orientation="Horizontal" />
+                            </ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
+                        <ListBox.ItemContainerStyle>
+                            <!-- Plain group band: alternating fills tell lights apart, the selected light gets an accent frame. -->
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="Margin" Value="0,0,2,0" />
+                                <Setter Property="Padding" Value="0,2,0,0" />
+                                <Setter Property="VerticalContentAlignment" Value="Stretch" />
+                                <Setter Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}" />
+                                <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+                                <Setter Property="FocusVisualStyle" Value="{DynamicResource DefaultControlFocusVisualStyle}" />
+                                <Setter Property="AutomationProperties.Name" Value="{Binding AutomationName}" />
+                                <Setter Property="Tag" Value="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ListBox}}" />
+                                <!-- Right-click a light: copy it, paste onto it, or paste onto every light. -->
+                                <Setter Property="ContextMenu">
+                                    <Setter.Value>
+                                        <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
+                                            <MenuItem
+                                                Command="{Binding CopyLightCommand}"
+                                                CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                Header="Copy values"
+                                                InputGestureText="Ctrl+C" />
+                                            <MenuItem
+                                                Command="{Binding PasteLightCommand}"
+                                                CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                Header="Paste values"
+                                                InputGestureText="Ctrl+V" />
+                                            <MenuItem
+                                                Command="{Binding PasteToAllCommand}"
+                                                Header="Paste to all lights"
+                                                InputGestureText="Ctrl+Shift+V" />
+                                        </ContextMenu>
+                                    </Setter.Value>
+                                </Setter>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ListBoxItem">
+                                            <Border
+                                                x:Name="Band"
+                                                Padding="{TemplateBinding Padding}"
+                                                Background="{TemplateBinding Background}"
+                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="3">
+                                                <ContentPresenter VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsSelected" Value="True">
+                                                    <Setter TargetName="Band" Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                                <Style.Triggers>
+                                    <Trigger Property="ItemsControl.AlternationIndex" Value="1">
+                                        <Setter Property="Background" Value="{DynamicResource SystemFillColorSuccessBackgroundBrush}" />
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                    </ListBox>
+
+                    <!-- Nothing patched -->
+                    <StackPanel Style="{StaticResource EmptyStatePanel}" Visibility="{Binding HasNoFixtures, Converter={StaticResource BoolToVisibility}}">
+                        <c:DmxIcon
+                            Kind="Test"
+                            Size="{StaticResource Dmx.EmptyStateIconSize}"
+                            Style="{StaticResource EmptyStateIcon}" />
+                        <TextBlock Style="{StaticResource EmptyStateTitle}" Text="No lights patched yet" />
+                        <TextBlock Style="{StaticResource EmptyStateText}" Text="Add lights on the Fixtures page (Ctrl+1), then test every channel here." />
+                    </StackPanel>
+
+                    <!-- Universe empty or search hides everything -->
+                    <StackPanel Style="{StaticResource EmptyStatePanel}" Visibility="{Binding HasNoMatches, Converter={StaticResource BoolToVisibility}}">
+                        <c:DmxIcon
+                            Kind="Search"
+                            Size="{StaticResource Dmx.EmptyStateIconSize}"
+                            Style="{StaticResource EmptyStateIcon}" />
+                        <TextBlock Style="{StaticResource EmptyStateTitle}" Text="{Binding NoMatchesTitle}" />
+                        <TextBlock Style="{StaticResource EmptyStateText}" Text="{Binding NoMatchesText}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <GridSplitter
+                Grid.Column="2"
+                Style="{StaticResource VerticalSplitter}"
+                Visibility="{Binding IsMonitorVisible, Converter={StaticResource BoolToVisibility}}" />
+
+            <!-- ═════════════ DMX monitor (same universe as the desk) ═════════════ -->
+            <Border
+                Grid.Column="3"
+                Style="{StaticResource PanelBorder}"
+                Visibility="{Binding IsMonitorVisible, Converter={StaticResource BoolToVisibility}}">
+                <DockPanel>
+                    <Border DockPanel.Dock="Top" Style="{StaticResource PanelHeader}">
+                        <DockPanel>
+                            <c:DmxIcon
+                                Margin="0,0,4,0"
+                                VerticalAlignment="Center"
+                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                Kind="Monitor"
+                                Size="{StaticResource Dmx.SmallIconSize}" />
+                            <TextBlock Style="{StaticResource PanelTitle}" Text="{Binding SelectedUniverse, StringFormat='DMX monitor — Universe {0}'}" />
+                        </DockPanel>
+                    </Border>
+
+                    <!-- Legend: state is also in each cell's tooltip, so it is never colour-only. -->
+                    <WrapPanel Margin="6,3,6,2" DockPanel.Dock="Top">
+                        <StackPanel Margin="0,0,0,2" Orientation="Horizontal">
+                            <Border
+                                Background="{DynamicResource ControlFillColorDefaultBrush}"
+                                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                Style="{StaticResource MonitorLegendSwatch}" />
+                            <TextBlock Style="{StaticResource MonitorLegendText}" Text="Patched" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,0,2" Orientation="Horizontal">
+                            <Border BorderBrush="{DynamicResource TextFillColorPrimaryBrush}" Style="{StaticResource MonitorLegendSwatch}" />
+                            <TextBlock Style="{StaticResource MonitorLegendText}" Text="Selected light" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,0,2" Orientation="Horizontal">
+                            <Border
+                                Background="{DynamicResource AccentFillColorDefaultBrush}"
+                                BorderBrush="{DynamicResource AccentFillColorDefaultBrush}"
+                                Style="{StaticResource MonitorLegendSwatch}" />
+                            <TextBlock Style="{StaticResource MonitorLegendText}" Text="Under test" />
+                        </StackPanel>
+                    </WrapPanel>
+
+                    <!-- 512 cells, fixed size, wrapping to the panel width (drag the splitter for more columns). -->
+                    <ScrollViewer
+                        Margin="4,0,2,4"
+                        Focusable="False"
+                        HorizontalScrollBarVisibility="Disabled"
+                        VerticalScrollBarVisibility="Auto">
+                        <ItemsControl
+                            AutomationProperties.Name="DMX monitor, 512 channel values"
+                            Focusable="False"
+                            IsTabStop="False"
+                            ItemTemplate="{StaticResource MonitorCellTemplate}"
+                            ItemsSource="{Binding MonitorCells}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel
+                                        ItemHeight="{StaticResource Dmx.MonitorCellHeight}"
+                                        ItemWidth="{StaticResource Dmx.MonitorCellWidth}"
+                                        Orientation="Horizontal" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+        </Grid>
+    </DockPanel>
+</UserControl>

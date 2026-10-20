@@ -77,6 +77,10 @@ public static class QxfImporter
                 Default = ParseByte((string?)element.Attribute("Default")),
                 Capabilities = Children(element, "Capability").Select(ToCapability).ToList(),
             };
+            if (channel.Type == ChannelType.Strobe)
+            {
+                MarkSafeStrobeRanges(channel);
+            }
             if (channel.Type == ChannelType.Generic && DescribeUnsupported(element, preset) is { } note)
             {
                 channel.Description = note;
@@ -212,7 +216,23 @@ public static class QxfImporter
         Min = ParseInt((string?)element.Attribute("Min")),
         Max = ParseInt((string?)element.Attribute("Max"), 255),
         Label = element.Value.Trim(),
+        Preset = (string?)element.Attribute("Preset") is { Length: > 0 } preset ? preset : null,
     };
+
+    /// <summary>
+    /// QLC+ has no "safe" flag: mark the ranges the shared classifier recognises as steady (shutter open, no function,
+    /// no strobe…) so the engine's strobe safety rests the channel there instead of at a strobing value.
+    /// </summary>
+    private static void MarkSafeStrobeRanges(ChannelDefinition channel)
+    {
+        foreach (var capability in channel.Capabilities)
+        {
+            if (StrobeCapabilityClassifier.Classify(capability) == StrobeRangeKind.Steady)
+            {
+                capability.Safe = true;
+            }
+        }
+    }
 
     private static string UniqueKey(string baseKey, List<ChannelDefinition> existing)
     {

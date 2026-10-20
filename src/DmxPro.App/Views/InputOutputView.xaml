@@ -1,0 +1,754 @@
+<UserControl
+    x:Class="DmxPro.App.Views.InputOutputView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:c="clr-namespace:DmxPro.App.Controls"
+    xmlns:conv="clr-namespace:DmxPro.App.Converters"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:output="clr-namespace:DmxPro.Output;assembly=DmxPro.Output"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    xmlns:validation="clr-namespace:DmxPro.Core.Validation;assembly=DmxPro.Core"
+    xmlns:vm="clr-namespace:DmxPro.App.ViewModels"
+    d:DataContext="{d:DesignInstance Type=vm:InputOutputViewModel}"
+    d:DesignHeight="800"
+    d:DesignWidth="1280"
+    mc:Ignorable="d">
+    <UserControl.InputBindings>
+        <KeyBinding Command="{Binding EnableOutputCommand}" Gesture="Ctrl+E" />
+        <KeyBinding Command="{Binding DisableOutputCommand}" Gesture="Ctrl+Shift+E" />
+        <KeyBinding Command="{Binding RefreshDevicesCommand}" Gesture="F5" />
+    </UserControl.InputBindings>
+
+    <UserControl.Resources>
+        <conv:EqualsToVisibilityConverter x:Key="EqualsToVisibility" />
+
+        <!-- Output state pill: Tag follows the state; "Connecting" uses the Connected (blue) look. Text is always shown too. -->
+        <Style
+            x:Key="OutputStatePill"
+            BasedOn="{StaticResource StatusPill}"
+            TargetType="Border">
+            <Setter Property="Tag" Value="{Binding State}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding State}" Value="{x:Static output:OutputState.Connecting}">
+                    <Setter Property="Tag" Value="Connected" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Problem line: coloured bar on the left + message (icon and text, not colour only). -->
+        <DataTemplate x:Key="IssueTemplate" DataType="{x:Type validation:ValidationIssue}">
+            <Border
+                x:Name="IssueBox"
+                Margin="0,0,0,2"
+                Padding="6,2"
+                Background="{DynamicResource ControlFillColorDefaultBrush}"
+                BorderBrush="{DynamicResource SystemFillColorCautionBrush}"
+                BorderThickness="3,0,0,0">
+                <DockPanel>
+                    <c:DmxIcon
+                        x:Name="IssueIcon"
+                        Margin="0,1,4,0"
+                        VerticalAlignment="Top"
+                        Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                        Kind="Warning"
+                        Size="{StaticResource Dmx.DenseIconSize}" />
+                    <TextBlock Text="{Binding Message}" TextWrapping="Wrap" />
+                </DockPanel>
+            </Border>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding Severity}" Value="{x:Static validation:ValidationSeverity.Error}">
+                    <Setter TargetName="IssueBox" Property="BorderBrush" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+                    <Setter TargetName="IssueIcon" Property="Kind" Value="Error" />
+                    <Setter TargetName="IssueIcon" Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <DockPanel>
+        <!-- ═════════════ Page toolbar ═════════════ -->
+        <Border DockPanel.Dock="Top" Style="{StaticResource PageToolbar}">
+            <DockPanel LastChildFill="False">
+                <StackPanel
+                    VerticalAlignment="Center"
+                    DockPanel.Dock="Left"
+                    Orientation="Horizontal">
+                    <!-- Enable / Disable: one place, two clearly different buttons. Disable is NOT blackout. -->
+                    <Button
+                        MinWidth="128"
+                        AutomationProperties.Name="Enable DMX output"
+                        Command="{Binding EnableOutputCommand}"
+                        Style="{StaticResource ToolbarPrimaryButton}"
+                        ToolTip="{Binding EnableButtonToolTip}"
+                        Visibility="{Binding IsEnabled, Converter={StaticResource EqualsToVisibility}, ConverterParameter=False}">
+                        <StackPanel Orientation="Horizontal">
+                            <c:DmxIcon Kind="OutputOn" Size="{StaticResource Dmx.ButtonIconSize}" />
+                            <TextBlock Style="{StaticResource ButtonLabel}" Text="Enable output" />
+                        </StackPanel>
+                    </Button>
+                    <Button
+                        MinWidth="128"
+                        AutomationProperties.Name="Disable DMX output"
+                        BorderBrush="{DynamicResource ControlStrongStrokeColorDefaultBrush}"
+                        BorderThickness="1"
+                        Command="{Binding DisableOutputCommand}"
+                        Style="{StaticResource ToolbarLabelButton}"
+                        ToolTip="{Binding EnableButtonToolTip}"
+                        Visibility="{Binding IsEnabled, Converter={StaticResource BoolToVisibility}}">
+                        <StackPanel Orientation="Horizontal">
+                            <c:DmxIcon Kind="OutputOff" Size="{StaticResource Dmx.ButtonIconSize}" />
+                            <TextBlock Style="{StaticResource ButtonLabel}" Text="Disable output" />
+                        </StackPanel>
+                    </Button>
+
+                    <Border
+                        Margin="8,0,0,0"
+                        AutomationProperties.Name="{Binding StatusText}"
+                        Style="{StaticResource OutputStatePill}"
+                        ToolTip="{Binding StatusMessage}">
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse
+                                Width="8"
+                                Height="8"
+                                Margin="0,0,6,0"
+                                VerticalAlignment="Center"
+                                Fill="{Binding Path=(TextElement.Foreground), RelativeSource={RelativeSource Self}}" />
+                            <TextBlock VerticalAlignment="Center" Text="{Binding StatusText}" />
+                        </StackPanel>
+                    </Border>
+                    <ui:ProgressRing
+                        Width="{StaticResource Dmx.SmallIconSize}"
+                        Height="{StaticResource Dmx.SmallIconSize}"
+                        Margin="8,0,0,0"
+                        AutomationProperties.Name="Working"
+                        IsIndeterminate="True"
+                        Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}" />
+
+                    <Rectangle Style="{StaticResource ToolbarSeparator}" />
+
+                    <Button
+                        AutomationProperties.Name="Check configuration"
+                        Command="{Binding CheckConfigurationCommand}"
+                        Style="{StaticResource ToolbarButton}"
+                        ToolTip="Check the output configuration without enabling output">
+                        <c:DmxIcon Kind="Check" Size="{StaticResource Dmx.ToolbarIconSize}" />
+                    </Button>
+
+                    <Rectangle Style="{StaticResource ToolbarSeparator}" />
+
+                    <Button
+                        AutomationProperties.Name="Add universe"
+                        Command="{Binding AddUniverseCommand}"
+                        Style="{StaticResource ToolbarButton}"
+                        ToolTip="Add the next universe, to configure its output before patching fixtures">
+                        <c:DmxIcon Kind="Add" Size="{StaticResource Dmx.ToolbarIconSize}" />
+                    </Button>
+                    <Button
+                        AutomationProperties.Name="Remove universe"
+                        Command="{Binding RemoveUniverseCommand}"
+                        Style="{StaticResource ToolbarButton}"
+                        ToolTip="Remove the selected universe (only universes without fixtures)">
+                        <c:DmxIcon Kind="Remove" Size="{StaticResource Dmx.ToolbarIconSize}" />
+                    </Button>
+                    <Button
+                        AutomationProperties.Name="Clear output of the selected universe"
+                        Command="{Binding ClearOutputCommand}"
+                        Style="{StaticResource ToolbarButton}"
+                        ToolTip="Stop sending the selected universe (output type None). Its settings are kept if you pick the type again.">
+                        <c:DmxIcon Kind="Close" Size="{StaticResource Dmx.ToolbarIconSize}" />
+                    </Button>
+                </StackPanel>
+
+                <StackPanel
+                    VerticalAlignment="Center"
+                    DockPanel.Dock="Right"
+                    Orientation="Horizontal">
+                    <TextBlock
+                        Margin="0,0,8,0"
+                        Style="{StaticResource StatusText}"
+                        Text="{Binding DiscoveryText}" />
+                    <ui:ProgressRing
+                        Width="{StaticResource Dmx.SmallIconSize}"
+                        Height="{StaticResource Dmx.SmallIconSize}"
+                        Margin="0,0,8,0"
+                        AutomationProperties.Name="Looking for devices"
+                        IsIndeterminate="True"
+                        Visibility="{Binding IsDiscovering, Converter={StaticResource BoolToVisibility}}" />
+                    <Button
+                        AutomationProperties.Name="Refresh devices"
+                        Command="{Binding RefreshDevicesCommand}"
+                        Style="{StaticResource ToolbarLabelButton}"
+                        ToolTip="List network adapters, COM ports and FTDI devices again (F5). Listing never opens a port.">
+                        <StackPanel Orientation="Horizontal">
+                            <c:DmxIcon Kind="Refresh" Size="{StaticResource Dmx.ButtonIconSize}" />
+                            <TextBlock Style="{StaticResource ButtonLabel}" Text="Refresh devices" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- Settings edited while output is running apply only when the user restarts output. -->
+        <Border
+            Margin="4,4,4,0"
+            Padding="6,2"
+            Background="{DynamicResource ControlFillColorDefaultBrush}"
+            BorderBrush="{DynamicResource SystemFillColorCautionBrush}"
+            BorderThickness="3,0,0,0"
+            DockPanel.Dock="Top"
+            Visibility="{Binding HasPendingChanges, Converter={StaticResource BoolToVisibility}}">
+            <DockPanel>
+                <Button
+                    AutomationProperties.Name="Apply output changes now"
+                    Command="{Binding ApplyChangesCommand}"
+                    Content="Apply now"
+                    DockPanel.Dock="Right"
+                    Style="{StaticResource ToolbarLabelButton}"
+                    ToolTip="Restart output with the new settings (output stops briefly)" />
+                <c:DmxIcon
+                    Margin="0,0,4,0"
+                    VerticalAlignment="Center"
+                    Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                    Kind="Warning"
+                    Size="{StaticResource Dmx.SmallIconSize}" />
+                <TextBlock
+                    VerticalAlignment="Center"
+                    Text="Output settings changed while running: they apply after Apply now or re-enabling output."
+                    TextWrapping="Wrap" />
+            </DockPanel>
+        </Border>
+
+        <!-- ═════════════ Body: (universes / problems) | output settings ═════════════ -->
+        <Grid Margin="{StaticResource Dmx.PageBodyMargin}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" MinWidth="420" />
+                <ColumnDefinition Width="4" />
+                <ColumnDefinition Width="340" MinWidth="280" />
+            </Grid.ColumnDefinitions>
+
+            <Grid Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" MinHeight="140" />
+                    <RowDefinition Height="4" />
+                    <RowDefinition Height="140" MinHeight="72" />
+                </Grid.RowDefinitions>
+
+                <!-- Universes table (no title bar: the column headers say what it is) -->
+                <Border Grid.Row="0" Style="{StaticResource PanelBorder}">
+                    <Grid>
+                        <DataGrid
+                            AutomationProperties.Name="Universes and their outputs"
+                            IsReadOnly="True"
+                            ItemsSource="{Binding Rows}"
+                            SelectedItem="{Binding SelectedRow}"
+                            SelectionMode="Single"
+                            Style="{StaticResource DataTable}">
+                            <DataGrid.RowStyle>
+                                <Style BasedOn="{StaticResource DataTableRow}" TargetType="DataGridRow">
+                                    <Setter Property="AutomationProperties.Name" Value="{Binding UniverseLabel}" />
+                                </Style>
+                            </DataGrid.RowStyle>
+                            <DataGrid.Columns>
+                                <DataGridTemplateColumn Width="28" Header="">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate DataType="{x:Type vm:OutputUniverseRowViewModel}">
+                                            <c:DmxIcon
+                                                x:Name="RowIcon"
+                                                Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                                                Kind="Warning"
+                                                Size="{StaticResource Dmx.DenseIconSize}"
+                                                ToolTip="{Binding IssueText}"
+                                                Visibility="{Binding IssueText, Converter={StaticResource NullToVisibility}}" />
+                                            <DataTemplate.Triggers>
+                                                <DataTrigger Binding="{Binding IssueIsError}" Value="True">
+                                                    <Setter TargetName="RowIcon" Property="Kind" Value="Error" />
+                                                    <Setter TargetName="RowIcon" Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+                                                </DataTrigger>
+                                            </DataTemplate.Triggers>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn
+                                    Width="84"
+                                    Binding="{Binding UniverseLabel}"
+                                    Header="Universe" />
+                                <DataGridTextColumn
+                                    Width="1.6*"
+                                    MinWidth="110"
+                                    Binding="{Binding OutputTypeName}"
+                                    Header="Output" />
+                                <DataGridTextColumn
+                                    Width="2*"
+                                    MinWidth="120"
+                                    Binding="{Binding Summary}"
+                                    Header="Settings" />
+                                <DataGridTemplateColumn
+                                    Width="1.6*"
+                                    MinWidth="110"
+                                    Header="Status">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate DataType="{x:Type vm:OutputUniverseRowViewModel}">
+                                            <Border
+                                                HorizontalAlignment="Left"
+                                                Style="{StaticResource OutputStatePill}"
+                                                ToolTip="{Binding StatusText}"
+                                                Visibility="{Binding IsConfigured, Converter={StaticResource BoolToVisibility}}">
+                                                <TextBlock Text="{Binding StatusText}" TextTrimming="CharacterEllipsis" />
+                                            </Border>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn
+                                    Width="96"
+                                    Binding="{Binding UsageText}"
+                                    Header="Fixtures" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <StackPanel Style="{StaticResource EmptyStatePanel}" Visibility="{Binding Rows.Count, Converter={StaticResource EqualsToVisibility}, ConverterParameter=0}">
+                            <c:DmxIcon
+                                Kind="Universe"
+                                Size="{StaticResource Dmx.EmptyStateIconSize}"
+                                Style="{StaticResource EmptyStateIcon}" />
+                            <TextBlock Style="{StaticResource EmptyStateTitle}" Text="No universes yet" />
+                            <TextBlock Style="{StaticResource EmptyStateText}" Text="Patch fixtures, or add a universe to set up its output first." />
+                            <Button
+                                HorizontalAlignment="Center"
+                                AutomationProperties.Name="Add universe"
+                                Command="{Binding AddUniverseCommand}"
+                                Style="{StaticResource ToolbarPrimaryButton}">
+                                <StackPanel Orientation="Horizontal">
+                                    <c:DmxIcon Kind="Add" Size="{StaticResource Dmx.ButtonIconSize}" />
+                                    <TextBlock Style="{StaticResource ButtonLabel}" Text="Add universe" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <GridSplitter Grid.Row="1" Style="{StaticResource HorizontalSplitter}" />
+
+                <!-- Problems: validation results and live output errors (safety rules 2 and 10). -->
+                <Border Grid.Row="2" Style="{StaticResource PanelBorder}">
+                    <DockPanel>
+                        <Border DockPanel.Dock="Top" Style="{StaticResource PanelHeader}">
+                            <DockPanel>
+                                <c:DmxIcon
+                                    Margin="0,0,4,0"
+                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                    Kind="Info"
+                                    Size="{StaticResource Dmx.SmallIconSize}" />
+                                <TextBlock Style="{StaticResource PanelTitle}" Text="Problems" />
+                            </DockPanel>
+                        </Border>
+                        <ScrollViewer Padding="6,4" VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <!-- Live hardware / network error while output is enabled (safety rule 10) -->
+                                <Border
+                                    Margin="0,0,0,2"
+                                    Padding="6,2"
+                                    Background="{DynamicResource ControlFillColorDefaultBrush}"
+                                    BorderBrush="{DynamicResource SystemFillColorCriticalBrush}"
+                                    BorderThickness="3,0,0,0"
+                                    Visibility="{Binding StatusMessage, Converter={StaticResource NullToVisibility}}">
+                                    <DockPanel>
+                                        <c:DmxIcon
+                                            Margin="0,1,4,0"
+                                            VerticalAlignment="Top"
+                                            Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                                            Kind="Error"
+                                            Size="{StaticResource Dmx.DenseIconSize}" />
+                                        <TextBlock TextWrapping="Wrap">
+                                            <Run FontWeight="SemiBold" Text="Output error: " />
+                                            <Run Text="{Binding StatusMessage, Mode=OneWay}" />
+                                        </TextBlock>
+                                    </DockPanel>
+                                </Border>
+
+                                <TextBlock
+                                    Margin="0,0,0,2"
+                                    FontWeight="SemiBold"
+                                    Text="{Binding IssuesTitle}"
+                                    TextWrapping="Wrap"
+                                    Visibility="{Binding IssuesTitle, Converter={StaticResource NullToVisibility}}" />
+                                <ItemsControl
+                                    Focusable="False"
+                                    ItemTemplate="{StaticResource IssueTemplate}"
+                                    ItemsSource="{Binding Issues}" />
+
+                                <TextBlock
+                                    Style="{StaticResource HintText}"
+                                    Text="No problems shown. Enable output (Ctrl+E) or Check lists anything that blocks output here."
+                                    Visibility="{Binding IssuesTitle, Converter={StaticResource NullToVisibility}, ConverterParameter=Invert}" />
+                            </StackPanel>
+                        </ScrollViewer>
+                    </DockPanel>
+                </Border>
+            </Grid>
+
+            <GridSplitter Grid.Column="1" Style="{StaticResource VerticalSplitter}" />
+
+            <!-- ═════════════ Output settings of the selected universe ═════════════ -->
+            <!-- No title bar: the selected table row shows which universe is edited; the Output combo names the type. -->
+            <Border Grid.Column="2" Style="{StaticResource PanelBorder}">
+                <Grid>
+                    <StackPanel
+                        Margin="8"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Orientation="Horizontal"
+                        Visibility="{Binding SelectedRow, Converter={StaticResource NullToVisibility}, ConverterParameter=Invert}">
+                        <c:DmxIcon
+                            Margin="0,0,4,0"
+                            VerticalAlignment="Center"
+                            Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                            Kind="InputOutput"
+                            Size="{StaticResource Dmx.SmallIconSize}" />
+                        <TextBlock
+                            VerticalAlignment="Center"
+                            Style="{StaticResource HintText}"
+                            Text="Select a universe to choose its output." />
+                    </StackPanel>
+
+                    <ScrollViewer
+                        DataContext="{Binding SelectedRow}"
+                        VerticalScrollBarVisibility="Auto"
+                        Visibility="{Binding Converter={StaticResource NullToVisibility}}">
+                        <!-- All label columns share one width (the longest visible label), instead of a wide fixed column. -->
+                        <StackPanel Margin="6,4" Grid.IsSharedSizeScope="True">
+                            <!-- Problems of this universe from the last check -->
+                            <Border
+                                x:Name="RowIssueBox"
+                                Margin="0,0,0,4"
+                                Padding="6,2"
+                                Background="{DynamicResource ControlFillColorDefaultBrush}"
+                                BorderThickness="3,0,0,0"
+                                Visibility="{Binding IssueText, Converter={StaticResource NullToVisibility}}">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorCautionBrush}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IssueIsError}" Value="True">
+                                                <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <TextBlock Text="{Binding IssueText}" TextWrapping="Wrap" />
+                            </Border>
+
+                            <!-- Common: output type and status -->
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="IoLabel" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Style="{StaticResource FormLabel}" Text="Output" />
+                                <ComboBox
+                                    Grid.Column="1"
+                                    AutomationProperties.Name="Output type"
+                                    DisplayMemberPath="Name"
+                                    ItemsSource="{Binding DataContext.OutputTypes, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    SelectedValue="{Binding OutputType}"
+                                    SelectedValuePath="Type"
+                                    Style="{StaticResource FormComboBox}"
+                                    ToolTip="{Binding TypeDescription}" />
+
+                                <TextBlock
+                                    Grid.Row="1"
+                                    Style="{StaticResource FormLabel}"
+                                    Text="Status"
+                                    Visibility="{Binding IsConfigured, Converter={StaticResource BoolToVisibility}}" />
+                                <Border
+                                    Grid.Row="1"
+                                    Grid.Column="1"
+                                    Margin="0,0,0,4"
+                                    HorizontalAlignment="Left"
+                                    Style="{StaticResource OutputStatePill}"
+                                    Visibility="{Binding IsConfigured, Converter={StaticResource BoolToVisibility}}">
+                                    <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" />
+                                </Border>
+                            </Grid>
+
+                            <!-- One-line description of the chosen type (full text also in the combo's tooltip). -->
+                            <TextBlock
+                                Margin="0,0,0,4"
+                                Style="{StaticResource HintText}"
+                                Text="{Binding TypeDescription}" />
+
+                            <!-- None -->
+                            <TextBlock
+                                Style="{StaticResource HintText}"
+                                Text="Pick Art-Net / sACN (network) or Enttec / Open DMX (USB)."
+                                Visibility="{Binding OutputType, Converter={StaticResource EqualsToVisibility}, ConverterParameter=None}" />
+
+                            <!-- ── Art-Net ── -->
+                            <Grid Visibility="{Binding OutputType, Converter={StaticResource EqualsToVisibility}, ConverterParameter=ArtNet}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="IoLabel" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Style="{StaticResource FormLabel}" Text="Send to" />
+                                <DockPanel Grid.Column="1">
+                                    <Button
+                                        Margin="4,0,0,4"
+                                        AutomationProperties.Name="Use broadcast address"
+                                        Command="{Binding DataContext.UseBroadcastCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        Content="Broadcast"
+                                        DockPanel.Dock="Right"
+                                        Style="{StaticResource ToolbarLabelButton}"
+                                        ToolTip="Send to every node on the chosen adapter's network (or 255.255.255.255)" />
+                                    <ui:TextBox
+                                        AutomationProperties.Name="Art-Net destination IP address"
+                                        PlaceholderText="Node IP, e.g. 192.168.1.50"
+                                        Style="{StaticResource FormTextBox}"
+                                        Text="{Binding ArtNetDestination, UpdateSourceTrigger=LostFocus}"
+                                        ToolTip="IP address of the Art-Net node, or a broadcast address" />
+                                </DockPanel>
+
+                                <TextBlock
+                                    Grid.Row="1"
+                                    Style="{StaticResource FormLabel}"
+                                    Text="Art-Net univ."
+                                    ToolTip="Art-Net universe (Port-Address)" />
+                                <!-- Number box and its Net / Sub-Net / Universe breakdown on one line. -->
+                                <DockPanel Grid.Row="1" Grid.Column="1">
+                                    <ui:NumberBox
+                                        Width="100"
+                                        AutomationProperties.Name="Art-Net universe (Port-Address)"
+                                        Maximum="32767"
+                                        Minimum="0"
+                                        Style="{StaticResource FormNumberBox}"
+                                        ToolTip="Art-Net numbering starts at 0: the node's universe (Port-Address 0–32767)"
+                                        Value="{Binding ArtNetPortAddress, UpdateSourceTrigger=LostFocus}" />
+                                    <TextBlock
+                                        Margin="6,0,0,4"
+                                        VerticalAlignment="Center"
+                                        Style="{StaticResource HintText}"
+                                        Text="{Binding ArtNetAddressText}"
+                                        TextTrimming="CharacterEllipsis"
+                                        TextWrapping="NoWrap"
+                                        ToolTip="{Binding ArtNetAddressText}" />
+                                </DockPanel>
+                            </Grid>
+
+                            <!-- ── sACN ── -->
+                            <Grid Visibility="{Binding OutputType, Converter={StaticResource EqualsToVisibility}, ConverterParameter=Sacn}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="IoLabel" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Style="{StaticResource FormLabel}" Text="sACN univ." ToolTip="sACN (E1.31) universe" />
+                                <ui:NumberBox
+                                    Grid.Column="1"
+                                    Width="100"
+                                    HorizontalAlignment="Left"
+                                    AutomationProperties.Name="sACN universe"
+                                    Maximum="63999"
+                                    Minimum="1"
+                                    Style="{StaticResource FormNumberBox}"
+                                    ToolTip="sACN universe the receiver listens to (1–63999)"
+                                    Value="{Binding SacnUniverse, UpdateSourceTrigger=LostFocus}" />
+
+                                <TextBlock
+                                    Grid.Row="1"
+                                    Style="{StaticResource FormLabel}"
+                                    Text="Delivery" />
+                                <StackPanel
+                                    Grid.Row="1"
+                                    Grid.Column="1"
+                                    Margin="0,0,0,4"
+                                    Orientation="Horizontal">
+                                    <RadioButton
+                                        Margin="0,0,12,0"
+                                        AutomationProperties.Name="Multicast"
+                                        Content="Multicast"
+                                        IsChecked="{Binding SacnMulticast}"
+                                        ToolTip="Every receiver on the network can pick the universe up (recommended)" />
+                                    <RadioButton
+                                        AutomationProperties.Name="Unicast"
+                                        Content="Unicast"
+                                        IsChecked="{Binding SacnUnicast}"
+                                        ToolTip="Send to one receiver's IP address" />
+                                </StackPanel>
+
+                                <TextBlock
+                                    Grid.Row="2"
+                                    Style="{StaticResource FormLabel}"
+                                    Text="Receiver IP"
+                                    Visibility="{Binding SacnUnicast, Converter={StaticResource BoolToVisibility}}" />
+                                <ui:TextBox
+                                    Grid.Row="2"
+                                    Grid.Column="1"
+                                    AutomationProperties.Name="sACN receiver IP address"
+                                    PlaceholderText="e.g. 192.168.1.60"
+                                    Style="{StaticResource FormTextBox}"
+                                    Text="{Binding SacnUnicastAddress, UpdateSourceTrigger=LostFocus}"
+                                    Visibility="{Binding SacnUnicast, Converter={StaticResource BoolToVisibility}}" />
+
+                                <TextBlock
+                                    Grid.Row="3"
+                                    Style="{StaticResource FormLabel}"
+                                    Text="Priority" />
+                                <ui:NumberBox
+                                    Grid.Row="3"
+                                    Grid.Column="1"
+                                    Width="100"
+                                    HorizontalAlignment="Left"
+                                    AutomationProperties.Name="sACN priority"
+                                    Maximum="200"
+                                    Minimum="0"
+                                    Style="{StaticResource FormNumberBox}"
+                                    ToolTip="0–200, default 100. Receivers follow the source with the highest priority."
+                                    Value="{Binding SacnPriority, UpdateSourceTrigger=LostFocus}" />
+
+                                <TextBlock
+                                    Grid.Row="4"
+                                    Style="{StaticResource FormLabel}"
+                                    Text="Source name" />
+                                <ui:TextBox
+                                    Grid.Row="4"
+                                    Grid.Column="1"
+                                    AutomationProperties.Name="sACN source name"
+                                    Style="{StaticResource FormTextBox}"
+                                    Text="{Binding SacnSourceName, UpdateSourceTrigger=LostFocus}"
+                                    ToolTip="Name receivers show for this source" />
+                            </Grid>
+
+                            <!-- ── Network adapter (Art-Net and sACN) ── -->
+                            <Grid Visibility="{Binding OutputType, Converter={StaticResource EqualsToVisibility}, ConverterParameter=ArtNet|Sacn}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="IoLabel" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource FormLabel}" Text="Adapter" />
+                                <ComboBox
+                                    Grid.Column="1"
+                                    AutomationProperties.Name="Network adapter"
+                                    DisplayMemberPath="Label"
+                                    ItemsSource="{Binding DataContext.Adapters, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    SelectedValue="{Binding BindAddress}"
+                                    SelectedValuePath="Address"
+                                    Style="{StaticResource FormComboBox}"
+                                    ToolTip="The network card connected to your lighting network" />
+                            </Grid>
+
+                            <!-- ── Enttec DMX USB Pro ── -->
+                            <StackPanel Visibility="{Binding OutputType, Converter={StaticResource EqualsToVisibility}, ConverterParameter=EnttecPro}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="IoLabel" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource FormLabel}" Text="COM port" />
+                                    <DockPanel Grid.Column="1">
+                                        <Button
+                                            Margin="4,0,0,4"
+                                            AutomationProperties.Name="Refresh COM ports"
+                                            Command="{Binding DataContext.RefreshDevicesCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            DockPanel.Dock="Right"
+                                            Style="{StaticResource PanelHeaderButton}"
+                                            ToolTip="List COM ports again (F5). Ports are not opened.">
+                                            <c:DmxIcon Kind="Refresh" Size="{StaticResource Dmx.SmallIconSize}" />
+                                        </Button>
+                                        <ComboBox
+                                            AutomationProperties.Name="COM port"
+                                            IsEditable="True"
+                                            ItemsSource="{Binding DataContext.SerialPorts, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            Style="{StaticResource FormComboBox}"
+                                            Text="{Binding SerialPort, UpdateSourceTrigger=LostFocus}"
+                                            ToolTip="The interface's COM port (see Device Manager ▸ Ports). You can also type it, e.g. COM4." />
+                                    </DockPanel>
+                                </Grid>
+                                <TextBlock Style="{StaticResource HintText}" Text="One universe per interface; the port opens only when output is enabled." />
+                            </StackPanel>
+
+                            <!-- ── Open DMX (FTDI) ── -->
+                            <StackPanel Visibility="{Binding OutputType, Converter={StaticResource EqualsToVisibility}, ConverterParameter=OpenDmx}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="IoLabel" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource FormLabel}" Text="Device" />
+                                    <DockPanel Grid.Column="1">
+                                        <Button
+                                            Margin="4,0,0,4"
+                                            AutomationProperties.Name="Refresh FTDI devices"
+                                            Command="{Binding DataContext.RefreshDevicesCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            DockPanel.Dock="Right"
+                                            Style="{StaticResource PanelHeaderButton}"
+                                            ToolTip="List FTDI devices again (F5). Devices are not opened.">
+                                            <c:DmxIcon Kind="Refresh" Size="{StaticResource Dmx.SmallIconSize}" />
+                                        </Button>
+                                        <ComboBox
+                                            AutomationProperties.Name="FTDI device"
+                                            DisplayMemberPath="Label"
+                                            ItemsSource="{Binding DataContext.FtdiDevices, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            SelectedValue="{Binding FtdiSerialNumber}"
+                                            SelectedValuePath="SerialNumber"
+                                            Style="{StaticResource FormComboBox}"
+                                            ToolTip="Leave empty to use the first FTDI device" />
+                                    </DockPanel>
+                                </Grid>
+                                <!-- Device problem stays visible (safety rule 10). -->
+                                <DockPanel Margin="0,0,0,4" Visibility="{Binding DataContext.FtdiMessage, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource NullToVisibility}}">
+                                    <c:DmxIcon
+                                        Margin="0,0,4,0"
+                                        VerticalAlignment="Top"
+                                        Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                                        Kind="Warning"
+                                        Size="{StaticResource Dmx.DenseIconSize}" />
+                                    <TextBlock
+                                        FontSize="{StaticResource Dmx.FontSize.Small}"
+                                        Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                                        Text="{Binding DataContext.FtdiMessage, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        TextWrapping="Wrap" />
+                                </DockPanel>
+                                <TextBlock Style="{StaticResource HintText}" Text="PC-timed: may stutter when the PC is busy. One universe per dongle; 30 Hz is safe." />
+                            </StackPanel>
+
+                            <!-- ── Refresh rate (every output type) ── -->
+                            <Grid Margin="0,4,0,0" Visibility="{Binding IsConfigured, Converter={StaticResource BoolToVisibility}}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="IoLabel" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource FormLabel}" Text="Rate (Hz)" />
+                                <ui:NumberBox
+                                    Grid.Column="1"
+                                    Width="100"
+                                    HorizontalAlignment="Left"
+                                    AutomationProperties.Name="Refresh rate in hertz"
+                                    Maximum="44"
+                                    Minimum="1"
+                                    Style="{StaticResource FormNumberBox}"
+                                    ToolTip="How often the universe is re-sent (1–44 Hz). 44 Hz is the DMX maximum."
+                                    Value="{Binding FrameRateHz, UpdateSourceTrigger=LostFocus}" />
+                            </Grid>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
+    </DockPanel>
+</UserControl>

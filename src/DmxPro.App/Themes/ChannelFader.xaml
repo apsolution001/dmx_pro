@@ -1,0 +1,452 @@
+<!--
+    Template of DmxPro.App.Controls.ChannelFader (scene editor channel strip). Merged by App.xaml.
+    Layout, top to bottom:   [x] include · icon 18 · value box · tall slider (fills) · number · label
+    Brushes are WPF-UI {DynamicResource ...} only (dark + light theme); the slider fill is the channel colour
+    (TrackColor "#RRGGBB") or the accent when there is none. Behaviour (keys, wheel, commit, include) lives in
+    Controls/ChannelFader.cs; parts: PART_Slider (Slider), PART_ValueBox (TextBox).
+-->
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:c="clr-namespace:DmxPro.App.Controls"
+    xmlns:conv="clr-namespace:DmxPro.App.Converters">
+
+    <ResourceDictionary.MergedDictionaries>
+        <!-- Own copy of the tokens: StaticResource cannot see sibling merged dictionaries of App.xaml. -->
+        <ResourceDictionary Source="Metrics.xaml" />
+    </ResourceDictionary.MergedDictionaries>
+
+    <conv:HexToBrushConverter x:Key="ChannelFader.HexToBrush" />
+
+    <!-- Compact 16x16 include check box (24x24 hit area), no label: the fader's number/label below is the label. -->
+    <Style x:Key="ChannelFader.CheckBox" TargetType="CheckBox">
+        <Setter Property="Width" Value="{StaticResource Dmx.ControlHeight}" />
+        <Setter Property="Height" Value="{StaticResource Dmx.ControlHeight}" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="Background" Value="{DynamicResource ControlAltFillColorSecondaryBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ControlStrongStrokeColorDefaultBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextOnAccentFillColorPrimaryBrush}" />
+        <Setter Property="FocusVisualStyle" Value="{DynamicResource DefaultControlFocusVisualStyle}" />
+        <Setter Property="Cursor" Value="Arrow" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="CheckBox">
+                    <Grid Background="Transparent">
+                        <Border
+                            x:Name="Box"
+                            Width="{StaticResource Dmx.CheckBoxSize}"
+                            Height="{StaticResource Dmx.CheckBoxSize}"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="3">
+                            <c:DmxIcon
+                                x:Name="Glyph"
+                                Kind="Check"
+                                Size="{StaticResource Dmx.DenseIconSize}"
+                                Visibility="Collapsed" />
+                        </Border>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Box" Property="Background" Value="{DynamicResource ControlAltFillColorTertiaryBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Glyph" Property="Visibility" Value="Visible" />
+                            <Setter TargetName="Box" Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+                        </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsChecked" Value="True" />
+                                <Condition Property="IsMouseOver" Value="True" />
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="Box" Property="Background" Value="{DynamicResource AccentFillColorSecondaryBrush}" />
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource AccentFillColorSecondaryBrush}" />
+                        </MultiTrigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Box" Property="Opacity" Value="0.5" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Small value box (0-255). Text is managed by ChannelFader: commits on Enter / focus loss, Esc reverts. -->
+    <Style x:Key="ChannelFader.ValueBox" TargetType="TextBox">
+        <Setter Property="Width" Value="30" />
+        <Setter Property="Height" Value="{StaticResource Dmx.CheckRowHeight}" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="FontSize" Value="{StaticResource Dmx.FontSize.Small}" />
+        <Setter Property="TextAlignment" Value="Center" />
+        <Setter Property="MaxLength" Value="3" />
+        <!-- The text is replaced on every live value change (Test page ~30 Hz); no undo history to record for that. -->
+        <Setter Property="IsUndoEnabled" Value="False" />
+        <Setter Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+        <Setter Property="CaretBrush" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+        <Setter Property="SelectionBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TextBox">
+                    <Border
+                        x:Name="Bd"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4">
+                        <ScrollViewer
+                            x:Name="PART_ContentHost"
+                            Margin="0"
+                            VerticalAlignment="Center"
+                            Focusable="False"
+                            HorizontalScrollBarVisibility="Hidden"
+                            VerticalScrollBarVisibility="Hidden" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ControlFillColorInputActiveBrush}" />
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ControlFillColorDisabledBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource TextFillColorDisabledBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Lower (filled) part of the track: draws the channel colour, taken from Foreground. Full width = hit area. -->
+    <Style x:Key="ChannelFader.FillRepeatButton" TargetType="RepeatButton">
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="IsTabStop" Value="False" />
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RepeatButton">
+                    <Grid Background="Transparent">
+                        <Border
+                            Width="8"
+                            HorizontalAlignment="Center"
+                            Background="{TemplateBinding Foreground}"
+                            CornerRadius="4" />
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Upper (empty) part of the track: invisible hit area over the groove. -->
+    <Style x:Key="ChannelFader.EmptyRepeatButton" TargetType="RepeatButton">
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="IsTabStop" Value="False" />
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RepeatButton">
+                    <Grid Background="Transparent" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Flat rounded fader cap with a short grip line. -->
+    <Style x:Key="ChannelFader.Thumb" TargetType="Thumb">
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Width" Value="24" />
+        <Setter Property="Height" Value="10" />
+        <Setter Property="Background" Value="{DynamicResource ControlSolidFillColorDefaultBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ControlStrongStrokeColorDefaultBrush}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Thumb">
+                    <Border
+                        x:Name="Bd"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4">
+                        <Rectangle
+                            x:Name="Grip"
+                            Width="14"
+                            Height="2"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Fill="{DynamicResource TextFillColorSecondaryBrush}"
+                            RadiusX="1"
+                            RadiusY="1" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Grip" Property="Fill" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsDragging" Value="True">
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+                            <Setter TargetName="Grip" Property="Fill" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Vertical slider: groove 8 px, filled from the bottom in Foreground, click on the track jumps there. -->
+    <Style x:Key="ChannelFader.Slider" TargetType="Slider">
+        <Setter Property="Orientation" Value="Vertical" />
+        <Setter Property="IsMoveToPointEnabled" Value="True" />
+        <Setter Property="IsSnapToTickEnabled" Value="True" />
+        <Setter Property="TickFrequency" Value="1" />
+        <Setter Property="SmallChange" Value="1" />
+        <Setter Property="LargeChange" Value="10" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="MinHeight" Value="{StaticResource Dmx.FaderSliderMinHeight}" />
+        <!-- Short, fixed travel (QLC+-style compact faders): a small drag makes a big change; keys and the value box give fine control. -->
+        <Setter Property="Height" Value="{StaticResource Dmx.FaderSliderHeight}" />
+        <Setter Property="Foreground" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+        <Setter Property="FocusVisualStyle" Value="{DynamicResource DefaultControlFocusVisualStyle}" />
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Slider">
+                    <Grid Background="Transparent">
+                        <Border
+                            x:Name="Groove"
+                            Width="8"
+                            HorizontalAlignment="Center"
+                            Background="{DynamicResource ControlStrongFillColorDefaultBrush}"
+                            CornerRadius="4" />
+                        <Track x:Name="PART_Track" Orientation="Vertical">
+                            <Track.DecreaseRepeatButton>
+                                <RepeatButton Foreground="{TemplateBinding Foreground}" Style="{StaticResource ChannelFader.FillRepeatButton}" />
+                            </Track.DecreaseRepeatButton>
+                            <Track.IncreaseRepeatButton>
+                                <RepeatButton Style="{StaticResource ChannelFader.EmptyRepeatButton}" />
+                            </Track.IncreaseRepeatButton>
+                            <Track.Thumb>
+                                <Thumb x:Name="Thumb" Style="{StaticResource ChannelFader.Thumb}" />
+                            </Track.Thumb>
+                        </Track>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Thumb" Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Groove" Property="Background" Value="{DynamicResource ControlStrongFillColorDisabledBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="c:ChannelFader">
+        <Setter Property="Width" Value="{StaticResource Dmx.FaderWidth}" />
+        <Setter Property="MinHeight" Value="{StaticResource Dmx.FaderMinHeight}" />
+        <Setter Property="Padding" Value="3" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+        <Setter Property="VerticalAlignment" Value="Stretch" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="UseLayoutRounding" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="c:ChannelFader">
+                    <Border
+                        x:Name="Root"
+                        Padding="{TemplateBinding Padding}"
+                        Background="{TemplateBinding Background}"
+                        CornerRadius="4">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <CheckBox
+                                Margin="0,0,0,2"
+                                AutomationProperties.Name="{Binding (AutomationProperties.Name), RelativeSource={RelativeSource TemplatedParent}, StringFormat='Include {0}'}"
+                                IsChecked="{Binding IsIncluded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                Style="{StaticResource ChannelFader.CheckBox}" />
+
+                            <!-- Dimmed when the channel is not included; stays fully interactive. -->
+                            <Grid x:Name="Body" Grid.Row="1">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <c:DmxIcon
+                                    Margin="0,0,0,2"
+                                    HorizontalAlignment="Center"
+                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                    Kind="{TemplateBinding IconKind}"
+                                    Size="{StaticResource Dmx.SmallIconSize}" />
+
+                                <TextBox
+                                    x:Name="PART_ValueBox"
+                                    Grid.Row="1"
+                                    Margin="0,0,0,3"
+                                    AutomationProperties.Name="{Binding (AutomationProperties.Name), RelativeSource={RelativeSource TemplatedParent}, StringFormat='{}{0} value'}"
+                                    InputMethod.IsInputMethodEnabled="False"
+                                    Style="{StaticResource ChannelFader.ValueBox}" />
+
+                                <Slider
+                                    x:Name="PART_Slider"
+                                    Grid.Row="2"
+                                    AutomationProperties.Name="{Binding (AutomationProperties.Name), RelativeSource={RelativeSource TemplatedParent}}"
+                                    Foreground="{Binding TrackColor, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource ChannelFader.HexToBrush}}"
+                                    Maximum="{Binding Maximum, RelativeSource={RelativeSource TemplatedParent}}"
+                                    Minimum="{Binding Minimum, RelativeSource={RelativeSource TemplatedParent}}"
+                                    Style="{StaticResource ChannelFader.Slider}"
+                                    Value="{Binding Value, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" />
+
+                                <TextBlock
+                                    Grid.Row="3"
+                                    Margin="0,3,0,0"
+                                    HorizontalAlignment="Center"
+                                    FontSize="{StaticResource Dmx.FontSize.Small}"
+                                    FontWeight="SemiBold"
+                                    Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                    Text="{Binding Number, RelativeSource={RelativeSource TemplatedParent}}" />
+
+                                <TextBlock
+                                    Grid.Row="4"
+                                    HorizontalAlignment="Center"
+                                    FontSize="{StaticResource Dmx.FontSize.Caption}"
+                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                    Text="{TemplateBinding Label}"
+                                    TextTrimming="CharacterEllipsis" />
+                            </Grid>
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <!-- No or invalid channel colour: fill with the accent. -->
+                        <DataTrigger Binding="{Binding TrackColor, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource ChannelFader.HexToBrush}}" Value="{x:Null}">
+                            <Setter TargetName="PART_Slider" Property="Foreground" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+                        </DataTrigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Root" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                            <Setter TargetName="Root" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsIncluded" Value="False">
+                            <Setter TargetName="Body" Property="Opacity" Value="0.45" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Root" Property="Opacity" Value="0.4" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!--
+        Test page desk variant (Views/TestPageView.xaml, QLC+ Simple Desk look): a narrow column with no include check
+        box and the mouse wheel off (the wheel scrolls the desk sideways instead of changing live output).
+        Layout, top to bottom: icon (tinted with Foreground) · value box · tall slider · number · name.
+        IsEnabled=False dims the whole fader.
+    -->
+    <Style x:Key="ChannelFader.Desk" TargetType="c:ChannelFader">
+        <Setter Property="Width" Value="{StaticResource Dmx.DeskChannelWidth}" />
+        <Setter Property="MinHeight" Value="{StaticResource Dmx.TestFaderMinHeight}" />
+        <Setter Property="Padding" Value="2,2,2,0" />
+        <Setter Property="IsWheelEnabled" Value="False" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+        <Setter Property="VerticalAlignment" Value="Stretch" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="UseLayoutRounding" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="c:ChannelFader">
+                    <Border
+                        x:Name="Root"
+                        Padding="{TemplateBinding Padding}"
+                        Background="{TemplateBinding Background}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <c:DmxIcon
+                                Margin="0,1,0,2"
+                                HorizontalAlignment="Center"
+                                Foreground="{TemplateBinding Foreground}"
+                                Kind="{TemplateBinding IconKind}"
+                                Size="{StaticResource Dmx.SmallIconSize}" />
+
+                            <TextBox
+                                x:Name="PART_ValueBox"
+                                Grid.Row="1"
+                                Width="30"
+                                Margin="0,0,0,3"
+                                AutomationProperties.Name="{Binding (AutomationProperties.Name), RelativeSource={RelativeSource TemplatedParent}, StringFormat='{}{0} value'}"
+                                InputMethod.IsInputMethodEnabled="False"
+                                Style="{StaticResource ChannelFader.ValueBox}" />
+
+                            <Slider
+                                x:Name="PART_Slider"
+                                Grid.Row="2"
+                                AutomationProperties.Name="{Binding (AutomationProperties.Name), RelativeSource={RelativeSource TemplatedParent}}"
+                                Foreground="{Binding TrackColor, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource ChannelFader.HexToBrush}}"
+                                Maximum="{Binding Maximum, RelativeSource={RelativeSource TemplatedParent}}"
+                                Minimum="{Binding Minimum, RelativeSource={RelativeSource TemplatedParent}}"
+                                Style="{StaticResource ChannelFader.Slider}"
+                                Value="{Binding Value, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" />
+
+                            <TextBlock
+                                Grid.Row="3"
+                                Margin="0,3,0,0"
+                                HorizontalAlignment="Center"
+                                FontSize="{StaticResource Dmx.FontSize.Small}"
+                                FontWeight="SemiBold"
+                                Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                Text="{Binding Number, RelativeSource={RelativeSource TemplatedParent}}" />
+
+                            <TextBlock
+                                Grid.Row="4"
+                                HorizontalAlignment="Center"
+                                FontSize="{StaticResource Dmx.FontSize.Caption}"
+                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                Text="{TemplateBinding Label}"
+                                TextTrimming="CharacterEllipsis" />
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <DataTrigger Binding="{Binding TrackColor, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource ChannelFader.HexToBrush}}" Value="{x:Null}">
+                            <Setter TargetName="PART_Slider" Property="Foreground" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+                        </DataTrigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Root" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                            <Setter TargetName="Root" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Root" Property="Opacity" Value="0.4" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+</ResourceDictionary>

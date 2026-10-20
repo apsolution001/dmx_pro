@@ -16,8 +16,13 @@ public sealed partial class ShellViewModel : ObservableObject
     private readonly IDialogService _dialogs;
     private readonly AppPaths _paths;
     private readonly IThemeService _theme;
-    private readonly ProfilesViewModel _profiles;
+    private readonly ProfileLibraryService _profileLibrary;
     private readonly FixturesViewModel _fixtures;
+    private readonly FunctionsViewModel _functions;
+    private readonly ShowsViewModel _shows;
+    private readonly InputOutputViewModel _inputOutput;
+    private readonly SettingsViewModel _settings;
+    private readonly AppSettingsService _appSettings;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CurrentPage))]
@@ -26,8 +31,9 @@ public sealed partial class ShellViewModel : ObservableObject
     [ObservableProperty]
     private string? _infoMessage;
 
-    /// <summary>Full screen hides the title bar and maximizes (F11); the window applies it.</summary>
+    /// <summary>Full screen (F11) covers the whole monitor, taskbar included, without a title bar; the window applies it.</summary>
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ExitFullScreenCommand))]
     private bool _isFullScreen;
 
     [ObservableProperty]
@@ -39,12 +45,25 @@ public sealed partial class ShellViewModel : ObservableObject
         IDialogService dialogs,
         AppPaths paths,
         IThemeService theme,
+        ProfileLibraryService profileLibrary,
         FixturesViewModel fixtures,
-        ProfilesViewModel profiles)
+        FunctionsViewModel functions,
+        ShowsViewModel shows,
+        VirtualConsoleViewModel virtualConsole,
+        TestPageViewModel testPage,
+        StagePageViewModel stage,
+        InputOutputViewModel inputOutput,
+        SettingsViewModel settings,
+        AppSettingsService appSettings)
     {
+        _inputOutput = inputOutput;
+        _settings = settings;
+        _appSettings = appSettings;
         _fixtures = fixtures;
+        _functions = functions;
+        _shows = shows;
         _theme = theme;
-        _profiles = profiles;
+        _profileLibrary = profileLibrary;
         _projects = projects;
         _fileDialogs = fileDialogs;
         _dialogs = dialogs;
@@ -55,32 +74,31 @@ public sealed partial class ShellViewModel : ObservableObject
             OnPropertyChanged(nameof(FileStatusText));
         };
         _projects.ContentChanged += (_, _) => OnPropertyChanged(nameof(PatchStatusText));
+        _settings.ThemeApplied += (_, _) => OnPropertyChanged(nameof(IsDarkTheme));
+        _inputOutput.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(InputOutputViewModel.StatusText) or nameof(InputOutputViewModel.State)
+                or nameof(InputOutputViewModel.StatusMessage))
+            {
+                OnPropertyChanged(nameof(OutputStatusText));
+                OnPropertyChanged(nameof(OutputState));
+                OnPropertyChanged(nameof(OutputStatusToolTip));
+            }
+        };
 
+        // Order = rail order. NavigateTo takes the index in this list: MainWindow key bindings and the View menu pass
+        // 0–5 for Ctrl+1 … Ctrl+6, 6 for Stage (Ctrl+8, added later, so the older shortcuts did not move) and 7 for
+        // Settings (Ctrl+7 / Ctrl+,).
         NavigationItems =
         [
-            new("Fixtures", SymbolRegular.Lightbulb24, fixtures),
-            new("Fixture Library", SymbolRegular.Library24, profiles),
-            new("Functions", SymbolRegular.Flash24, new ComingSoonViewModel(
-                "Functions", "Reusable behaviors: chasers, sequences, color cycles, fades, pulses, flash, strobe.", "Phase 4",
-                ["Chaser / sequence editor", "Color cycle & pulse", "Copy / paste / duplicate", "Preview before use"])),
-            new("Scenes", SymbolRegular.Color24, new ComingSoonViewModel(
-                "Scene Creator", "Design static looks with a color picker and profile-driven channel controls.", "Phase 3",
-                ["Color picker with RGBW policy", "Per-channel values", "Fade in / out", "Live stage preview"])),
-            new("Virtual Console", SymbolRegular.Board24, new ComingSoonViewModel(
-                "Virtual Console", "Your live control surface: buttons, sliders, pages.", "Phase 5",
-                ["Drag & drop widgets", "Pages", "Operator lock", "Keyboard shortcuts"])),
-            new("Show Timeline", SymbolRegular.Timeline24, new ComingSoonViewModel(
-                "Show Timeline", "Build shows to music: audio tracks, functions and scenes placed in time.", "Phase 8",
-                ["Music tracks with waveform", "Place existing functions at any time", "Create a function for a selected time range", "Beat markers & snapping"])),
-            new("Test & Preview", SymbolRegular.Beaker24, new ComingSoonViewModel(
-                "Test & Preview", "Check every channel of a fixture before going live.", "Phase 6",
-                ["R / G / B / W tests", "Raw channel faders", "Live DMX monitor", "Address footprint view"])),
-            new("Input / Output", SymbolRegular.PlugConnected24, new ComingSoonViewModel(
-                "Input / Output", "Connect to real hardware.", "Phase 7",
-                ["Art-Net", "sACN (E1.31)", "Enttec DMX USB Pro", "Open DMX (FTDI)"])),
-            new("Settings", SymbolRegular.Settings24, new ComingSoonViewModel(
-                "Settings", "Theme, safety and folder preferences.", "Phase 9",
-                ["Safe frame on exit (blackout / defaults)", "Allow strobe + max strobe rate", "Autosave interval", "Profile folders"])),
+            new("Fixtures", "Fixtures", "Ctrl+1", fixtures),
+            new("Functions", "Functions", "Ctrl+2", functions),
+            new("Shows", "Timeline", "Ctrl+3", shows),
+            new("Virtual Console", "Console", "Ctrl+4", virtualConsole),
+            new("Test & Preview", "Test", "Ctrl+5", testPage),
+            new("Input / Output", "InputOutput", "Ctrl+6", inputOutput),
+            new("Stage", "Stage", "Ctrl+8", stage),
+            new("Settings", "Settings", "Ctrl+7", settings),
         ];
         _selectedItem = NavigationItems[0];
     }
@@ -97,20 +115,49 @@ public sealed partial class ShellViewModel : ObservableObject
     public string WindowTitle =>
         $"{(_projects.FilePath is null ? _projects.Current.Name : Path.GetFileNameWithoutExtension(_projects.FilePath))}{(_projects.IsDirty ? " •" : string.Empty)} — DMX Pro";
 
-    /// <summary>Output is always disabled at start (safety rule 1). Real output arrives in phase 7.</summary>
-    public string OutputStatusText => "DMX output disabled";
+    /// <summary>Output is always disabled at start (safety rule 1); live text from the Input / Output page.</summary>
+    public string OutputStatusText => _inputOutput.StatusText;
 
+    /// <summary>For the status-bar pill's Tag (Disabled / Connecting / Sending / Error).</summary>
+    public DmxPro.Output.OutputState OutputState => _inputOutput.State;
+
+    public string OutputStatusToolTip => _inputOutput.StatusMessage is { } error
+        ? $"{error} Open Input / Output (Ctrl+6) to fix it."
+        : "DMX output starts disabled every time. Configure and enable it in Input / Output (Ctrl+6).";
+
+    /// <summary>The Input / Output page (for Output menu / status bar bindings: EnableOutputCommand, DisableOutputCommand).</summary>
+    public InputOutputViewModel InputOutput => _inputOutput;
+
+    /// <summary>The Settings page.</summary>
+    public SettingsViewModel Settings => _settings;
+
+    /// <summary>Patch summary. The universe count is only shown once fixtures exist ("0 universes" reads like an error).</summary>
     public string PatchStatusText
     {
         get
         {
             var project = _projects.Current;
+            var fixtures = Count(project.Fixtures.Count, "fixture", "fixtures");
+            var groups = Count(project.Groups.Count, "group", "groups");
+            if (project.Fixtures.Count == 0)
+            {
+                return $"{fixtures} · {groups}";
+            }
+
             var universes = project.Fixtures.Select(f => f.Universe).Distinct().Count();
-            return $"{project.Fixtures.Count} fixtures · {universes} universe(s) · {project.Groups.Count} groups";
+            return $"{fixtures} · {Count(universes, "universe", "universes")} · {groups}";
         }
     }
 
     public string FileStatusText => _projects.FilePath ?? "Not saved yet";
+
+    partial void OnSelectedItemChanging(NavigationItem? oldValue, NavigationItem newValue)
+    {
+        if (oldValue is not null && !ReferenceEquals(oldValue.Page, newValue.Page))
+        {
+            oldValue.Page.OnNavigatedFrom();
+        }
+    }
 
     partial void OnSelectedItemChanged(NavigationItem value) => value.Page.OnNavigatedTo();
 
@@ -131,22 +178,46 @@ public sealed partial class ShellViewModel : ObservableObject
         _fixtures.AddFixtureCommand.Execute(null);
     }
 
+    /// <summary>Fixtures ▸ Import fixture profile: imports straight into the library and reports in the info bar.</summary>
     [RelayCommand]
     private async Task ImportProfileAsync()
     {
-        SelectedItem = NavigationItems.First(n => n.Page == _profiles);
-        await _profiles.ImportCommand.ExecuteAsync(null);
+        var files = _fileDialogs.ShowOpenProfiles();
+        if (files.Count == 0)
+        {
+            return;
+        }
+
+        var (imported, issues) = await _profileLibrary.ImportAsync(files);
+        var errors = issues.Where(i => i.Severity == ValidationSeverity.Error).ToList();
+        var failures = string.Join(" ", errors.Select(e => e.Message));
+        if (imported.Count == 0)
+        {
+            InfoSeverity = InfoBarSeverity.Error;
+            InfoMessage = errors.Count > 0 ? $"Nothing imported. {failures}" : "Nothing imported.";
+            return;
+        }
+
+        InfoSeverity = errors.Count > 0 ? InfoBarSeverity.Warning : InfoBarSeverity.Success;
+        InfoMessage = $"Imported {Count(imported.Count, "profile", "profiles")}. " +
+                      "Imported profiles are unverified — test each channel on the real light." +
+                      (errors.Count > 0 ? $" {Count(errors.Count, "file", "files")} failed: {failures}" : string.Empty);
     }
 
     [RelayCommand]
     private void SetTheme(string theme)
     {
-        _theme.SetDark(theme == "Dark");
+        // Through Settings so the choice is saved (and "Follow Windows" is replaced by an explicit theme).
+        _settings.ThemeMode = theme == "Dark" ? ThemeModeSetting.Dark : ThemeModeSetting.Light;
         OnPropertyChanged(nameof(IsDarkTheme));
     }
 
     [RelayCommand]
     private void ToggleFullScreen() => IsFullScreen = !IsFullScreen;
+
+    /// <summary>Esc and the floating button leave full screen. Disabled otherwise, so Esc stays free for other uses.</summary>
+    [RelayCommand(CanExecute = nameof(IsFullScreen))]
+    private void ExitFullScreen() => IsFullScreen = false;
 
     [RelayCommand]
     private void Exit() => CloseRequested?.Invoke(this, EventArgs.Empty);
@@ -158,7 +229,8 @@ public sealed partial class ShellViewModel : ObservableObject
         "Ctrl+O   Open project\n" +
         "Ctrl+S   Save\n" +
         "Ctrl+Shift+S   Save as\n" +
-        "Ctrl+1 … Ctrl+9   Go to page (Fixtures … Settings)\n" +
+        "Ctrl+1 … Ctrl+7   Go to page (Fixtures … Settings)\n" +
+        "Ctrl+8   Stage\n" +
         "F11   Full screen\n\n" +
         "Coming with later phases: Ctrl+Z/Y undo/redo, Ctrl+C/V/D copy/paste/duplicate, Ctrl+K search, " +
         "B blackout, Esc release all, Space play/pause, F12 operator mode.");
@@ -189,7 +261,7 @@ public sealed partial class ShellViewModel : ObservableObject
             return;
         }
 
-        var path = _fileDialogs.ShowOpenProject(_paths.DefaultProjectsDirectory);
+        var path = _fileDialogs.ShowOpenProject(ProjectsDirectory);
         if (path is null)
         {
             return;
@@ -213,7 +285,7 @@ public sealed partial class ShellViewModel : ObservableObject
     [RelayCommand]
     private Task<bool> SaveProjectAsAsync()
     {
-        var path = _fileDialogs.ShowSaveProject(_paths.DefaultProjectsDirectory, _projects.Current.Name);
+        var path = _fileDialogs.ShowSaveProject(ProjectsDirectory, _projects.Current.Name);
         return path is null ? Task.FromResult(false) : SaveToAsync(path);
     }
 
@@ -230,6 +302,12 @@ public sealed partial class ShellViewModel : ObservableObject
     /// <summary>Asks to save unsaved work. Returns false when the user cancels.</summary>
     public async Task<bool> ConfirmDiscardChangesAsync()
     {
+        // An open scene draft is not in the project yet; settle it first so it isn't silently dropped.
+        if (!await _functions.ConfirmCloseEditorAsync() || !await _shows.ConfirmCloseEditorAsync())
+        {
+            return false;
+        }
+
         if (!_projects.IsDirty)
         {
             return true;
@@ -257,6 +335,11 @@ public sealed partial class ShellViewModel : ObservableObject
             return false;
         }
     }
+
+    private string ProjectsDirectory => _appSettings.Current.DefaultProjectFolder ?? _paths.DefaultProjectsDirectory;
+
+    private static string Count(int count, string singular, string plural) =>
+        $"{count} {(count == 1 ? singular : plural)}";
 
     private void ShowIssues(IReadOnlyList<ValidationIssue> issues, string successMessage)
     {

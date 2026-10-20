@@ -51,6 +51,116 @@ public class ProjectEditingTests
     }
 
     [Fact]
+    public void NextGroupName_NameTaken_SkipsToFreeNumber()
+    {
+        var project = new Project();
+        project.CreateGroup("Group 2", []);
+
+        Assert.Equal("Group 3", project.NextGroupName());
+        project.CreateGroup("Front", []);
+        Assert.Equal("Group 3", project.NextGroupName());
+    }
+
+    [Fact]
+    public void AddToGroup_DuplicatesAndUnknownIds_AreSkippedAndOrderKept()
+    {
+        var project = new Project();
+        var f = project.AddFixtures(TestProfiles.Rgbw(), "4ch", 3, 1, 1, "PAR");
+        var group = project.CreateGroup("Front", [f[1].Id]);
+
+        var added = project.AddToGroup(group.Id, [f[2].Id, f[1].Id, Guid.NewGuid(), f[0].Id]);
+
+        Assert.Equal(2, added);
+        Assert.Equal([f[1].Id, f[2].Id, f[0].Id], group.FixtureIds);
+    }
+
+    [Fact]
+    public void AddToGroup_UnknownGroup_Throws()
+    {
+        Assert.Throws<ArgumentException>(() => new Project().AddToGroup(Guid.NewGuid(), []));
+    }
+
+    [Fact]
+    public void RemoveFromGroup_Member_RemovesOnlyFromGroupAndFixtureStays()
+    {
+        var project = new Project();
+        var f = project.AddFixtures(TestProfiles.Rgbw(), "4ch", 2, 1, 1, "PAR");
+        var group = project.CreateGroup("Front", f.Select(x => x.Id));
+
+        Assert.True(project.RemoveFromGroup(group.Id, f[0].Id));
+        Assert.False(project.RemoveFromGroup(group.Id, f[0].Id));
+
+        Assert.Equal([f[1].Id], group.FixtureIds);
+        Assert.Equal(2, project.Fixtures.Count);
+    }
+
+    [Theory]
+    [InlineData(0, 1, new[] { 1, 0, 2 })]
+    [InlineData(2, -1, new[] { 0, 2, 1 })]
+    [InlineData(1, -5, new[] { 1, 0, 2 })]
+    [InlineData(1, 5, new[] { 0, 2, 1 })]
+    public void MoveInGroup_Delta_ReordersAndClamps(int from, int delta, int[] expectedOrder)
+    {
+        var project = new Project();
+        var f = project.AddFixtures(TestProfiles.Rgbw(), "4ch", 3, 1, 1, "PAR");
+        var group = project.CreateGroup("Front", f.Select(x => x.Id));
+
+        Assert.True(project.MoveInGroup(group.Id, f[from].Id, delta));
+
+        Assert.Equal(expectedOrder.Select(i => f[i].Id), group.FixtureIds);
+    }
+
+    [Fact]
+    public void MoveInGroup_AlreadyAtEndOrNotMember_ReturnsFalse()
+    {
+        var project = new Project();
+        var f = project.AddFixtures(TestProfiles.Rgbw(), "4ch", 2, 1, 1, "PAR");
+        var group = project.CreateGroup("Front", [f[0].Id]);
+
+        Assert.False(project.MoveInGroup(group.Id, f[0].Id, -1));
+        Assert.False(project.MoveInGroup(group.Id, f[1].Id, 1));
+        Assert.False(project.MoveInGroup(Guid.NewGuid(), f[0].Id, 1));
+    }
+
+    [Fact]
+    public void RenameGroup_TrimsAndRejectsBlank()
+    {
+        var project = new Project();
+        var group = project.CreateGroup("Front", []);
+
+        Assert.True(project.RenameGroup(group.Id, "  Back wash "));
+        Assert.Equal("Back wash", group.Name);
+        Assert.False(project.RenameGroup(group.Id, "   "));
+        Assert.Equal("Back wash", group.Name);
+    }
+
+    [Fact]
+    public void DeleteGroup_KeepsFixtures()
+    {
+        var project = new Project();
+        var f = project.AddFixtures(TestProfiles.Rgbw(), "4ch", 2, 1, 1, "PAR");
+        var group = project.CreateGroup("Front", f.Select(x => x.Id));
+
+        Assert.True(project.DeleteGroup(group.Id));
+        Assert.False(project.DeleteGroup(group.Id));
+
+        Assert.Empty(project.Groups);
+        Assert.Equal(2, project.Fixtures.Count);
+    }
+
+    [Fact]
+    public void GroupsOf_Fixture_ReturnsContainingGroupsInOrder()
+    {
+        var project = new Project();
+        var f = project.AddFixtures(TestProfiles.Rgbw(), "4ch", 2, 1, 1, "PAR");
+        project.CreateGroup("Front", [f[0].Id]);
+        project.CreateGroup("All", f.Select(x => x.Id));
+
+        Assert.Equal(["Front", "All"], project.GroupsOf(f[0].Id).Select(g => g.Name));
+        Assert.Equal(["All"], project.GroupsOf(f[1].Id).Select(g => g.Name));
+    }
+
+    [Fact]
     public void AddressMap_OverlappingFixtures_ReportsOwnersAndOverlapCount()
     {
         var project = new Project();

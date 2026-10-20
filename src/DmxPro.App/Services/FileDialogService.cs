@@ -1,3 +1,4 @@
+using DmxPro.Audio;
 using DmxPro.Core.Profiles;
 using DmxPro.Core.Projects;
 using Microsoft.Win32;
@@ -37,5 +38,16 @@ public sealed class FileDialogService : IFileDialogService
             Multiselect = true,
         };
         return dialog.ShowDialog() == true ? dialog.FileNames : [];
+    }
+
+    public string? ShowOpenAudio(string? initialDirectory)
+    {
+        var dialog = new OpenFileDialog { Filter = AudioFormats.DialogFilter, Title = "Choose music" };
+        if (!string.IsNullOrEmpty(initialDirectory) && Directory.Exists(initialDirectory))
+        {
+            dialog.InitialDirectory = initialDirectory;
+        }
+
+        return dialog.ShowDialog() == true ? dialog.FileName : null;
     }
 }

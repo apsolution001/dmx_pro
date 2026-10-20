@@ -19,8 +19,28 @@ The owner wants a **proper Windows application**, not a web-page look. Structure
 
 - **WPF-UI** controls on a solid background (no Mica), **dark theme default** (operators work in dark venues),
   light theme switchable. Accent color from Windows or user choice.
-- Spacing grid **4 px**; standard paddings 8/12/16/24. Corner radius 4 on controls; panels are square-edged with 1 px borders.
-- Typography: Segoe UI Variable; sizes 12 (caption), 14 (body), 20 (subtitle), 28 (title).
+- **Compact density** (owner decision 2026-10-18: "small but clearly visible, smooth"). All sizes are tokens in
+  `src/DmxPro.App/Themes/Metrics.xaml`; **new views must use the tokens, never literal sizes**.
+- Spacing grid **2 px** (mostly); spacing tokens 2 / 4 / 6 / 10 (`Dmx.Space.XS/S/M/L`). Corner radius 4 on controls; panels are square-edged with 1 px borders.
+- Typography: Segoe UI Variable; sizes 10.5 (caption, the minimum), 11 (small), 12 (body), 13 (heading), 14 (title).
+- Heights: control 24, toolbar 30 (toolbar button 24), tab 24, table row 22 / header 22, list row 20, check/radio row 20
+  (16 px glyph), menu item 22, status bar 20, title bar 28, nav rail 62 wide, splitter 4, channel fader min 150. Icons 14
+  (dense rows 12); `DmxIcon.MaxSize` caps icon size. Virtual Console transport bar 34 px (`ConsoleShowTransportBar`);
+  Shows track height 28 (`ShowsViewModel.TrackHeight`); `VirtualConsoleViewModel.MinCellSize` is 40.
+- Compact `CheckBox`, `RadioButton` and `ui:InfoBar` templates in `App.xaml` replace the WPF-UI defaults (second compact
+  pass, owner 2026-10-19: "still bulky, shorter heights, smaller font").
+- **Density rules:** no panel header that only repeats the page name or the obvious (e.g. "Functions" on the Functions
+  list, "Properties" on a form); one line per light/row; long hints go into tooltips. Safety warnings stay visible.
+- Motion (`Controls/DmxMotion.cs`): animate only when `DmxMotion.IsEnabled` (Windows animation effects on and hardware
+  rendering), otherwise 0 ms. Durations `Fast` 100 ms (hover) and `Normal` 150 ms, easing `EaseOut`. Page switch = fade +
+  8 px rise, 150 ms; the old page collapses instantly (Virtual Console flash release on leave relies on it). InfoBar open =
+  fade + 4 px drop; the nav-rail indicator grows. **Never animate** lists, faders or live values.
+  Context menus use the compact `Dmx.MenuItem` style.
+- Logo: `Assets/Logo/` (`dmxpro-logo.svg`, `-small.svg`, `-256.png`, `dmxpro.ico`), images `Dmx.Logo.Image` and
+  `Dmx.Logo.Small.Image` in `Themes/Logo.xaml`; used for the exe, window/taskbar icons and the title bars of the main, Add
+  fixture and Channel layout windows. Concept: dark rounded tile, light-grey spot, amber beam (#FFB020), three DMX-pin dots.
+- Stage floor exception: the Virtual Stage floor is always dark (#17191D) in both themes, like a real dark stage.
+- Icon `stage.svg` is an original drawing (see `Assets/Icons/README.md`).
 - Icons: Fluent System Icons (`SymbolRegular`) via WPF-UI. Never mix icon sets.
 - Colors and brushes **only from theme resources** (`{DynamicResource ...}`) — no hardcoded hex in views,
   except actual light colors (scene/fixture colors).
@@ -66,3 +86,9 @@ The owner wants a **proper Windows application**, not a web-page look. Structure
 - ViewModels use CommunityToolkit.Mvvm (`ObservableObject`, `[ObservableProperty]`, `[RelayCommand]`).
 - ViewModels don't reference WPF types (`Brush`, `Visibility`) — use converters.
 - Navigation via a `INavigationService`; dialogs via `IDialogService` (testable).
+
+## XAML resource rules (2026-10-19)
+
+- Implicit styles in `App.xaml` must **not** use `BasedOn="{StaticResource {x:Type T}}"` — it resolves to null there.
+  `App.ChainImplicitStylesToWpfUi` rebuilds them on WPF-UI's base style at startup.
+- Do not put `<StaticResource x:Key=...>` items in `App.xaml` resources; they drop neighbouring keys.

@@ -7,6 +7,8 @@
     <RootNamespace>DmxPro.App</RootNamespace>
     <AssemblyName>DmxPro</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Exe / taskbar / Explorer icon (embedded in the apphost, so single-file publish keeps it). -->
+    <ApplicationIcon>Assets\Logo\dmxpro.ico</ApplicationIcon>
     <!-- Lets the solution build in Linux CI/cloud containers; the app itself runs on Windows only. -->
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
   </PropertyGroup>
@@ -24,6 +26,14 @@
 
   <ItemGroup>
     <ProjectReference Include="..\DmxPro.Core\DmxPro.Core.csproj" />
+    <ProjectReference Include="..\DmxPro.Engine\DmxPro.Engine.csproj" />
+    <ProjectReference Include="..\DmxPro.Output\DmxPro.Output.csproj" />
+    <ProjectReference Include="..\DmxPro.Audio\DmxPro.Audio.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Window icons (pack://application:,,,/Assets/Logo/dmxpro.ico). The SVG/PNG next to it are source/docs only. -->
+    <Resource Include="Assets\Logo\dmxpro.ico" />
   </ItemGroup>
 
   <ItemGroup>

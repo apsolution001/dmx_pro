@@ -1,0 +1,243 @@
+<UserControl
+    x:Class="DmxPro.App.Views.Editors.ColorCycleEditorView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:c="clr-namespace:DmxPro.App.Controls"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:ed="clr-namespace:DmxPro.App.ViewModels.Editors"
+    xmlns:edv="clr-namespace:DmxPro.App.Views.Editors"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    d:DataContext="{d:DesignInstance Type=ed:ColorCycleEditorViewModel}"
+    d:DesignHeight="360"
+    d:DesignWidth="1000"
+    mc:Ignorable="d">
+    <!--
+        Color cycle editor (DataContext: ColorCycleEditorViewModel). Left: fixtures in order (the order matters for
+        the per-fixture offset). Right, dense and without headings: the ordered colour list (Del removes, Alt+Up /
+        Alt+Down move) beside the selected colour's presets and R/G/B, then timing and the white option.
+
+        ┌ Fixtures ┐║┌──────────────────────────────────────────────────────┐
+        │          │║│ Colours [+][-][↑][↓] │ ■■■■■■■■■      [██] [#FF0000]  │
+        │          │║│ 1 ● #FF0000          │ ● R ──────●── [255]            │
+        │          │║│ 2 ● #00FF00          │ ● G ●──────── [  0]            │
+        │          │║│ Hold (s)   [1]                                         │
+        │          │║│ Fade (s)   [1]   One round: 6 s                        │
+        │          │║│ Offset (s) [0]                                         │
+        │          │║│            [ ] Use white channel                       │
+        └──────────┘║└────────────────────────────────────────────────────────┘
+    -->
+    <UserControl.Resources>
+        <Style
+            x:Key="SecondsBox"
+            BasedOn="{StaticResource FormNumberBox}"
+            TargetType="ui:NumberBox">
+            <Setter Property="Width" Value="112" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="LargeChange" Value="1" />
+            <Setter Property="MaxDecimalPlaces" Value="2" />
+            <Setter Property="Maximum" Value="3600" />
+            <Setter Property="Minimum" Value="0" />
+            <Setter Property="SmallChange" Value="0.1" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition
+                Width="300"
+                MinWidth="200"
+                MaxWidth="560" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" MinWidth="360" />
+        </Grid.ColumnDefinitions>
+
+        <edv:FixtureListPanel DataContext="{Binding Fixtures}" />
+
+        <GridSplitter
+            Grid.Column="1"
+            AutomationProperties.Name="Resize fixture list"
+            Style="{StaticResource VerticalSplitter}" />
+
+        <Border Grid.Column="2" Style="{StaticResource PanelBorder}">
+            <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                <StackPanel MaxWidth="680" Margin="8,4" HorizontalAlignment="Left">
+                    <Grid Margin="0,0,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="168" />
+                            <ColumnDefinition Width="8" />
+                            <ColumnDefinition Width="*" MinWidth="280" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Colour list with its own compact header. -->
+                        <Border
+                            BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
+                            BorderThickness="1"
+                            CornerRadius="{StaticResource Dmx.CornerRadius}">
+                            <DockPanel>
+                                <Border DockPanel.Dock="Top" Style="{StaticResource PanelHeader}">
+                                    <DockPanel>
+                                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                            <Button
+                                                AutomationProperties.Name="Add colour"
+                                                Command="{Binding AddColorCommand}"
+                                                Style="{StaticResource PanelHeaderButton}"
+                                                ToolTip="Add a colour after the selected one">
+                                                <c:DmxIcon Kind="Add" Size="{StaticResource Dmx.DenseIconSize}" />
+                                            </Button>
+                                            <Button
+                                                AutomationProperties.Name="Remove colour"
+                                                Command="{Binding RemoveColorCommand}"
+                                                Style="{StaticResource PanelHeaderButton}"
+                                                ToolTip="Remove the selected colour (Del)">
+                                                <c:DmxIcon Kind="Remove" Size="{StaticResource Dmx.DenseIconSize}" />
+                                            </Button>
+                                            <Button
+                                                AutomationProperties.Name="Move colour up"
+                                                Command="{Binding MoveColorUpCommand}"
+                                                Style="{StaticResource PanelHeaderButton}"
+                                                ToolTip="Play earlier (Alt+Up)">
+                                                <c:DmxIcon Kind="MoveUp" Size="{StaticResource Dmx.DenseIconSize}" />
+                                            </Button>
+                                            <Button
+                                                AutomationProperties.Name="Move colour down"
+                                                Command="{Binding MoveColorDownCommand}"
+                                                Style="{StaticResource PanelHeaderButton}"
+                                                ToolTip="Play later (Alt+Down)">
+                                                <c:DmxIcon Kind="MoveDown" Size="{StaticResource Dmx.DenseIconSize}" />
+                                            </Button>
+                                        </StackPanel>
+                                        <TextBlock
+                                            Style="{StaticResource PanelTitle}"
+                                            Text="Colours"
+                                            ToolTip="Colours, in play order" />
+                                    </DockPanel>
+                                </Border>
+                                <Grid MinHeight="132">
+                                    <ListBox
+                                        AutomationProperties.Name="Colours, in play order"
+                                        Background="Transparent"
+                                        BorderThickness="0"
+                                        ItemsSource="{Binding Colors}"
+                                        SelectedItem="{Binding SelectedColor}">
+                                        <ListBox.InputBindings>
+                                            <KeyBinding Command="{Binding RemoveColorCommand}" Gesture="Delete" />
+                                            <KeyBinding Command="{Binding MoveColorUpCommand}" Gesture="Alt+Up" />
+                                            <KeyBinding Command="{Binding MoveColorDownCommand}" Gesture="Alt+Down" />
+                                        </ListBox.InputBindings>
+                                        <ListBox.ItemContainerStyle>
+                                            <Style BasedOn="{StaticResource {x:Type ListBoxItem}}" TargetType="ListBoxItem">
+                                                <Setter Property="Padding" Value="6,0" />
+                                                <Setter Property="Margin" Value="0" />
+                                                <Setter Property="MinHeight" Value="{StaticResource Dmx.ListRowMinHeight}" />
+                                                <Setter Property="AutomationProperties.Name" Value="{Binding AutomationName}" />
+                                            </Style>
+                                        </ListBox.ItemContainerStyle>
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type ed:ColorCycleEntryViewModel}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock
+                                                        MinWidth="16"
+                                                        VerticalAlignment="Center"
+                                                        FontSize="{StaticResource Dmx.FontSize.Small}"
+                                                        Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                                        Text="{Binding Number}" />
+                                                    <Ellipse
+                                                        Width="{StaticResource Dmx.DenseIconSize}"
+                                                        Height="{StaticResource Dmx.DenseIconSize}"
+                                                        Margin="4,0,6,0"
+                                                        VerticalAlignment="Center"
+                                                        Fill="{Binding Hex}"
+                                                        Stroke="{DynamicResource ControlStrokeColorDefaultBrush}" />
+                                                    <TextBlock
+                                                        VerticalAlignment="Center"
+                                                        FontFamily="Cascadia Mono, Consolas"
+                                                        FontSize="{StaticResource Dmx.FontSize.Small}"
+                                                        Text="{Binding Hex}" />
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                    <TextBlock
+                                        Margin="6,4"
+                                        Style="{StaticResource HintText}"
+                                        Text="No colours: click +."
+                                        Visibility="{Binding HasNoColors, Converter={StaticResource BoolToVisibility}}" />
+                                </Grid>
+                            </DockPanel>
+                        </Border>
+
+                        <Grid Grid.Column="2">
+                            <edv:ColorEditorView DataContext="{Binding ColorEditor}" Visibility="{Binding DataContext.HasSelectedColor, RelativeSource={RelativeSource AncestorType=edv:ColorCycleEditorView}, Converter={StaticResource BoolToVisibility}}" />
+                            <TextBlock
+                                Style="{StaticResource HintText}"
+                                Text="Select a colour to change it."
+                                Visibility="{Binding HasNoSelectedColor, Converter={StaticResource BoolToVisibility}}" />
+                        </Grid>
+                    </Grid>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="{StaticResource Dmx.FormLabelColumnWidth}" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Style="{StaticResource FormLabel}" Text="Hold (s)" />
+                        <ui:NumberBox
+                            Grid.Column="1"
+                            AutomationProperties.Name="Hold, seconds"
+                            Style="{StaticResource SecondsBox}"
+                            ToolTip="How long each colour stays before the fade to the next"
+                            Value="{Binding HoldSeconds, Mode=TwoWay}" />
+
+                        <TextBlock
+                            Grid.Row="1"
+                            Style="{StaticResource FormLabel}"
+                            Text="Fade (s)" />
+                        <StackPanel
+                            Grid.Row="1"
+                            Grid.Column="1"
+                            Orientation="Horizontal">
+                            <ui:NumberBox
+                                AutomationProperties.Name="Fade, seconds"
+                                Style="{StaticResource SecondsBox}"
+                                ToolTip="Crossfade time to the next colour"
+                                Value="{Binding FadeSeconds, Mode=TwoWay}" />
+                            <TextBlock
+                                Margin="8,0,0,4"
+                                VerticalAlignment="Center"
+                                Style="{StaticResource StatusText}"
+                                Text="{Binding CycleText}" />
+                        </StackPanel>
+
+                        <TextBlock
+                            Grid.Row="2"
+                            Style="{StaticResource FormLabel}"
+                            Text="Offset (s)"
+                            ToolTip="Fixture offset, seconds" />
+                        <ui:NumberBox
+                            Grid.Row="2"
+                            Grid.Column="1"
+                            AutomationProperties.Name="Fixture offset, seconds"
+                            Style="{StaticResource SecondsBox}"
+                            ToolTip="Each fixture runs this much behind the previous one (0 = all in sync); turns the cycle into a colour chase"
+                            Value="{Binding FixtureOffsetSeconds, Mode=TwoWay}" />
+
+                        <CheckBox
+                            Grid.Row="3"
+                            Grid.Column="1"
+                            AutomationProperties.Name="Use the white channel"
+                            Content="Use white channel"
+                            IsChecked="{Binding UseWhiteChannel}"
+                            ToolTip="On: the white part of each colour goes to the fixture's White channel. Off: white is mixed from red, green and blue." />
+                    </Grid>
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+    </Grid>
+</UserControl>

@@ -1,0 +1,538 @@
+<UserControl
+    x:Class="DmxPro.App.Views.SettingsView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:c="clr-namespace:DmxPro.App.Controls"
+    xmlns:conv="clr-namespace:DmxPro.App.Converters"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    xmlns:vm="clr-namespace:DmxPro.App.ViewModels"
+    d:DataContext="{d:DesignInstance Type=vm:SettingsViewModel}"
+    d:DesignHeight="800"
+    d:DesignWidth="1280"
+    mc:Ignorable="d">
+    <UserControl.Resources>
+        <conv:EqualsToVisibilityConverter x:Key="EqualsToVisibility" />
+
+        <!-- One settings form: label column + control column (same metrics as the Fixtures Properties panel). -->
+        <Style x:Key="SettingsForm" TargetType="Grid">
+            <Setter Property="MaxWidth" Value="640" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+        </Style>
+
+        <!-- Label column of the settings forms; labels are kept short so one compact width fits all. -->
+        <Style
+            x:Key="WideLabel"
+            BasedOn="{StaticResource FormLabel}"
+            TargetType="TextBlock">
+            <Setter Property="Width" Value="112" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+
+        <Style
+            x:Key="PathText"
+            TargetType="TextBox">
+            <Setter Property="IsReadOnly" Value="True" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0,0,0,4" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+        </Style>
+    </UserControl.Resources>
+
+    <DockPanel>
+        <!-- ═════════════ Page toolbar ═════════════ -->
+        <Border DockPanel.Dock="Top" Style="{StaticResource PageToolbar}">
+            <DockPanel LastChildFill="False">
+                <StackPanel
+                    VerticalAlignment="Center"
+                    DockPanel.Dock="Left"
+                    Orientation="Horizontal">
+                    <Button
+                        AutomationProperties.Name="Reset settings to defaults"
+                        Command="{Binding ResetToDefaultsCommand}"
+                        Style="{StaticResource ToolbarLabelButton}"
+                        ToolTip="Reset every preference to its default (asks first; output configurations are kept)">
+                        <StackPanel Orientation="Horizontal">
+                            <c:DmxIcon Kind="Undo" Size="{StaticResource Dmx.ButtonIconSize}" />
+                            <TextBlock Style="{StaticResource ButtonLabel}" Text="Reset to defaults" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+                <TextBlock
+                    MaxWidth="560"
+                    DockPanel.Dock="Right"
+                    Style="{StaticResource StatusText}"
+                    Text="Changes are saved automatically."
+                    ToolTip="{Binding SettingsFilePath}" />
+            </DockPanel>
+        </Border>
+
+        <!-- Load / save problems are shown, never only logged. -->
+        <Border
+            Margin="4,4,4,0"
+            Padding="6,2"
+            Background="{DynamicResource ControlFillColorDefaultBrush}"
+            BorderBrush="{DynamicResource SystemFillColorCautionBrush}"
+            BorderThickness="3,0,0,0"
+            DockPanel.Dock="Top"
+            Visibility="{Binding Message, Converter={StaticResource NullToVisibility}}">
+            <DockPanel>
+                <c:DmxIcon
+                    Margin="0,0,4,0"
+                    VerticalAlignment="Top"
+                    Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                    Kind="Warning"
+                    Size="{StaticResource Dmx.SmallIconSize}" />
+                <TextBlock Text="{Binding Message}" TextWrapping="Wrap" />
+            </DockPanel>
+        </Border>
+
+        <!-- ═════════════ Body: categories | form ═════════════ -->
+        <Grid Margin="{StaticResource Dmx.PageBodyMargin}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="168" MinWidth="128" />
+                <ColumnDefinition Width="4" />
+                <ColumnDefinition Width="*" MinWidth="400" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Category list and form without title bars: the selected list item says what the form shows. -->
+            <Border Grid.Column="0" Style="{StaticResource PanelBorder}">
+                <DockPanel>
+                    <ListBox
+                        Margin="2"
+                        AutomationProperties.Name="Settings categories"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        ItemsSource="{Binding Sections}"
+                        SelectedItem="{Binding SelectedSection}">
+                        <ListBox.ItemContainerStyle>
+                            <Style BasedOn="{StaticResource {x:Type ListBoxItem}}" TargetType="ListBoxItem">
+                                <Setter Property="AutomationProperties.Name" Value="{Binding Title}" />
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:SettingsSectionItem}">
+                                <StackPanel MinHeight="{StaticResource Dmx.ListRowMinHeight}" Orientation="Horizontal">
+                                    <c:DmxIcon
+                                        Margin="0,0,6,0"
+                                        VerticalAlignment="Center"
+                                        Kind="{Binding IconKind}"
+                                        Size="{StaticResource Dmx.SmallIconSize}" />
+                                    <TextBlock VerticalAlignment="Center" Text="{Binding Title}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+            </Border>
+
+            <GridSplitter Grid.Column="1" Style="{StaticResource VerticalSplitter}" />
+
+            <Border Grid.Column="2" Style="{StaticResource PanelBorder}">
+                <DockPanel>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <Grid Margin="8,4">
+
+                            <!-- ═══ Appearance ═══ -->
+                            <Grid Style="{StaticResource SettingsForm}" Visibility="{Binding SelectedSection.Section, Converter={StaticResource EqualsToVisibility}, ConverterParameter=Appearance}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Style="{StaticResource WideLabel}" Text="Theme" />
+                                <ComboBox
+                                    x:Name="ThemeBox"
+                                    Grid.Column="1"
+                                    Width="220"
+                                    HorizontalAlignment="Left"
+                                    AutomationProperties.Name="Theme"
+                                    DisplayMemberPath="Label"
+                                    ItemsSource="{Binding ThemeOptions}"
+                                    SelectedValue="{Binding ThemeMode}"
+                                    SelectedValuePath="Value"
+                                    Style="{StaticResource FormComboBox}" />
+                                <TextBlock
+                                    Grid.Row="1"
+                                    Grid.Column="1"
+                                    Margin="0,-2,0,4"
+                                    Style="{StaticResource HintText}"
+                                    Text="{Binding SelectedItem.Description, ElementName=ThemeBox}" />
+                            </Grid>
+
+                            <!-- ═══ Safety ═══ -->
+                            <Grid Style="{StaticResource SettingsForm}" Visibility="{Binding SelectedSection.Section, Converter={StaticResource EqualsToVisibility}, ConverterParameter=Safety}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Style="{StaticResource WideLabel}" Text="On exit, send" />
+                                <ComboBox
+                                    x:Name="SafeFrameBox"
+                                    Grid.Column="1"
+                                    Width="220"
+                                    HorizontalAlignment="Left"
+                                    AutomationProperties.Name="Safe frame on exit"
+                                    DisplayMemberPath="Label"
+                                    ItemsSource="{Binding SafeFrameOptions}"
+                                    SelectedValue="{Binding SafeFrameOnExit}"
+                                    SelectedValuePath="Value"
+                                    Style="{StaticResource FormComboBox}" />
+                                <TextBlock
+                                    Grid.Row="1"
+                                    Grid.Column="1"
+                                    Margin="0,-2,0,4"
+                                    Style="{StaticResource HintText}"
+                                    Text="{Binding SelectedItem.Description, ElementName=SafeFrameBox, StringFormat='{}{0} Sent once to every universe, then output stops.'}" />
+
+                                <TextBlock
+                                    Grid.Row="2"
+                                    Style="{StaticResource WideLabel}"
+                                    Text="Strobe" />
+                                <CheckBox
+                                    Grid.Row="2"
+                                    Grid.Column="1"
+                                    Margin="0,0,0,4"
+                                    AutomationProperties.Name="Allow strobe"
+                                    Content="Allow strobe effects and channels"
+                                    IsChecked="{Binding AllowStrobe}" />
+
+                                <TextBlock
+                                    Grid.Row="3"
+                                    Style="{StaticResource WideLabel}"
+                                    Text="Max strobe (Hz)" />
+                                <ui:NumberBox
+                                    Grid.Row="3"
+                                    Grid.Column="1"
+                                    Width="100"
+                                    HorizontalAlignment="Left"
+                                    AutomationProperties.Name="Maximum strobe rate in flashes per second"
+                                    IsEnabled="{Binding AllowStrobe}"
+                                    Maximum="25"
+                                    Minimum="1"
+                                    Style="{StaticResource FormNumberBox}"
+                                    ToolTip="Fastest strobe any effect or strobe channel may run (1–25 flashes per second)"
+                                    Value="{Binding MaxStrobeRateHz, UpdateSourceTrigger=LostFocus}" />
+
+                                <!-- Photosensitivity warning (UI guideline: strobe controls warn) -->
+                                <Border
+                                    Grid.Row="4"
+                                    Grid.Column="1"
+                                    Margin="0,0,0,4"
+                                    Padding="6,2"
+                                    Background="{DynamicResource ControlFillColorDefaultBrush}"
+                                    BorderBrush="{DynamicResource SystemFillColorCautionBrush}"
+                                    BorderThickness="3,0,0,0">
+                                    <DockPanel>
+                                        <c:DmxIcon
+                                            Margin="0,1,4,0"
+                                            VerticalAlignment="Top"
+                                            Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                                            Kind="Strobe"
+                                            Size="{StaticResource Dmx.DenseIconSize}" />
+                                        <TextBlock
+                                            FontSize="{StaticResource Dmx.FontSize.Small}"
+                                            Text="Photosensitivity: flashing at 3–30 Hz can trigger seizures. Keep the maximum low for unknown audiences. Auto music shows never strobe unless you turn it on."
+                                            TextWrapping="Wrap" />
+                                    </DockPanel>
+                                </Border>
+
+                                <TextBlock
+                                    Grid.Row="5"
+                                    Style="{StaticResource WideLabel}"
+                                    Text="Release All" />
+                                <CheckBox
+                                    Grid.Row="5"
+                                    Grid.Column="1"
+                                    Margin="0,0,0,4"
+                                    AutomationProperties.Name="Confirm before Release All"
+                                    Content="Ask before Release All"
+                                    IsChecked="{Binding ConfirmReleaseAll}" />
+                                <TextBlock
+                                    Grid.Row="6"
+                                    Grid.Column="1"
+                                    Margin="0,-2,0,4"
+                                    Style="{StaticResource HintText}"
+                                    Text="Off by default: Release All is an instant panic button." />
+                            </Grid>
+
+                            <!-- ═══ Show playback ═══ -->
+                            <Grid Style="{StaticResource SettingsForm}" Visibility="{Binding SelectedSection.Section, Converter={StaticResource EqualsToVisibility}, ConverterParameter=ShowPlayback}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Style="{StaticResource WideLabel}" Text="Console override" />
+                                <ComboBox
+                                    x:Name="OverrideBox"
+                                    Grid.Column="1"
+                                    Width="260"
+                                    HorizontalAlignment="Left"
+                                    AutomationProperties.Name="Console override mode"
+                                    DisplayMemberPath="Label"
+                                    ItemsSource="{Binding OverrideModeOptions}"
+                                    SelectedValue="{Binding ConsoleOverrideMode}"
+                                    SelectedValuePath="Value"
+                                    Style="{StaticResource FormComboBox}" />
+                                <TextBlock
+                                    Grid.Row="1"
+                                    Grid.Column="1"
+                                    Margin="0,-2,0,4"
+                                    Style="{StaticResource HintText}"
+                                    Text="{Binding SelectedItem.Description, ElementName=OverrideBox}" />
+
+                                <TextBlock
+                                    Grid.Row="2"
+                                    Style="{StaticResource WideLabel}"
+                                    Text="Seek step (s)" />
+                                <ui:NumberBox
+                                    Grid.Row="2"
+                                    Grid.Column="1"
+                                    Width="100"
+                                    HorizontalAlignment="Left"
+                                    AutomationProperties.Name="Seek step in seconds"
+                                    Maximum="60"
+                                    Minimum="1"
+                                    Style="{StaticResource FormNumberBox}"
+                                    ToolTip="How far the show transport's back / forward buttons jump (1–60 s, default 5)"
+                                    Value="{Binding SeekStepSeconds, UpdateSourceTrigger=LostFocus}" />
+                            </Grid>
+
+                            <!-- ═══ Engine ═══ -->
+                            <Grid Style="{StaticResource SettingsForm}" Visibility="{Binding SelectedSection.Section, Converter={StaticResource EqualsToVisibility}, ConverterParameter=Engine}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Style="{StaticResource WideLabel}" Text="Refresh rate" />
+                                <TextBlock
+                                    Grid.Column="1"
+                                    Margin="0,0,0,4"
+                                    VerticalAlignment="Center"
+                                    Text="{Binding DmxRefreshRateText}" />
+                                <TextBlock
+                                    Grid.Row="1"
+                                    Grid.Column="1"
+                                    Style="{StaticResource HintText}"
+                                    Text="Engine rate (44 Hz is the DMX maximum). Per-output send rates are set in Input / Output." />
+                            </Grid>
+
+                            <!-- ═══ Project & folders ═══ -->
+                            <Grid Style="{StaticResource SettingsForm}" Visibility="{Binding SelectedSection.Section, Converter={StaticResource EqualsToVisibility}, ConverterParameter=Project}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Style="{StaticResource WideLabel}" Text="Autosave (min)" />
+                                <ui:NumberBox
+                                    Grid.Column="1"
+                                    Width="100"
+                                    HorizontalAlignment="Left"
+                                    AutomationProperties.Name="Autosave interval in minutes"
+                                    Maximum="120"
+                                    Minimum="0"
+                                    Style="{StaticResource FormNumberBox}"
+                                    ToolTip="0 = off"
+                                    Value="{Binding AutosaveIntervalMinutes, UpdateSourceTrigger=LostFocus}" />
+                                <TextBlock
+                                    Grid.Row="1"
+                                    Grid.Column="1"
+                                    Margin="0,-2,0,4"
+                                    Style="{StaticResource HintText}"
+                                    Text="0 = off. Saved now; autosave itself arrives in phase 9." />
+
+                                <TextBlock
+                                    Grid.Row="2"
+                                    VerticalAlignment="Top"
+                                    Margin="0,0,8,4"
+                                    Style="{StaticResource WideLabel}"
+                                    Text="Project folder" />
+                                <StackPanel Grid.Row="2" Grid.Column="1">
+                                    <TextBox
+                                        AutomationProperties.Name="Default project folder"
+                                        Style="{StaticResource PathText}"
+                                        Text="{Binding EffectiveProjectFolder, Mode=OneWay}" />
+                                    <StackPanel Margin="0,0,0,4" Orientation="Horizontal">
+                                        <Button
+                                            AutomationProperties.Name="Choose default project folder"
+                                            Command="{Binding BrowseProjectFolderCommand}"
+                                            Style="{StaticResource ToolbarLabelButton}"
+                                            ToolTip="Folder that Open and Save As start in">
+                                            <StackPanel Orientation="Horizontal">
+                                                <c:DmxIcon Kind="Folder" Size="{StaticResource Dmx.ButtonIconSize}" />
+                                                <TextBlock Style="{StaticResource ButtonLabel}" Text="Choose…" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button
+                                            Margin="4,0,0,0"
+                                            AutomationProperties.Name="Use the standard project folder"
+                                            Command="{Binding ResetProjectFolderCommand}"
+                                            Content="Use default"
+                                            IsEnabled="{Binding HasCustomProjectFolder}"
+                                            Style="{StaticResource ToolbarLabelButton}"
+                                            ToolTip="Go back to Documents\DmxPro" />
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <TextBlock
+                                    Grid.Row="3"
+                                    VerticalAlignment="Top"
+                                    Margin="0,0,8,4"
+                                    Style="{StaticResource WideLabel}"
+                                    Text="Profile folders" />
+                                <StackPanel Grid.Row="3" Grid.Column="1">
+                                    <TextBlock
+                                        Margin="0,0,0,2"
+                                        Style="{StaticResource HintText}"
+                                        Text="Always loaded:" />
+                                    <TextBox
+                                        AutomationProperties.Name="Built-in profile folder"
+                                        Margin="0,0,0,2"
+                                        Style="{StaticResource PathText}"
+                                        Text="{Binding BuiltInProfilesFolder, Mode=OneWay}"
+                                        ToolTip="Built-in profiles shipped with DMX Pro" />
+                                    <TextBox
+                                        AutomationProperties.Name="User profile folder"
+                                        Style="{StaticResource PathText}"
+                                        Text="{Binding UserProfilesFolder, Mode=OneWay}"
+                                        ToolTip="Your imported and edited profiles" />
+
+                                    <TextBlock
+                                        Margin="0,2,0,2"
+                                        Style="{StaticResource HintText}"
+                                        Text="Extra folders (loaded on next start):" />
+                                    <Border
+                                        MinHeight="64"
+                                        MaxHeight="160"
+                                        Style="{StaticResource FormSectionBorder}"
+                                        Padding="0">
+                                        <Grid>
+                                            <ListBox
+                                                AutomationProperties.Name="Extra fixture profile folders"
+                                                Background="Transparent"
+                                                BorderThickness="0"
+                                                ItemsSource="{Binding ProfileFolders}"
+                                                SelectedItem="{Binding SelectedProfileFolder}">
+                                                <ListBox.InputBindings>
+                                                    <KeyBinding Command="{Binding RemoveProfileFolderCommand}" Gesture="Delete" />
+                                                </ListBox.InputBindings>
+                                            </ListBox>
+                                            <TextBlock
+                                                Margin="4"
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"
+                                                IsHitTestVisible="False"
+                                                Style="{StaticResource HintText}"
+                                                Text="No extra folders."
+                                                TextAlignment="Center"
+                                                Visibility="{Binding ProfileFolders.Count, Converter={StaticResource EqualsToVisibility}, ConverterParameter=0}" />
+                                        </Grid>
+                                    </Border>
+                                    <StackPanel Margin="0,4,0,0" Orientation="Horizontal">
+                                        <Button
+                                            AutomationProperties.Name="Add profile folder"
+                                            Command="{Binding AddProfileFolderCommand}"
+                                            Style="{StaticResource ToolbarLabelButton}"
+                                            ToolTip="Add a folder with .dmxprofile.json files">
+                                            <StackPanel Orientation="Horizontal">
+                                                <c:DmxIcon Kind="Add" Size="{StaticResource Dmx.ButtonIconSize}" />
+                                                <TextBlock Style="{StaticResource ButtonLabel}" Text="Add folder…" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button
+                                            Margin="4,0,0,0"
+                                            AutomationProperties.Name="Remove profile folder"
+                                            Command="{Binding RemoveProfileFolderCommand}"
+                                            Style="{StaticResource ToolbarLabelButton}"
+                                            ToolTip="Remove the selected folder from the list (Del). No files are deleted.">
+                                            <StackPanel Orientation="Horizontal">
+                                                <c:DmxIcon Kind="Remove" Size="{StaticResource Dmx.ButtonIconSize}" />
+                                                <TextBlock Style="{StaticResource ButtonLabel}" Text="Remove" />
+                                            </StackPanel>
+                                        </Button>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- ═══ About ═══ -->
+                            <StackPanel
+                                MaxWidth="720"
+                                HorizontalAlignment="Left"
+                                Visibility="{Binding SelectedSection.Section, Converter={StaticResource EqualsToVisibility}, ConverterParameter=About}">
+                                <TextBlock
+                                    Margin="0,0,0,2"
+                                    FontSize="{StaticResource Dmx.FontSize.Title}"
+                                    FontWeight="SemiBold"
+                                    Text="{Binding VersionText}" />
+                                <TextBlock
+                                    Margin="0,0,0,4"
+                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                    Text="A modern DMX lighting controller for RGB / RGBW fixtures."
+                                    TextWrapping="Wrap" />
+
+                                <TextBlock Style="{StaticResource FormSection}" Text="Licenses and attribution" />
+                                <TextBlock Margin="0,0,0,2" TextWrapping="Wrap">
+                                    <Run FontWeight="SemiBold" Text="Fluent UI System Icons" />
+                                    <Run Text="— Microsoft, MIT License." />
+                                </TextBlock>
+                                <TextBlock Margin="0,0,0,2" TextWrapping="Wrap">
+                                    <Run FontWeight="SemiBold" Text="WPF-UI" />
+                                    <Run Text="and" />
+                                    <Run FontWeight="SemiBold" Text="CommunityToolkit.Mvvm" />
+                                    <Run Text="— MIT License." />
+                                </TextBlock>
+                                <TextBlock Margin="0,0,0,4" TextWrapping="Wrap">
+                                    <Run FontWeight="SemiBold" Text="QLC+ fixture definitions (.qxf)" />
+                                    <Run Text="— imported profiles come from the QLC+ fixture library, Apache License 2.0. DMX Pro does not contain QLC+ code." />
+                                </TextBlock>
+
+                                <TextBlock Style="{StaticResource FormSection}" Text="Settings file" />
+                                <TextBox
+                                    AutomationProperties.Name="Settings file location"
+                                    Style="{StaticResource PathText}"
+                                    Text="{Binding SettingsFilePath, Mode=OneWay}" />
+                                <TextBlock Style="{StaticResource HintText}" Text="Preferences and outputs are stored here. DMX output is never saved as enabled: it starts disabled." />
+                            </StackPanel>
+                        </Grid>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+        </Grid>
+    </DockPanel>
+</UserControl>

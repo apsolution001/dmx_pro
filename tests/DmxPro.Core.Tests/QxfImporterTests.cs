@@ -62,6 +62,47 @@ public class QxfImporterTests
     }
 
     [Fact]
+    public void ImportFile_SampleStrobeChannel_NoFunctionRangeMarkedSafe()
+    {
+        var strobe = ImportSample().FindChannel("strobe")!;
+
+        Assert.True(strobe.Capabilities[0].Safe);   // 0–9 "No function"
+        Assert.Null(strobe.Capabilities[0].Preset);
+        Assert.False(strobe.Capabilities[1].Safe);  // 10–255 strobe
+        Assert.Equal("StrobeSlowToFast", strobe.Capabilities[1].Preset);
+        Assert.Equal(StrobeRangeKind.Strobing, StrobeCapabilityClassifier.Classify(strobe.Capabilities[1]));
+    }
+
+    [Fact]
+    public void Import_ShutterCapabilityPresets_MarksOnlyOpenRangeSafe()
+    {
+        var document = XDocument.Parse("""
+            <FixtureDefinition xmlns="http://www.qlcplus.org/FixtureDefinition">
+             <Manufacturer>M</Manufacturer>
+             <Model>Shutter test</Model>
+             <Channel Name="Shutter" Preset="ShutterStrobeSlowFast">
+              <Capability Min="0" Max="9" Preset="ShutterClose">Blackout</Capability>
+              <Capability Min="10" Max="19" Preset="ShutterOpen">LED on</Capability>
+              <Capability Min="20" Max="200" Preset="StrobeRandom">Random</Capability>
+              <Capability Min="201" Max="255">Sound active</Capability>
+             </Channel>
+             <Channel Name="Macro" Preset="ColorMacro">
+              <Capability Min="0" Max="9">No function</Capability>
+             </Channel>
+             <Mode Name="2ch"><Channel Number="0">Shutter</Channel><Channel Number="1">Macro</Channel></Mode>
+            </FixtureDefinition>
+            """);
+
+        var profile = QxfImporter.Import(document);
+        var shutter = profile.FindChannel("shutter")!;
+
+        Assert.Equal(ChannelType.Strobe, shutter.Type);
+        Assert.Equal([false, true, false, false], shutter.Capabilities.Select(c => c.Safe));
+        Assert.Equal(["ShutterClose", "ShutterOpen", "StrobeRandom", null], shutter.Capabilities.Select(c => c.Preset));
+        Assert.False(profile.FindChannel("macro")!.Capabilities[0].Safe); // only strobe channels get the flag
+    }
+
+    [Fact]
     public void Import_NotAFixtureDefinition_Throws()
     {
         Assert.Throws<DmxFileFormatException>(() => QxfImporter.Import(XDocument.Parse("<Workspace/>")));

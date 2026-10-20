@@ -1,0 +1,103 @@
+<!--
+    DMX Pro layout metrics: compact desktop density (owner requests 2026-10-18, second round: "shorter everything,
+    slightly smaller font"). Mostly a 2 px grid; body text 12, controls 24 high.
+    Shared by Themes/Styles.xaml and App.xaml; views may use them too, e.g.
+    <ColumnDefinition Width="{StaticResource Dmx.FormLabelColumnWidth}" />.
+    Colours are NOT defined here: brushes always come from WPF-UI via {DynamicResource ...}.
+-->
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+
+    <!-- Typography (Segoe UI Variable via WPF-UI). Never go below Caption (10.5); nothing may be smaller than 10. -->
+    <sys:Double x:Key="Dmx.FontSize.Caption">10.5</sys:Double>
+    <sys:Double x:Key="Dmx.FontSize.Small">11</sys:Double>
+    <sys:Double x:Key="Dmx.FontSize.Body">12</sys:Double>
+    <sys:Double x:Key="Dmx.FontSize.Heading">13</sys:Double>
+    <sys:Double x:Key="Dmx.FontSize.Title">14</sys:Double>
+
+    <!-- Spacing -->
+    <sys:Double x:Key="Dmx.Space.XS">2</sys:Double>
+    <sys:Double x:Key="Dmx.Space.S">4</sys:Double>
+    <sys:Double x:Key="Dmx.Space.M">6</sys:Double>
+    <sys:Double x:Key="Dmx.Space.L">10</sys:Double>
+    <!-- Gap between docked panels and around a page body. -->
+    <Thickness x:Key="Dmx.PageBodyMargin">4</Thickness>
+
+    <!-- Controls -->
+    <sys:Double x:Key="Dmx.ControlHeight">24</sys:Double>
+    <CornerRadius x:Key="Dmx.CornerRadius">4</CornerRadius>
+    <Thickness x:Key="Dmx.LabelledButtonPadding">8,0</Thickness>
+    <!-- Text buttons without a design-system style (WPF-UI Button, dialogs). -->
+    <Thickness x:Key="Dmx.ButtonPadding">8,2</Thickness>
+    <!-- Text inputs: 1 px border + 3 + ~16 px line (12 px font) + 3 + 1 px border = 24 (bottom 1 + MinHeight slack). -->
+    <Thickness x:Key="Dmx.TextControlPadding">6,3,6,1</Thickness>
+
+    <!-- Toolbars -->
+    <Thickness x:Key="Dmx.ToolbarStripPadding">4,1</Thickness>
+    <Thickness x:Key="Dmx.PageToolbarPadding">4,2</Thickness>
+    <sys:Double x:Key="Dmx.ToolbarSeparatorHeight">14</sys:Double>
+    <sys:Double x:Key="Dmx.ToolbarHeight">30</sys:Double>
+    <sys:Double x:Key="Dmx.ToolbarButtonSize">24</sys:Double>
+    <sys:Double x:Key="Dmx.ToolbarIconSize">14</sys:Double>
+    <sys:Double x:Key="Dmx.ButtonIconSize">14</sys:Double>
+    <sys:Double x:Key="Dmx.PanelHeaderButtonSize">20</sys:Double>
+    <sys:Double x:Key="Dmx.SmallIconSize">14</sys:Double>
+    <!-- Icons inside dense rows (tables, trees, status cells). -->
+    <sys:Double x:Key="Dmx.DenseIconSize">12</sys:Double>
+    <!-- Icon slot in menus and context menus. -->
+    <sys:Double x:Key="Dmx.MenuIconSize">14</sys:Double>
+
+    <!-- Check boxes and radio buttons: 16 px glyph box on a 20 px row. -->
+    <sys:Double x:Key="Dmx.CheckBoxSize">16</sys:Double>
+    <sys:Double x:Key="Dmx.CheckRowHeight">20</sys:Double>
+
+    <!-- Window chrome -->
+    <sys:Double x:Key="Dmx.TitleBarHeight">28</sys:Double>
+    <sys:Double x:Key="Dmx.MenuItemHeight">22</sys:Double>
+    <sys:Double x:Key="Dmx.StatusBarHeight">20</sys:Double>
+
+    <!-- Navigation rail -->
+    <sys:Double x:Key="Dmx.NavIconSize">18</sys:Double>
+    <sys:Double x:Key="Dmx.NavRailWidth">62</sys:Double>
+    <sys:Double x:Key="Dmx.NavItemMinHeight">42</sys:Double>
+
+    <!-- Panels and tabs -->
+    <sys:Double x:Key="Dmx.PanelHeaderHeight">24</sys:Double>
+    <sys:Double x:Key="Dmx.TabHeight">24</sys:Double>
+    <sys:Double x:Key="Dmx.SplitterSize">4</sys:Double>
+
+    <!-- Forms -->
+    <GridLength x:Key="Dmx.FormLabelColumnWidth">100</GridLength>
+    <sys:Double x:Key="Dmx.FormRowSpacing">3</sys:Double>
+    <!-- Bottom margin of a form row (label and input), = Dmx.FormRowSpacing. -->
+    <Thickness x:Key="Dmx.FormRowMargin">0,0,0,3</Thickness>
+
+    <!-- Tables, lists, trees -->
+    <sys:Double x:Key="Dmx.TableRowHeight">22</sys:Double>
+    <sys:Double x:Key="Dmx.TableHeaderHeight">22</sys:Double>
+    <sys:Double x:Key="Dmx.ListRowMinHeight">20</sys:Double>
+
+    <!-- Channel fader (Themes/ChannelFader.xaml): 0-255 stays usable at the minimum slider travel. -->
+    <sys:Double x:Key="Dmx.FaderMinHeight">150</sys:Double>
+    <sys:Double x:Key="Dmx.FaderSliderMinHeight">72</sys:Double>
+    <sys:Double x:Key="Dmx.FaderWidth">36</sys:Double>
+    <!-- Fixed slider travel of every channel fader: 128 px for 0-255 (2 values per pixel). -->
+    <sys:Double x:Key="Dmx.FaderSliderHeight">128</sys:Double>
+    <!-- Test page desk fader (style ChannelFader.Desk): no include check box, so 24 px shorter. -->
+    <sys:Double x:Key="Dmx.TestFaderMinHeight">126</sys:Double>
+    <!-- One channel column of the Test page desk (QLC+ Simple Desk look). -->
+    <sys:Double x:Key="Dmx.DeskChannelWidth">34</sys:Double>
+    <!-- Grand Master strip at the left of the Test page desk. -->
+    <sys:Double x:Key="Dmx.DeskMasterWidth">48</sys:Double>
+    <!-- Per-channel release button on the Test page. -->
+    <sys:Double x:Key="Dmx.MiniButtonSize">16</sys:Double>
+
+    <!-- DMX monitor cell (Test page): address over value. -->
+    <sys:Double x:Key="Dmx.MonitorCellWidth">32</sys:Double>
+    <sys:Double x:Key="Dmx.MonitorCellHeight">26</sys:Double>
+
+    <!-- Empty states -->
+    <sys:Double x:Key="Dmx.EmptyStateIconSize">28</sys:Double>
+</ResourceDictionary>

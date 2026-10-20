@@ -1,0 +1,538 @@
+using System.Collections.ObjectModel;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using DmxPro.App.Services;
+using DmxPro.App.ViewModels.Editors;
+using DmxPro.Core.Functions;
+using DmxPro.Core.Patching;
+using DmxPro.Core.Projects;
+
+namespace DmxPro.App.ViewModels;
+
+/// <summary>
+/// Functions page (QLC+ Function Manager layout): function tree grouped by type on top, summary or editor below.
+/// Select ≠ edit ≠ preview (ui-plan §3.3): a click only selects and shows an on-screen summary; double-click / Enter /
+/// Edit opens the editor of the function's type; nothing here changes the lights (preview is disabled for now).
+/// </summary>
+public sealed partial class FunctionsViewModel : PageViewModel
+{
+    private static FunctionTypeOption AllTypes { get; } = new(null, "All types");
+
+    private readonly ProjectService _projects;
+    private readonly IDialogService _dialogs;
+    private readonly AppSettingsService _settings;
+    private readonly LightClipboardService _clipboard;
+
+    /// <summary>True while the list rebuilds or a selection is put back, so selection changes don't prompt.</summary>
+    private bool _suppressSelection;
+
+    /// <summary><see cref="ProjectService.Revision"/> the lists were last rebuilt from (-1 = never).</summary>
+    private long _loadedRevision = -1;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSelection), nameof(SelectedScene), nameof(SelectedIsShowCopy), nameof(SelectedShowInList))]
+    [NotifyCanExecuteChangedFor(
+        nameof(EditCommand),
+        nameof(DuplicateCommand),
+        nameof(DeleteCommand),
+        nameof(BeginRenameCommand))]
+    private FunctionRowViewModel? _selectedRow;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsEditing), nameof(IsSummaryVisible))]
+    private FunctionEditorViewModel? _editor;
+
+    [ObservableProperty]
+    private string _search = string.Empty;
+
+    [ObservableProperty]
+    private FunctionTypeOption _typeFilter = AllTypes;
+
+    [ObservableProperty]
+    private bool _showHiddenShowCopies;
+
+    public FunctionsViewModel(ProjectService projects, IDialogService dialogs, AppSettingsService settings, LightClipboardService clipboard)
+    {
+        _projects = projects;
+        _dialogs = dialogs;
+        _settings = settings;
+        _clipboard = clipboard;
+        TypeOptions = [AllTypes, .. Enum.GetValues<FunctionType>().Select(t => new FunctionTypeOption(t, FunctionRowViewModel.TypeDisplayName(t)))];
+
+        // A different project replaces everything; the shell has already asked about saving the project.
+        _projects.ProjectChanged += (_, _) =>
+        {
+            Editor = null;
+            Reload();
+        };
+
+        // Lights added/removed/renamed while an editor is open must show up in its Add list.
+        _projects.ContentChanged += (_, _) => Editor?.RefreshPatch();
+        Reload();
+    }
+
+    public override string Title => "Functions";
+
+    public override string Subtitle => "Scenes, chasers and effects. Click to select, double-click to edit.";
+
+    /// <summary>Every visible function in tree order (type, then name). Keyboard/delete logic works on this list.</summary>
+    public ObservableCollection<FunctionRowViewModel> Rows { get; } = [];
+
+    /// <summary>The tree: one folder per function type that has visible functions.</summary>
+    public ObservableCollection<FunctionTreeGroupViewModel> Groups { get; } = [];
+
+    public IReadOnlyList<FunctionTypeOption> TypeOptions { get; }
+
+    /// <summary>On-screen preview of the selected function (summary panel).</summary>
+    public ObservableCollection<PreviewLight> SelectedPreviewLights { get; } = [];
+
+    public bool HasSelection => SelectedRow is not null;
+
+    public SceneFunction? SelectedScene => SelectedRow?.Function as SceneFunction;
+
+    public bool IsEditing => Editor is not null;
+
+    public bool IsSummaryVisible => Editor is null && SelectedRow is not null;
+
+    public bool IsNothingSelected => Editor is null && SelectedRow is null;
+
+    public bool SelectedIsShowCopy => SelectedRow?.Function.OwnerShowId is not null;
+
+    /// <summary>"Show in function list" of the selected show copy, changed directly from the summary panel.</summary>
+    public bool SelectedShowInList
+    {
+        get => SelectedRow?.Function.ShowInFunctionList ?? false;
+        set
+        {
+            if (SelectedRow is not { } row || row.Function.OwnerShowId is null || row.Function.ShowInFunctionList == value)
+            {
+                return;
+            }
+
+            _projects.Current.SetShowInFunctionList(row.Function.Id, value);
+            _projects.MarkChanged(affectsPlayback: false);
+            row.Refresh(_projects.Current);
+            OnPropertyChanged();
+            if (!value && !ShowHiddenShowCopies)
+            {
+                Reload();
+            }
+        }
+    }
+
+    /// <summary>The project has no listed functions at all: the list shows the "No functions yet" empty state.</summary>
+    public bool IsListEmpty => !_projects.Current.FunctionListItems.Any() && !(ShowHiddenShowCopies && _projects.Current.Functions.Count > 0);
+
+    /// <summary>Functions exist but the search/type filter hides all of them.</summary>
+    public bool NoFilterResults => !IsListEmpty && Rows.Count == 0;
+
+    public override void OnNavigatedTo()
+    {
+        // Rebuilding the tree on every visit made switching to this page slow; only rebuild when the project changed.
+        if (_loadedRevision != _projects.Revision)
+        {
+            Reload();
+        }
+
+        Editor?.RefreshPatch();
+    }
+
+    /// <summary>
+    /// Closes the editor, asking Save / Don't save / Cancel when it has unsaved changes. Returns false when the user
+    /// cancelled (the editor stays open). The shell can call this before leaving the page or replacing the project.
+    /// </summary>
+    public async Task<bool> ConfirmCloseEditorAsync()
+    {
+        if (Editor is not { } editor)
+        {
+            return true;
+        }
+
+        if (editor.IsDirty)
+        {
+            switch (await _dialogs.AskSaveChangesAsync(editor.Original.Name))
+            {
+                case SaveChangesChoice.Cancel:
+                    return false;
+                case SaveChangesChoice.Save:
+                    editor.Save();
+                    break;
+            }
+        }
+
+        CloseEditorSilently();
+        return true;
+    }
+
+    partial void OnSelectedRowChanged(FunctionRowViewModel? oldValue, FunctionRowViewModel? newValue)
+    {
+        OnPropertyChanged(nameof(IsSummaryVisible));
+        OnPropertyChanged(nameof(IsNothingSelected));
+        SyncTreeSelection(oldValue, newValue);
+        UpdateSelectedPreview();
+        if (_suppressSelection || Editor is null || ReferenceEquals(Editor.Original, newValue?.Function))
+        {
+            return;
+        }
+
+        _ = LeaveEditorForSelectionAsync(oldValue);
+    }
+
+    partial void OnEditorChanged(FunctionEditorViewModel? oldValue, FunctionEditorViewModel? newValue)
+    {
+        if (oldValue is not null)
+        {
+            oldValue.Saved -= OnEditorSaved;
+            oldValue.CloseRequested -= OnEditorCloseRequested;
+            oldValue.Detach();
+        }
+
+        if (newValue is not null)
+        {
+            newValue.Saved += OnEditorSaved;
+            newValue.CloseRequested += OnEditorCloseRequested;
+        }
+
+        OnPropertyChanged(nameof(IsNothingSelected));
+    }
+
+    partial void OnSearchChanged(string value) => Reload();
+
+    partial void OnTypeFilterChanged(FunctionTypeOption value)
+    {
+        // The ComboBox pushes null when its selected item disappears.
+        if (value is null)
+        {
+            TypeFilter = AllTypes;
+            return;
+        }
+
+        Reload();
+    }
+
+    partial void OnShowHiddenShowCopiesChanged(bool value) => Reload();
+
+    // ───────────────────────────── Commands ─────────────────────────────
+
+    /// <summary>Empty-state button: a new scene.</summary>
+    [RelayCommand]
+    private Task NewSceneAsync() => NewFunctionAsync(FunctionType.Scene);
+
+    /// <summary>"New > Chaser" etc.: creates an empty function of that type and opens its editor.</summary>
+    [RelayCommand]
+    private async Task NewFunctionAsync(FunctionType type)
+    {
+        if (!await ConfirmCloseEditorAsync())
+        {
+            return;
+        }
+
+        var function = _projects.Current.CreateFunction(type);
+        _projects.MarkChanged();
+        ClearFilters();
+        Reload();
+        Editor = FunctionEditorFactory.Create(_projects.Current, function, _settings, _clipboard);
+        SelectSilently(function);
+    }
+
+    [RelayCommand(CanExecute = nameof(CanEdit))]
+    private async Task EditAsync()
+    {
+        if (SelectedRow?.Function is not { } function || ReferenceEquals(Editor?.Original, function))
+        {
+            return;
+        }
+
+        if (!await ConfirmCloseEditorAsync())
+        {
+            return;
+        }
+
+        Editor = FunctionEditorFactory.Create(_projects.Current, function, _settings, _clipboard);
+    }
+
+    [RelayCommand]
+    private async Task CloseEditorAsync() => await ConfirmCloseEditorAsync();
+
+    [RelayCommand(CanExecute = nameof(HasSelection))]
+    private void Duplicate()
+    {
+        if (SelectedRow is not { } row)
+        {
+            return;
+        }
+
+        var copy = _projects.Current.DuplicateFunction(row.Function.Id);
+        _projects.MarkChanged();
+        Reload();
+        SelectedRow = Rows.FirstOrDefault(r => r.Function == copy) ?? SelectedRow;
+    }
+
+    [RelayCommand(CanExecute = nameof(HasSelection))]
+    private async Task DeleteAsync()
+    {
+        if (SelectedRow is not { } row)
+        {
+            return;
+        }
+
+        var project = _projects.Current;
+        var function = row.Function;
+        var usedByShow = function.OwnerShowId is not null && project.IsUsedByShow(function.Id);
+        var referencedBy = ReferencesText(project, function);
+        var confirmed = usedByShow
+            ? await _dialogs.ConfirmAsync(
+                "Remove from list",
+                $"\"{function.Name}\" is still used in show \"{project.FindShow(function.OwnerShowId!.Value)?.Name}\". It will be removed from the Functions list but stays in the show.",
+                "Remove from list")
+            : await _dialogs.ConfirmAsync(
+                "Delete function",
+                referencedBy is null
+                    ? $"Delete \"{function.Name}\"? Shows that use it keep their own copy."
+                    : $"Delete \"{function.Name}\"? It is used by:{Environment.NewLine}{referencedBy}{Environment.NewLine}{Environment.NewLine}"
+                      + "Those steps and fades will play nothing until you pick another function. Shows keep their own copy.",
+                "Delete");
+        if (!confirmed)
+        {
+            return;
+        }
+
+        if (ReferenceEquals(Editor?.Original, function))
+        {
+            CloseEditorSilently();
+        }
+
+        project.DeleteFunction(function.Id);
+        _projects.MarkChanged();
+        var index = Rows.IndexOf(row);
+        Reload();
+        if (Rows.Count > 0)
+        {
+            SelectedRow = Rows[Math.Clamp(index, 0, Rows.Count - 1)];
+        }
+    }
+
+    [RelayCommand(CanExecute = nameof(HasSelection))]
+    private void BeginRename() => SelectedRow?.BeginRename();
+
+    private bool CanEdit() => SelectedRow is not null;
+
+    /// <summary>Bullet list of the chasers / fades (library or show copies) that play the function; null when none.</summary>
+    private static string? ReferencesText(Project project, LightFunction function)
+    {
+        var users = project.FunctionsReferencing(function.Id);
+        if (users.Count == 0)
+        {
+            return null;
+        }
+
+        var lines = users.Select(u =>
+        {
+            var owner = u.OwnerShowId is { } showId ? $" (in show \"{project.FindShow(showId)?.Name ?? "deleted show"}\")" : string.Empty;
+            return $"  • {FunctionRowViewModel.TypeDisplayName(u.Type)} \"{u.Name}\"{owner}";
+        });
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    // ───────────────────────────── Helpers ─────────────────────────────
+
+    private async Task LeaveEditorForSelectionAsync(FunctionRowViewModel? previous)
+    {
+        if (await ConfirmCloseEditorAsync())
+        {
+            return;
+        }
+
+        // Cancelled: go back to the function being edited.
+        _suppressSelection = true;
+        SelectedRow = previous;
+        _suppressSelection = false;
+    }
+
+    /// <summary>Mirrors <see cref="SelectedRow"/> into the tree (expanding its folder so the item exists).</summary>
+    private void SyncTreeSelection(FunctionRowViewModel? oldValue, FunctionRowViewModel? newValue)
+    {
+        if (oldValue is not null && !ReferenceEquals(oldValue, newValue))
+        {
+            oldValue.IsSelected = false;
+        }
+
+        if (newValue is null)
+        {
+            return;
+        }
+
+        if (Groups.FirstOrDefault(g => g.Children.Contains(newValue)) is { IsExpanded: false } folder)
+        {
+            folder.IsExpanded = true;
+        }
+
+        newValue.IsSelected = true;
+    }
+
+    private void OnRowSelectedInTree(FunctionRowViewModel row)
+    {
+        if (!ReferenceEquals(SelectedRow, row) && Rows.Contains(row))
+        {
+            SelectedRow = row;
+        }
+    }
+
+    /// <summary>A type folder was selected: no function is selected any more (the editor asks about unsaved changes).</summary>
+    private void OnGroupSelectedInTree(FunctionTreeGroupViewModel group)
+    {
+        if (!_suppressSelection && Groups.Contains(group))
+        {
+            SelectedRow = null;
+        }
+    }
+
+    private void CloseEditorSilently()
+    {
+        Editor = null;
+        UpdateSelectedPreview();
+    }
+
+    private void OnEditorSaved(object? sender, EventArgs e)
+    {
+        _projects.MarkChanged();
+        Reload();
+    }
+
+    /// <summary>The editor's own Close command goes through the same unsaved-changes prompt.</summary>
+    private void OnEditorCloseRequested(object? sender, EventArgs e) => _ = ConfirmCloseEditorAsync();
+
+    private bool RenameRow(FunctionRowViewModel row, string name)
+    {
+        if (!_projects.Current.RenameFunction(row.Function.Id, name))
+        {
+            return false;
+        }
+
+        _projects.MarkChanged(affectsPlayback: false);
+        if (Editor is { } editor && ReferenceEquals(editor.Original, row.Function))
+        {
+            editor.SyncName(row.Function.Name);
+        }
+
+        return true;
+    }
+
+    /// <summary>Makes sure a newly created function is visible in the list.</summary>
+    private void ClearFilters()
+    {
+        Search = string.Empty;
+        TypeFilter = AllTypes;
+    }
+
+    private void SelectSilently(LightFunction function)
+    {
+        _suppressSelection = true;
+        SelectedRow = Rows.FirstOrDefault(r => r.Function == function);
+        _suppressSelection = false;
+    }
+
+    /// <summary>Rebuilds the list from the project and the filters, keeping the selection when possible.</summary>
+    private void Reload()
+    {
+        _loadedRevision = _projects.Revision;
+        var project = _projects.Current;
+        var selected = SelectedRow?.Function;
+        var search = Search.Trim();
+        IEnumerable<LightFunction> source = ShowHiddenShowCopies ? project.Functions : project.FunctionListItems;
+
+        // Folders the user collapsed stay collapsed across rebuilds.
+        var collapsed = Groups.Where(g => !g.IsExpanded).Select(g => g.Type).ToHashSet();
+
+        _suppressSelection = true;
+        Rows.Clear();
+        Groups.Clear();
+        var rows = new List<FunctionRowViewModel>();
+        foreach (var function in source)
+        {
+            if (TypeFilter.Type is { } type && function.Type != type)
+            {
+                continue;
+            }
+
+            var row = new FunctionRowViewModel(function, RenameRow, OnRowSelectedInTree);
+            if (search.Length > 0
+                && !function.Name.Contains(search, StringComparison.OrdinalIgnoreCase)
+                && !row.TypeName.Contains(search, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            row.Refresh(project);
+            rows.Add(row);
+        }
+
+        foreach (var byType in rows.GroupBy(r => r.Function.Type).OrderBy(g => g.Key))
+        {
+            var children = byType.OrderBy(r => r.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
+            foreach (var child in children)
+            {
+                Rows.Add(child);
+            }
+
+            Groups.Add(new FunctionTreeGroupViewModel(byType.Key, children, OnGroupSelectedInTree)
+            {
+                IsExpanded = !collapsed.Contains(byType.Key) || children.Any(c => c.Function == selected),
+            });
+        }
+
+        SelectedRow = Rows.FirstOrDefault(r => r.Function == selected);
+        _suppressSelection = false;
+
+        // The edited function was deleted, hidden or the project replaced: the editor has nothing left to edit.
+        if (Editor is not null && !project.Functions.Contains(Editor.Original))
+        {
+            Editor = null;
+        }
+
+        UpdateSelectedPreview();
+        OnPropertyChanged(nameof(IsListEmpty));
+        OnPropertyChanged(nameof(NoFilterResults));
+        OnPropertyChanged(nameof(SelectedShowInList));
+    }
+
+    private void UpdateSelectedPreview()
+    {
+        SelectedPreviewLights.Clear();
+        var project = _projects.Current;
+
+        // Lookup tables: a big scene or effect covers hundreds of lights; per-light project/scene scans were quadratic.
+        var fixtures = new Dictionary<Guid, Fixture>(project.Fixtures.Count);
+        foreach (var fixture in project.Fixtures)
+        {
+            fixtures.TryAdd(fixture.Id, fixture);
+        }
+
+        if (SelectedScene is { } scene)
+        {
+            var values = scene.IndexValues();
+            foreach (var fixtureId in scene.TargetFixtureIds())
+            {
+                if (fixtures.TryGetValue(fixtureId, out var fixture))
+                {
+                    SelectedPreviewLights.Add(new PreviewLight(fixture.Name, PreviewLight.ToHex(values.PreviewColor(project, fixture))));
+                }
+            }
+
+            return;
+        }
+
+        // Effects: each fixture in the effect's (first) colour; a dimmer-only pulse shows warm white.
+        if (SelectedRow?.Function is FixtureEffectFunction effect)
+        {
+            var color = ShowsLibraryItem.PreviewColor(effect, project) ?? new RgbColor(255, 236, 200);
+            foreach (var fixtureId in effect.FixtureIds)
+            {
+                if (fixtures.TryGetValue(fixtureId, out var fixture))
+                {
+                    SelectedPreviewLights.Add(new PreviewLight(fixture.Name, color.ToHex()));
+                }
+            }
+        }
+    }
+}

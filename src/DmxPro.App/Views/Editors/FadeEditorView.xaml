@@ -1,0 +1,132 @@
+<UserControl
+    x:Class="DmxPro.App.Views.Editors.FadeEditorView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:c="clr-namespace:DmxPro.App.Controls"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:ed="clr-namespace:DmxPro.App.ViewModels.Editors"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    d:DataContext="{d:DesignInstance Type=ed:FadeEditorViewModel}"
+    d:DesignHeight="200"
+    d:DesignWidth="800"
+    mc:Ignorable="d">
+    <!--
+        Fade editor (DataContext: FadeEditorViewModel): a dense property form, no headings (the editor header already
+        names the function type).
+
+        From      [(whatever is playing) ▾]
+        To        [Blue ▾]
+        Time (s)  [3.00]  Red → Blue over 3 s, then holds the target
+    -->
+    <Border Style="{StaticResource PanelBorder}">
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <StackPanel
+                MaxWidth="640"
+                Margin="8,4"
+                HorizontalAlignment="Left">
+                <!-- No scenes to pick: say what to do (one line). -->
+                <Border
+                    Margin="0,0,0,4"
+                    Padding="6,2"
+                    Background="{DynamicResource ControlFillColorDefaultBrush}"
+                    BorderBrush="{DynamicResource SystemFillColorCautionBrush}"
+                    BorderThickness="3,0,0,0"
+                    ToolTip="A fade moves between two scenes. Create scenes first (New ▸ Scene), then pick them here."
+                    Visibility="{Binding HasNoScenes, Converter={StaticResource BoolToVisibility}}">
+                    <DockPanel>
+                        <c:DmxIcon
+                            Margin="0,0,6,0"
+                            VerticalAlignment="Center"
+                            Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                            Kind="Warning"
+                            Size="{StaticResource Dmx.DenseIconSize}" />
+                        <TextBlock
+                            VerticalAlignment="Center"
+                            Text="No scenes yet: create scenes first (New ▸ Scene)."
+                            TextTrimming="CharacterEllipsis" />
+                    </DockPanel>
+                </Border>
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="{StaticResource Dmx.FormLabelColumnWidth}" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Style="{StaticResource FormLabel}" Text="From" />
+                    <ComboBox
+                        Grid.Column="1"
+                        MinWidth="220"
+                        HorizontalAlignment="Left"
+                        AutomationProperties.Name="From scene"
+                        DisplayMemberPath="Label"
+                        ItemsSource="{Binding FromOptions}"
+                        SelectedValue="{Binding FromSceneId}"
+                        SelectedValuePath="Value"
+                        Style="{StaticResource FormComboBox}"
+                        ToolTip="The look to start from; 'whatever is playing' starts from the current light state" />
+
+                    <TextBlock
+                        Grid.Row="1"
+                        Style="{StaticResource FormLabel}"
+                        Text="To" />
+                    <StackPanel
+                        Grid.Row="1"
+                        Grid.Column="1"
+                        Orientation="Horizontal">
+                        <ComboBox
+                            MinWidth="220"
+                            AutomationProperties.Name="To scene"
+                            DisplayMemberPath="Label"
+                            ItemsSource="{Binding ToOptions}"
+                            SelectedValue="{Binding ToSceneId}"
+                            SelectedValuePath="Value"
+                            Style="{StaticResource FormComboBox}"
+                            ToolTip="The look to end at; the fade then holds it until stopped" />
+                        <c:DmxIcon
+                            Margin="6,0,0,4"
+                            VerticalAlignment="Center"
+                            AutomationProperties.Name="Pick a target scene; until then this fade shows nothing"
+                            Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                            Kind="Warning"
+                            Size="{StaticResource Dmx.DenseIconSize}"
+                            ToolTip="Pick a target scene; until then this fade shows nothing"
+                            Visibility="{Binding HasNoTarget, Converter={StaticResource BoolToVisibility}}" />
+                    </StackPanel>
+
+                    <TextBlock
+                        Grid.Row="2"
+                        Style="{StaticResource FormLabel}"
+                        Text="Time (s)" />
+                    <StackPanel
+                        Grid.Row="2"
+                        Grid.Column="1"
+                        Orientation="Horizontal">
+                        <ui:NumberBox
+                            Width="112"
+                            AutomationProperties.Name="Duration, seconds"
+                            LargeChange="1"
+                            MaxDecimalPlaces="2"
+                            Maximum="3600"
+                            Minimum="0"
+                            SmallChange="0.1"
+                            Style="{StaticResource FormNumberBox}"
+                            ToolTip="How long the move from the first scene to the second takes"
+                            Value="{Binding DurationSeconds, Mode=TwoWay}" />
+                        <TextBlock
+                            Margin="8,0,0,4"
+                            VerticalAlignment="Center"
+                            Style="{StaticResource StatusText}"
+                            Text="{Binding SummaryText}"
+                            TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
+        </ScrollViewer>
+    </Border>
+</UserControl>

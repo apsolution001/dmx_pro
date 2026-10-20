@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 64 64">
+  <title>DMX Pro</title>
+  <!-- Master artwork. The app uses Themes/Logo.xaml (same shapes); dmxpro.ico is rendered from it. -->
+  <defs>
+    <linearGradient id="beam" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFB020" stop-opacity="1"/>
+      <stop offset="1" stop-color="#FFB020" stop-opacity="0.4"/>
+    </linearGradient>
+  </defs>
+  <rect x="2.5" y="2.5" width="59" height="59" rx="13" ry="13" fill="#1B1F27" stroke="#FFFFFF" stroke-opacity="0.14" stroke-width="1"/>
+  <rect x="22" y="10" width="20" height="10" rx="3" ry="3" fill="#ECEFF4"/>
+  <path d="M26 22 L38 22 L53 46 L11 46 Z" fill="url(#beam)"/>
+  <circle cx="20" cy="52" r="4" fill="#ECEFF4"/>
+  <circle cx="32" cy="52" r="4" fill="#ECEFF4"/>
+  <circle cx="44" cy="52" r="4" fill="#ECEFF4"/>
+</svg>

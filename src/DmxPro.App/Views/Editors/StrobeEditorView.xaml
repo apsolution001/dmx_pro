@@ -1,0 +1,286 @@
+<UserControl
+    x:Class="DmxPro.App.Views.Editors.StrobeEditorView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:c="clr-namespace:DmxPro.App.Controls"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:ed="clr-namespace:DmxPro.App.ViewModels.Editors"
+    xmlns:edv="clr-namespace:DmxPro.App.Views.Editors"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    d:DataContext="{d:DesignInstance Type=ed:StrobeEditorViewModel}"
+    d:DesignHeight="420"
+    d:DesignWidth="1000"
+    mc:Ignorable="d">
+    <!--
+        Strobe editor (DataContext: StrobeEditorViewModel). Safety rule 8: an always-visible one-line photosensitivity
+        note, a one-line caution bar while Settings > "Allow strobe" is off (the strobe then lights steady), and the
+        maximum rate from Settings next to the rate (live: both follow Settings changes). The engine enforces the
+        limits. Dense form, no headings; long explanations live in tooltips.
+
+        ┌ Fixtures ┐║┌─────────────────────────────────────────────────────────┐
+        │          │║│ ⚠ Photosensitivity warning: strobes can trigger seizures… │
+        │          │║│ ⚠ Strobe disabled in Settings: lights steady            │
+        │          │║│ Mode       [Software ▾] ⓘ                                │
+        │          │║│ Rate (Hz)  [5.00]  Max 10 Hz (Settings)                  │
+        │          │║│ On (%)     ────●──── [50]                                │
+        │          │║│ Strobe ch. [x] From profile      (hardware mode only)    │
+        │          │║│ Colour     (presets, swatch, R / G / B)                  │
+        │          │║│            [x] Use white channel                         │
+        └──────────┘║└──────────────────────────────────────────────────────────┘
+    -->
+    <UserControl.Resources>
+        <Style x:Key="CautionBar" TargetType="Border">
+            <Setter Property="Margin" Value="0,0,0,4" />
+            <Setter Property="Padding" Value="6,2" />
+            <Setter Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorCautionBrush}" />
+            <Setter Property="BorderThickness" Value="3,0,0,0" />
+        </Style>
+        <Style x:Key="CautionIcon" TargetType="c:DmxIcon">
+            <Setter Property="Margin" Value="0,0,6,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
+            <Setter Property="Size" Value="{StaticResource Dmx.DenseIconSize}" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition
+                Width="300"
+                MinWidth="200"
+                MaxWidth="560" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" MinWidth="320" />
+        </Grid.ColumnDefinitions>
+
+        <edv:FixtureListPanel DataContext="{Binding Fixtures}" />
+
+        <GridSplitter
+            Grid.Column="1"
+            AutomationProperties.Name="Resize fixture list"
+            Style="{StaticResource VerticalSplitter}" />
+
+        <Border Grid.Column="2" Style="{StaticResource PanelBorder}">
+            <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                <StackPanel
+                    MaxWidth="600"
+                    Margin="8,4"
+                    HorizontalAlignment="Left">
+                    <!-- Always visible: photosensitivity note (one line; full text in the tooltip). -->
+                    <Border
+                        AutomationProperties.Name="Photosensitivity warning: flashing light can trigger seizures in people with photosensitive epilepsy"
+                        Style="{StaticResource CautionBar}"
+                        ToolTip="Flashing light can trigger seizures in people with photosensitive epilepsy. Warn your audience and keep strobes short and slow.">
+                        <DockPanel>
+                            <c:DmxIcon Kind="Warning" Style="{StaticResource CautionIcon}" />
+                            <TextBlock
+                                VerticalAlignment="Center"
+                                Text="Photosensitivity warning: strobes can trigger seizures. Warn your audience."
+                                TextTrimming="CharacterEllipsis" />
+                        </DockPanel>
+                    </Border>
+
+                    <!-- Settings > Allow strobe is off. -->
+                    <Border
+                        AutomationProperties.Name="Strobe is disabled in Settings; this will light steady"
+                        Style="{StaticResource CautionBar}"
+                        ToolTip="Turn on &quot;Allow strobe&quot; in Settings to let it flash."
+                        Visibility="{Binding IsStrobeDisabled, Converter={StaticResource BoolToVisibility}}">
+                        <DockPanel>
+                            <c:DmxIcon Kind="Strobe" Style="{StaticResource CautionIcon}" />
+                            <TextBlock
+                                VerticalAlignment="Center"
+                                FontWeight="SemiBold"
+                                Text="Strobe is disabled in Settings: this lights steady."
+                                TextTrimming="CharacterEllipsis" />
+                        </DockPanel>
+                    </Border>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="{StaticResource Dmx.FormLabelColumnWidth}" />
+                            <ColumnDefinition Width="*" MinWidth="160" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Style="{StaticResource FormLabel}" Text="Mode" />
+                        <StackPanel
+                            Grid.Column="1"
+                            Grid.ColumnSpan="2"
+                            Orientation="Horizontal">
+                            <ComboBox
+                                MinWidth="220"
+                                AutomationProperties.Name="Strobe mode"
+                                DisplayMemberPath="Label"
+                                ItemsSource="{Binding Modes}"
+                                SelectedValue="{Binding Mode}"
+                                SelectedValuePath="Value"
+                                Style="{StaticResource FormComboBox}"
+                                ToolTip="Software: DMX Pro flashes the light. Fixture strobe channel: the fixture flashes itself." />
+                            <c:DmxIcon
+                                Margin="6,0,0,4"
+                                VerticalAlignment="Center"
+                                AutomationProperties.Name="{Binding ModeHint}"
+                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                Kind="Info"
+                                Size="{StaticResource Dmx.DenseIconSize}"
+                                ToolTip="{Binding ModeHint}" />
+                        </StackPanel>
+
+                        <TextBlock
+                            Grid.Row="1"
+                            Style="{StaticResource FormLabel}"
+                            Text="Rate (Hz)" />
+                        <StackPanel
+                            Grid.Row="1"
+                            Grid.Column="1"
+                            Grid.ColumnSpan="2"
+                            Orientation="Horizontal">
+                            <ui:NumberBox
+                                Width="112"
+                                AutomationProperties.Name="Rate, flashes per second"
+                                LargeChange="1"
+                                MaxDecimalPlaces="2"
+                                Maximum="{x:Static ed:StrobeEditorViewModel.MaxRateHz}"
+                                Minimum="{x:Static ed:StrobeEditorViewModel.MinRateHz}"
+                                SmallChange="0.5"
+                                Style="{StaticResource FormNumberBox}"
+                                ToolTip="Flashes per second"
+                                Value="{Binding RateHz, Mode=TwoWay}" />
+                            <TextBlock
+                                Margin="8,0,0,4"
+                                VerticalAlignment="Center"
+                                AutomationProperties.Name="{Binding MaxRateText}"
+                                Style="{StaticResource StatusText}"
+                                Text="{Binding MaxRateText}"
+                                ToolTip="The maximum strobe rate is set in Settings; faster strobes are slowed down to it" />
+                        </StackPanel>
+                        <StackPanel
+                            Grid.Row="2"
+                            Grid.Column="1"
+                            Grid.ColumnSpan="2"
+                            Margin="0,0,0,4"
+                            Orientation="Horizontal"
+                            Visibility="{Binding IsRateCapped, Converter={StaticResource BoolToVisibility}}">
+                            <c:DmxIcon Kind="Warning" Style="{StaticResource CautionIcon}" />
+                            <TextBlock
+                                VerticalAlignment="Center"
+                                Style="{StaticResource StatusText}"
+                                Text="{Binding RateCapText}"
+                                TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+
+                        <TextBlock
+                            Grid.Row="3"
+                            Style="{StaticResource FormLabel}"
+                            Text="On time (%)" />
+                        <Slider
+                            Grid.Row="3"
+                            Grid.Column="1"
+                            Margin="0,0,8,4"
+                            VerticalAlignment="Center"
+                            AutomationProperties.Name="On time, percent of each flash"
+                            IsSnapToTickEnabled="True"
+                            LargeChange="10"
+                            Maximum="{Binding MaxDutyPercent}"
+                            Minimum="{Binding MinDutyPercent}"
+                            SmallChange="1"
+                            TickFrequency="1"
+                            Value="{Binding DutyPercent}" />
+                        <ui:NumberBox
+                            Grid.Row="3"
+                            Grid.Column="2"
+                            Width="96"
+                            AutomationProperties.Name="On time, percent"
+                            Maximum="{Binding MaxDutyPercent}"
+                            Minimum="{Binding MinDutyPercent}"
+                            Style="{StaticResource FormNumberBox}"
+                            ToolTip="Part of each flash the light is on (duty cycle), 5–95 %"
+                            Value="{Binding DutyPercent, Mode=TwoWay}" />
+
+                        <!-- Hardware mode only: the raw Strobe channel value. -->
+                        <TextBlock
+                            Grid.Row="4"
+                            Style="{StaticResource FormLabel}"
+                            Text="Strobe value"
+                            ToolTip="Value sent to the fixture's own Strobe channel"
+                            Visibility="{Binding IsHardwareMode, Converter={StaticResource BoolToVisibility}}" />
+                        <CheckBox
+                            Grid.Row="4"
+                            Grid.Column="1"
+                            Grid.ColumnSpan="2"
+                            Margin="{StaticResource Dmx.FormRowMargin}"
+                            AutomationProperties.Name="Use the profile's slowest strobe value"
+                            Content="From profile (first strobe value, usually slowest)"
+                            IsChecked="{Binding UseProfileHardwareValue}"
+                            ToolTip="Untick to type the raw value from the fixture's DMX chart"
+                            Visibility="{Binding IsHardwareMode, Converter={StaticResource BoolToVisibility}}" />
+                        <Slider
+                            Grid.Row="5"
+                            Grid.Column="1"
+                            Margin="0,0,8,4"
+                            VerticalAlignment="Center"
+                            AutomationProperties.Name="Strobe channel value, 0 to 255"
+                            IsEnabled="{Binding UsesCustomHardwareValue}"
+                            IsSnapToTickEnabled="True"
+                            LargeChange="10"
+                            Maximum="255"
+                            Minimum="0"
+                            SmallChange="1"
+                            TickFrequency="1"
+                            Value="{Binding HardwareValue}"
+                            Visibility="{Binding IsHardwareMode, Converter={StaticResource BoolToVisibility}}" />
+                        <c:DmxValueBox
+                            Grid.Row="5"
+                            Grid.Column="2"
+                            Width="48"
+                            MinHeight="{StaticResource Dmx.ControlHeight}"
+                            Height="{StaticResource Dmx.ControlHeight}"
+                            Margin="{StaticResource Dmx.FormRowMargin}"
+                            Padding="{StaticResource Dmx.TextControlPadding}"
+                            VerticalAlignment="Center"
+                            AutomationProperties.Name="Strobe channel value"
+                            IsEnabled="{Binding UsesCustomHardwareValue}"
+                            ToolTip="Raw 0–255 value from the fixture's DMX chart · Enter applies · ↑/↓ ±1 · PageUp/PageDown ±10"
+                            Value="{Binding HardwareValue}"
+                            Visibility="{Binding IsHardwareMode, Converter={StaticResource BoolToVisibility}}" />
+
+                        <TextBlock
+                            Grid.Row="6"
+                            Margin="0,4,8,0"
+                            VerticalAlignment="Top"
+                            Style="{StaticResource FormLabel}"
+                            Text="Colour" />
+                        <edv:ColorEditorView
+                            Grid.Row="6"
+                            Grid.Column="1"
+                            Grid.ColumnSpan="2"
+                            Margin="0,0,0,4"
+                            DataContext="{Binding ColorEditor}" />
+
+                        <CheckBox
+                            Grid.Row="7"
+                            Grid.Column="1"
+                            Grid.ColumnSpan="2"
+                            AutomationProperties.Name="Use the white channel"
+                            Content="Use white channel"
+                            IsChecked="{Binding UseWhiteChannel}"
+                            ToolTip="On: the white part of the colour goes to the fixture's White channel. Off: white is mixed from red, green and blue." />
+                    </Grid>
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+    </Grid>
+</UserControl>

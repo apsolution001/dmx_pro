@@ -3,7 +3,13 @@
     "path": "DmxPro.sln",
     "projects": [
       "src\\DmxPro.Core\\DmxPro.Core.csproj",
-      "tests\\DmxPro.Core.Tests\\DmxPro.Core.Tests.csproj"
+      "tests\\DmxPro.Core.Tests\\DmxPro.Core.Tests.csproj",
+      "src\\DmxPro.Engine\\DmxPro.Engine.csproj",
+      "tests\\DmxPro.Engine.Tests\\DmxPro.Engine.Tests.csproj",
+      "src\\DmxPro.Output\\DmxPro.Output.csproj",
+      "tests\\DmxPro.Output.Tests\\DmxPro.Output.Tests.csproj",
+      "src\\DmxPro.Audio\\DmxPro.Audio.csproj",
+      "tests\\DmxPro.Audio.Tests\\DmxPro.Audio.Tests.csproj"
     ]
   }
 }

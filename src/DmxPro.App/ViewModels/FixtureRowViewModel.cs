@@ -25,6 +25,21 @@ public sealed partial class FixtureRowViewModel : ObservableObject
     [ObservableProperty]
     private string _groupNames = string.Empty;
 
+    /// <summary>Row selection in the fixture table (two-way bound to the DataGrid row), so groups can select rows.</summary>
+    [ObservableProperty]
+    private bool _isSelected;
+
+    /// <summary>Problem with the universe field, shown under it (empty = none).</summary>
+    [ObservableProperty]
+    private string _universeIssue = string.Empty;
+
+    /// <summary>Problem with the start address (out of range, past 512, overlap), shown under it (empty = none).</summary>
+    [ObservableProperty]
+    private string _addressIssue = string.Empty;
+
+    [ObservableProperty]
+    private bool _addressIssueIsError;
+
     public FixtureRowViewModel(
         Fixture fixture,
         Project project,
@@ -87,6 +102,40 @@ public sealed partial class FixtureRowViewModel : ObservableObject
         set => Edit(() => Fixture.StartAddress = value, value == Fixture.StartAddress);
     }
 
+    /// <summary><see cref="Universe"/> for the number box (WPF-UI NumberBox binds a nullable double).</summary>
+    public double? UniverseNumber
+    {
+        get => Fixture.Universe;
+        set
+        {
+            if (value is { } v && !double.IsNaN(v))
+            {
+                Universe = (int)Math.Round(v);
+            }
+            else
+            {
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    /// <summary><see cref="StartAddress"/> for the number box (WPF-UI NumberBox binds a nullable double).</summary>
+    public double? AddressNumber
+    {
+        get => Fixture.StartAddress;
+        set
+        {
+            if (value is { } v && !double.IsNaN(v))
+            {
+                StartAddress = (int)Math.Round(v);
+            }
+            else
+            {
+                OnPropertyChanged();
+            }
+        }
+    }
+
     public bool Enabled
     {
         get => Fixture.Enabled;
@@ -103,11 +152,25 @@ public sealed partial class FixtureRowViewModel : ObservableObject
 
     public bool ProfileVerified => EmbeddedProfile?.Verified ?? false;
 
+    /// <summary>Shows the "Unverified profile" badge (safety rule 7: unverified meanings are never shown as confirmed).</summary>
+    public bool ProfileUnverified => !ProfileVerified;
+
     public int ChannelCount => EmbeddedProfile?.FindMode(Fixture.ModeName)?.ChannelCount ?? 0;
 
     public string AddressRange => ChannelCount == 0
         ? Fixture.StartAddress.ToString()
         : $"{Fixture.StartAddress}–{DmxAddress.EndAddress(Fixture.StartAddress, ChannelCount)}";
+
+    /// <summary>e.g. "1–8 · 8 channels".</summary>
+    public string FootprintText => ChannelCount switch
+    {
+        0 => "Unknown footprint (profile or mode missing)",
+        1 => $"{Fixture.StartAddress} · 1 channel",
+        _ => $"{AddressRange} · {ChannelCount} channels",
+    };
+
+    /// <summary>Universe and address for compact lists, e.g. "U1 · 1–8".</summary>
+    public string UniverseAddressText => $"U{Fixture.Universe} · {AddressRange}";
 
     /// <summary>Channel map in DMX order, named from the profile.</summary>
     public IReadOnlyList<ChannelMapRow> Channels

@@ -1,0 +1,186 @@
+<UserControl
+    x:Class="DmxPro.App.Views.Editors.PulseEditorView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:ed="clr-namespace:DmxPro.App.ViewModels.Editors"
+    xmlns:edv="clr-namespace:DmxPro.App.Views.Editors"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    d:DataContext="{d:DesignInstance Type=ed:PulseEditorViewModel}"
+    d:DesignHeight="360"
+    d:DesignWidth="1000"
+    mc:Ignorable="d">
+    <!--
+        Pulse editor (DataContext: PulseEditorViewModel). Left: fixtures; right: a dense form, no headings.
+
+        ┌ Fixtures ┐║┌─────────────────────────────────────────────┐
+        │          │║│ Colour    [ ] Dimmer only                   │
+        │          │║│           (presets, swatch, R / G / B)      │
+        │          │║│ Shape     [Sine ▾]                          │
+        │          │║│ Period (s)[2.00]                            │
+        │          │║│ Min (%)   ●────────── [0]                   │
+        │          │║│ Max (%)   ─────────●  [100]                 │
+        │          │║│           [x] Use white channel             │
+        └──────────┘║└─────────────────────────────────────────────┘
+    -->
+    <UserControl.Resources>
+        <Style x:Key="PercentSlider" TargetType="Slider">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Minimum" Value="0" />
+            <Setter Property="Maximum" Value="100" />
+            <Setter Property="SmallChange" Value="1" />
+            <Setter Property="LargeChange" Value="10" />
+            <Setter Property="TickFrequency" Value="1" />
+            <Setter Property="IsSnapToTickEnabled" Value="True" />
+            <Setter Property="Margin" Value="0,0,8,4" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition
+                Width="300"
+                MinWidth="200"
+                MaxWidth="560" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" MinWidth="320" />
+        </Grid.ColumnDefinitions>
+
+        <edv:FixtureListPanel DataContext="{Binding Fixtures}" />
+
+        <GridSplitter
+            Grid.Column="1"
+            AutomationProperties.Name="Resize fixture list"
+            Style="{StaticResource VerticalSplitter}" />
+
+        <Border Grid.Column="2" Style="{StaticResource PanelBorder}">
+            <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                <Grid
+                    MaxWidth="560"
+                    Margin="8,4"
+                    HorizontalAlignment="Left">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="{StaticResource Dmx.FormLabelColumnWidth}" />
+                        <ColumnDefinition Width="*" MinWidth="160" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Style="{StaticResource FormLabel}" Text="Colour" />
+                    <CheckBox
+                        Grid.Column="1"
+                        Grid.ColumnSpan="2"
+                        Margin="{StaticResource Dmx.FormRowMargin}"
+                        AutomationProperties.Name="Dimmer only"
+                        Content="Dimmer only"
+                        IsChecked="{Binding DimmerOnly}"
+                        ToolTip="Only the Dimmer channel pulses and the colour of what plays underneath stays. Fixtures without a Dimmer channel are left alone." />
+                    <edv:ColorEditorView
+                        Grid.Row="1"
+                        Grid.Column="1"
+                        Grid.ColumnSpan="2"
+                        Margin="0,0,0,4"
+                        DataContext="{Binding ColorEditor}"
+                        Visibility="{Binding DataContext.UsesColor, RelativeSource={RelativeSource AncestorType=edv:PulseEditorView}, Converter={StaticResource BoolToVisibility}}" />
+
+                    <TextBlock
+                        Grid.Row="2"
+                        Style="{StaticResource FormLabel}"
+                        Text="Shape" />
+                    <ComboBox
+                        Grid.Row="2"
+                        Grid.Column="1"
+                        Grid.ColumnSpan="2"
+                        MinWidth="160"
+                        HorizontalAlignment="Left"
+                        AutomationProperties.Name="Shape"
+                        DisplayMemberPath="Label"
+                        ItemsSource="{Binding Shapes}"
+                        SelectedValue="{Binding Shape}"
+                        SelectedValuePath="Value"
+                        Style="{StaticResource FormComboBox}"
+                        ToolTip="How the brightness rises and falls" />
+
+                    <TextBlock
+                        Grid.Row="3"
+                        Style="{StaticResource FormLabel}"
+                        Text="Period (s)" />
+                    <ui:NumberBox
+                        Grid.Row="3"
+                        Grid.Column="1"
+                        Width="112"
+                        HorizontalAlignment="Left"
+                        AutomationProperties.Name="Period, seconds"
+                        LargeChange="1"
+                        MaxDecimalPlaces="2"
+                        Maximum="3600"
+                        Minimum="{Binding MinPeriodSeconds}"
+                        SmallChange="0.1"
+                        Style="{StaticResource FormNumberBox}"
+                        ToolTip="Time of one full low → high → low cycle (at least 0.1 s)"
+                        Value="{Binding PeriodSeconds, Mode=TwoWay}" />
+
+                    <TextBlock
+                        Grid.Row="4"
+                        Style="{StaticResource FormLabel}"
+                        Text="Min (%)" />
+                    <Slider
+                        Grid.Row="4"
+                        Grid.Column="1"
+                        AutomationProperties.Name="Minimum level, percent"
+                        Style="{StaticResource PercentSlider}"
+                        Value="{Binding MinLevelPercent}" />
+                    <ui:NumberBox
+                        Grid.Row="4"
+                        Grid.Column="2"
+                        Width="96"
+                        AutomationProperties.Name="Minimum level, percent"
+                        Maximum="100"
+                        Minimum="0"
+                        Style="{StaticResource FormNumberBox}"
+                        ToolTip="Lowest brightness, 0–100 %"
+                        Value="{Binding MinLevelPercent, Mode=TwoWay}" />
+
+                    <TextBlock
+                        Grid.Row="5"
+                        Style="{StaticResource FormLabel}"
+                        Text="Max (%)" />
+                    <Slider
+                        Grid.Row="5"
+                        Grid.Column="1"
+                        AutomationProperties.Name="Maximum level, percent"
+                        Style="{StaticResource PercentSlider}"
+                        Value="{Binding MaxLevelPercent}" />
+                    <ui:NumberBox
+                        Grid.Row="5"
+                        Grid.Column="2"
+                        Width="96"
+                        AutomationProperties.Name="Maximum level, percent"
+                        Maximum="100"
+                        Minimum="0"
+                        Style="{StaticResource FormNumberBox}"
+                        ToolTip="Highest brightness, 0–100 %"
+                        Value="{Binding MaxLevelPercent, Mode=TwoWay}" />
+
+                    <CheckBox
+                        Grid.Row="6"
+                        Grid.Column="1"
+                        Grid.ColumnSpan="2"
+                        AutomationProperties.Name="Use the white channel"
+                        Content="Use white channel"
+                        IsChecked="{Binding UseWhiteChannel}"
+                        ToolTip="On: the white part of the colour goes to the fixture's White channel. Off: white is mixed from red, green and blue." />
+                </Grid>
+            </ScrollViewer>
+        </Border>
+    </Grid>
+</UserControl>

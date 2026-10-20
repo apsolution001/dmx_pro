@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "generic-rgbwauv",
+  "manufacturer": "Generic",
+  "model": "RGBWAUV fixture",
+  "type": "Color Changer",
+  "revision": 1,
+  "verified": false,
+  "source": "Generic template. Confirm channel order against your fixture's DMX chart before use.",
+  "channels": [
+    { "key": "red", "name": "Red", "type": "Red", "default": 0 },
+    { "key": "green", "name": "Green", "type": "Green", "default": 0 },
+    { "key": "blue", "name": "Blue", "type": "Blue", "default": 0 },
+    { "key": "white", "name": "White", "type": "White", "default": 0 },
+    { "key": "amber", "name": "Amber", "type": "Amber", "default": 0 },
+    { "key": "uv", "name": "UV", "type": "UV", "default": 0 },
+    { "key": "dimmer", "name": "Master dimmer", "type": "Dimmer", "default": 255 }
+  ],
+  "modes": [
+    { "name": "6ch RGBWAUV", "channels": [ "red", "green", "blue", "white", "amber", "uv" ] },
+    { "name": "7ch Dimmer RGBWAUV", "channels": [ "dimmer", "red", "green", "blue", "white", "amber", "uv" ] }
+  ]
+}

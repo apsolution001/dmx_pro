@@ -13,4 +13,9 @@ public abstract class PageViewModel : ObservableObject
     public virtual void OnNavigatedTo()
     {
     }
+
+    /// <summary>Called each time the page stops being visible (another page was selected).</summary>
+    public virtual void OnNavigatedFrom()
+    {
+    }
 }

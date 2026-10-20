@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using DmxPro.Core.Patching;
 using DmxPro.Core.Validation;
 
@@ -31,6 +32,13 @@ public sealed class FixtureProfile
 
     /// <summary>Where the channel map came from (manual page, QLC+ library, user-defined…).</summary>
     public string? Source { get; set; }
+
+    /// <summary>
+    /// True for profiles the user built with the channel layout editor (<see cref="ChannelLayout"/>). Only these are
+    /// editable in the app; built-in and imported profiles are read-only templates. Omitted from JSON when false.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool UserDefined { get; set; }
 
     public List<ChannelDefinition> Channels { get; set; } = [];
 

@@ -18,7 +18,9 @@ public static class PatchValidator
     public static IReadOnlyList<ValidationIssue> Validate(IReadOnlyList<Fixture> fixtures, IProfileResolver profiles)
     {
         var issues = new List<ValidationIssue>();
-        var placed = new List<(Fixture Fixture, FixtureFootprint Footprint)>();
+        // Enabled, placed fixtures per universe: footprints only overlap within a universe, so a big multi-universe rig
+        // is not compared all-pairs.
+        var placedByUniverse = new Dictionary<int, List<(Fixture Fixture, FixtureFootprint Footprint)>>();
 
         foreach (var fixture in fixtures)
         {
@@ -82,8 +84,19 @@ public static class PatchValidator
             // Disabled fixtures send nothing, so they cannot conflict.
             if (fixture.Enabled)
             {
-                foreach (var other in placed.Where(p => p.Footprint.Overlaps(footprint)))
+                if (!placedByUniverse.TryGetValue(fixture.Universe, out var placed))
                 {
+                    placed = [];
+                    placedByUniverse.Add(fixture.Universe, placed);
+                }
+
+                foreach (var other in placed)
+                {
+                    if (!other.Footprint.Overlaps(footprint))
+                    {
+                        continue;
+                    }
+
                     issues.Add(ValidationIssue.Warning(
                         "ADDRESS_OVERLAP",
                         $"'{fixture.Name}' ({footprint}) overlaps '{other.Fixture.Name}' ({other.Footprint}). " +

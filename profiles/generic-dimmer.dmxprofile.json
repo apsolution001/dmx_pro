@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "generic-dimmer",
+  "manufacturer": "Generic",
+  "model": "Dimmer",
+  "type": "Dimmer",
+  "revision": 1,
+  "verified": false,
+  "source": "Generic template. Confirm channel order against your fixture's DMX chart before use.",
+  "channels": [
+    { "key": "dimmer", "name": "Dimmer", "type": "Dimmer", "default": 0 }
+  ],
+  "modes": [
+    { "name": "1ch Dimmer", "channels": [ "dimmer" ] }
+  ]
+}

@@ -1,0 +1,53 @@
+namespace DmxPro.Engine.Runtime;
+
+/// <summary>
+/// A function compiled against the current patch: everything resolved to flat channel indexes so rendering allocates
+/// nothing. Rendering is a pure function of the elapsed time, so a show can seek anywhere and a chaser can play a
+/// function inside a step. Each function type adds a subclass and a case in <see cref="FunctionCompiler"/>.
+/// </summary>
+internal abstract class FunctionProgram
+{
+    protected FunctionProgram(Guid id, double fadeInSeconds, double fadeOutSeconds)
+    {
+        Id = id;
+        FadeInSeconds = SanitizeSeconds(fadeInSeconds);
+        FadeOutSeconds = SanitizeSeconds(fadeOutSeconds);
+    }
+
+    public Guid Id { get; }
+
+    /// <summary>Fade-in used when the function is started directly (show items use their own fades).</summary>
+    public double FadeInSeconds { get; }
+
+    /// <summary>Fade-out used when the function is stopped directly.</summary>
+    public double FadeOutSeconds { get; }
+
+    /// <summary>
+    /// Function time after which it has finished by itself (single-shot chaser, timed flash); a running instance is then
+    /// released. <see cref="double.PositiveInfinity"/> = runs until stopped.
+    /// </summary>
+    public virtual double DurationSeconds => double.PositiveInfinity;
+
+    /// <summary>Writes this function's values into <paramref name="layer"/>.</summary>
+    /// <param name="elapsedSeconds">Function time since it started (already scaled by its speed).</param>
+    /// <param name="weight">Fade level × intensity, 0..1.</param>
+    /// <param name="layer">Target layer accumulator.</param>
+    /// <param name="stamp">Engine time the function started (LTP order).</param>
+    /// <param name="seq">Tie-breaker for equal stamps (LTP order).</param>
+    /// <param name="context">Frame settings (strobe safety, speed) and strobe-limit reporting.</param>
+    public abstract void Render(double elapsedSeconds, float weight, LayerBuffer layer, double stamp, long seq, RenderContext context);
+
+    /// <summary>Finite and ≥ 0, else 0.</summary>
+    protected static double SanitizeSeconds(double seconds) => double.IsFinite(seconds) && seconds > 0 ? seconds : 0;
+
+    /// <summary>Finite, else <paramref name="fallback"/>; then clamped to 0..1.</summary>
+    protected static double SanitizeLevel(double level, double fallback) =>
+        Math.Clamp(double.IsFinite(level) ? level : fallback, 0, 1);
+
+    /// <summary>Non-negative remainder of <paramref name="value"/> / <paramref name="period"/> (period &gt; 0).</summary>
+    protected static double Wrap(double value, double period)
+    {
+        var result = value % period;
+        return result < 0 ? result + period : result;
+    }
+}

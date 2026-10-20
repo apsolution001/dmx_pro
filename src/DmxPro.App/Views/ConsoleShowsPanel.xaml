@@ -1,0 +1,200 @@
+<UserControl
+    x:Class="DmxPro.App.Views.ConsoleShowsPanel"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:c="clr-namespace:DmxPro.App.Controls"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:vm="clr-namespace:DmxPro.App.ViewModels"
+    d:DataContext="{d:DesignInstance Type=vm:ShowPlayerViewModel}"
+    d:DesignHeight="400"
+    d:DesignWidth="900"
+    mc:Ignorable="d">
+
+    <UserControl.Resources>
+        <!-- Play/pause button inside a list row: fills the compact row height instead of forcing a taller row. -->
+        <Style
+            x:Key="ShowRowPlayButton"
+            BasedOn="{StaticResource PanelHeaderButton}"
+            TargetType="Button">
+            <Setter Property="Height" Value="NaN" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="VerticalAlignment" Value="Stretch" />
+        </Style>
+    </UserControl.Resources>
+
+    <!-- The console's fixed "Shows" tab: every show of the project, ready to play. DataContext = ShowPlayerViewModel. -->
+    <DockPanel>
+        <Border DockPanel.Dock="Top" Style="{StaticResource ToolbarStrip}">
+            <DockPanel>
+                <StackPanel Orientation="Horizontal">
+                    <Button
+                        AutomationProperties.Name="Play selected show"
+                        Command="{Binding PlaySelectedCommand}"
+                        Style="{StaticResource ToolbarPrimaryButton}"
+                        ToolTip="Play the selected show (Enter or double-click; resumes it when paused)">
+                        <StackPanel Orientation="Horizontal">
+                            <c:DmxIcon Kind="Play" Size="{StaticResource Dmx.ButtonIconSize}" />
+                            <TextBlock Style="{StaticResource ButtonLabel}" Text="Play" />
+                        </StackPanel>
+                    </Button>
+                    <Button
+                        AutomationProperties.Name="Stop selected show"
+                        Command="{Binding StopSelectedCommand}"
+                        Style="{StaticResource ToolbarLabelButton}"
+                        ToolTip="Stop the selected show and release its lights">
+                        <StackPanel Orientation="Horizontal">
+                            <c:DmxIcon Kind="Stop" Size="{StaticResource Dmx.ButtonIconSize}" />
+                            <TextBlock Style="{StaticResource ButtonLabel}" Text="Stop" />
+                        </StackPanel>
+                    </Button>
+                    <Rectangle Style="{StaticResource ToolbarSeparator}" />
+                </StackPanel>
+                <TextBlock
+                    VerticalAlignment="Center"
+                    Style="{StaticResource HintText}"
+                    Text="The playing show's timeline stays in the bar at the bottom on every console page. Build and edit shows on the Shows page."
+                    TextTrimming="CharacterEllipsis" />
+            </DockPanel>
+        </Border>
+
+        <Grid>
+            <DataGrid
+                x:Name="ShowsGrid"
+                AutomationProperties.Name="Shows"
+                IsReadOnly="True"
+                ItemsSource="{Binding Shows}"
+                MouseDoubleClick="OnGridDoubleClick"
+                PreviewKeyDown="OnGridPreviewKeyDown"
+                SelectedItem="{Binding SelectedShow}"
+                SelectionChanged="OnGridSelectionChanged"
+                SelectionMode="Single"
+                Style="{StaticResource DataTable}"
+                Visibility="{Binding HasShows, Converter={StaticResource BoolToVisibility}}">
+                <DataGrid.Columns>
+                    <DataGridTemplateColumn
+                        Width="32"
+                        CanUserResize="False"
+                        Header="">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate DataType="{x:Type vm:ShowListItemViewModel}">
+                                <Button
+                                    AutomationProperties.Name="{Binding PlayToolTip}"
+                                    Command="{Binding DataContext.PlayPauseRowCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                    CommandParameter="{Binding}"
+                                    Focusable="False"
+                                    Style="{StaticResource ShowRowPlayButton}"
+                                    ToolTip="{Binding PlayToolTip}">
+                                    <c:DmxIcon Kind="{Binding PlayIcon}" Size="{StaticResource Dmx.DenseIconSize}" />
+                                </Button>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn
+                        Width="3*"
+                        MinWidth="160"
+                        Binding="{Binding Name}"
+                        Header="Name" />
+                    <DataGridTextColumn
+                        Width="80"
+                        Binding="{Binding LengthText}"
+                        Header="Length" />
+                    <DataGridTextColumn
+                        Width="72"
+                        Binding="{Binding BpmText}"
+                        Header="BPM" />
+                    <DataGridTextColumn
+                        Width="72"
+                        Binding="{Binding TrackCount}"
+                        Header="Tracks" />
+                    <DataGridTextColumn
+                        Width="72"
+                        Binding="{Binding ItemCount}"
+                        Header="Items" />
+                    <!-- Music: a note when the show has music; caution icon + word when it is missing / broken (safety rule 10). -->
+                    <DataGridTemplateColumn
+                        Width="96"
+                        Header="Music"
+                        SortMemberPath="MusicState">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate DataType="{x:Type vm:ShowListItemViewModel}">
+                                <StackPanel
+                                    x:Name="Music"
+                                    VerticalAlignment="Center"
+                                    AutomationProperties.Name="{Binding MusicToolTip}"
+                                    Background="Transparent"
+                                    Orientation="Horizontal"
+                                    TextElement.Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                    ToolTip="{Binding MusicToolTip}"
+                                    Visibility="{Binding HasMusic, Converter={StaticResource BoolToVisibility}}">
+                                    <c:DmxIcon
+                                        VerticalAlignment="Center"
+                                        Kind="{Binding MusicIcon}"
+                                        Size="{StaticResource Dmx.DenseIconSize}" />
+                                    <TextBlock
+                                        Margin="4,0,0,0"
+                                        VerticalAlignment="Center"
+                                        FontWeight="SemiBold"
+                                        Text="{Binding MusicText}"
+                                        Visibility="{Binding HasMusicProblem, Converter={StaticResource BoolToVisibility}}" />
+                                </StackPanel>
+                                <DataTemplate.Triggers>
+                                    <DataTrigger Binding="{Binding HasMusicProblem}" Value="True">
+                                        <Setter TargetName="Music" Property="TextElement.Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
+                                    </DataTrigger>
+                                </DataTemplate.Triggers>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTemplateColumn
+                        Width="1.5*"
+                        MinWidth="140"
+                        Header="Status">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate DataType="{x:Type vm:ShowListItemViewModel}">
+                                <StackPanel
+                                    x:Name="State"
+                                    VerticalAlignment="Center"
+                                    Orientation="Horizontal"
+                                    Visibility="{Binding IsRunning, Converter={StaticResource BoolToVisibility}}">
+                                    <c:DmxIcon
+                                        x:Name="StateIcon"
+                                        Margin="0,0,4,0"
+                                        VerticalAlignment="Center"
+                                        Foreground="{DynamicResource SystemFillColorSuccessBrush}"
+                                        Kind="Play"
+                                        Size="{StaticResource Dmx.DenseIconSize}" />
+                                    <TextBlock
+                                        x:Name="StateLabel"
+                                        VerticalAlignment="Center"
+                                        FontWeight="SemiBold"
+                                        Text="{Binding StateText}" />
+                                </StackPanel>
+                                <DataTemplate.Triggers>
+                                    <DataTrigger Binding="{Binding IsPaused}" Value="True">
+                                        <Setter TargetName="StateIcon" Property="Kind" Value="Pause" />
+                                        <Setter TargetName="StateIcon" Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsMuted}" Value="True">
+                                        <Setter TargetName="StateIcon" Property="Kind" Value="Warning" />
+                                        <Setter TargetName="StateIcon" Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
+                                    </DataTrigger>
+                                </DataTemplate.Triggers>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <!-- No shows in the project. -->
+            <StackPanel Style="{StaticResource EmptyStatePanel}" Visibility="{Binding HasNoShows, Converter={StaticResource BoolToVisibility}}">
+                <c:DmxIcon
+                    Kind="Timeline"
+                    Size="{StaticResource Dmx.EmptyStateIconSize}"
+                    Style="{StaticResource EmptyStateIcon}" />
+                <TextBlock Style="{StaticResource EmptyStateTitle}" Text="No shows yet" />
+                <TextBlock Style="{StaticResource EmptyStateText}" Text="Build a show on the Shows page (left tab strip): add tracks and place functions in time. Every show appears here, ready to play live." />
+            </StackPanel>
+        </Grid>
+    </DockPanel>
+</UserControl>

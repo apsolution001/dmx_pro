@@ -1,0 +1,1251 @@
+<!--
+    DMX Pro shared control styles (design system). Merged by App.xaml after the WPF-UI dictionaries.
+    Compact desktop density (owner requests 2026-10-18): controls 24 px high, body text 12 px, corner radius 4,
+    brushes ONLY via WPF-UI {DynamicResource ...} (works in dark and light theme). All sizes are tokens in
+    Themes/Metrics.xaml (Dmx.*); use them instead of numbers in views.
+    Icons are <c:DmxIcon Kind="..." Size="..." /> (xmlns:c="clr-namespace:DmxPro.App.Controls"); they take their colour
+    from the inherited Foreground, so every style below sets Foreground, never the icon. Toolbar / panel button styles
+    also set the inherited c:DmxIcon.MaxSize, so icons inside them never grow past the design size.
+    Hover fades use {x:Static c:DmxMotion.Fast} (100 ms, zero when Windows animations are off).
+    Things that appear (nav selection indicator, message bar) use DmxMotion.Normal (150 ms) + DmxMotion.EaseOut and
+    animate Opacity / RenderTransform only.
+
+    KEY CONTRACT (use these names; do not restyle them locally)
+    ───────────────────────────────────────────────────────────
+    Toolbars
+      ToolbarStrip          Border     Main window toolbar row (padding 4,1, bottom divider, ~27 px tall with buttons).
+      PageToolbar           Border     Toolbar strip at the top of a page (padding 4,2, min height 30, bottom divider).
+      ToolbarButton         Button     24x24 icon-only button, no border at rest, subtle hover fade / pressed fill.
+                                       Plain WPF <Button> (also fine on ui:Button). Content = DmxIcon Size 14 (capped).
+                                       Always set ToolTip + AutomationProperties.Name. Disabled tooltips still show.
+      ToolbarToggleButton   ToggleButton  Same look; IsChecked = accent fill.
+      ToolbarPrimaryButton  Button     Labelled accent button, height 24, padding 8,0. Content = StackPanel
+                                       (DmxIcon Size 14 + TextBlock Style=ButtonLabel) or plain text.
+      ToolbarLabelButton    Button     Labelled transparent button, same metrics/content pattern as primary.
+      ButtonLabel           TextBlock  Text next to an icon inside a labelled button (4 px icon-text gap).
+      ToolbarSeparator      Rectangle  1x14 vertical divider between button groups (margin 4,0).
+    Panels
+      PanelBorder           Border     Docked panel frame (1 px divider stroke, square edges).
+      PanelHeader           Border     Panel title row (min height 24, padding 6,0,2,0, bottom divider). DockPanel inside.
+      PanelTitle            TextBlock  12 semibold panel title.
+      PanelHeaderButton     Button     20x20 icon button for panel headers and table cells; content = DmxIcon Size 14.
+    Forms
+      FormLabel             TextBlock  Label column text: secondary, vertically centred, margin 0,0,6,3.
+      FormSection           TextBlock  Caption above a group of fields: 11 semibold, margin 0,6,0,3.
+      FormSectionBorder     Border     Group-box replacement: 1 px stroke, radius 4, padding 6.
+      FormTextBox           ui:TextBox     24 px single-line text input, margin 0,0,0,3 (row spacing).
+      FormNumberBox         ui:NumberBox   24 px number input, inline spin buttons, integers (0 decimals), no clear button.
+      FormComboBox          ComboBox       24 px, MinWidth 110 so "Universe 10" fits, margin 0,0,0,3.
+                            In a panel header / toolbar override Margin="0".
+      Form grid pattern:    Grid with ColumnDefinitions Width="{StaticResource Dmx.FormLabelColumnWidth}" (100) and "*";
+                            one RowDefinition Height="Auto" per field; FormLabel in column 0, Form* input in column 1.
+                            The 3 px bottom margin on label and input gives the 3 px row spacing (Dmx.FormRowSpacing).
+                            A label next to a taller control is top-aligned with Margin="0,4,6,3".
+    Text
+      HintText              TextBlock  11 px tertiary, wraps. Short help under a control or in a panel.
+      EmptyStatePanel       StackPanel Centred block, max width 340. Pattern: EmptyStateIcon(DmxIcon, capped at 28) +
+                                       EmptyStateTitle + EmptyStateText + ToolbarPrimaryButton.
+      EmptyStateIcon        FrameworkElement  Centres the 28 px icon, tertiary colour, 6 px below.
+      EmptyStateTitle       TextBlock  14 semibold, centred.
+      EmptyStateText        TextBlock  12 secondary, centred, wraps, 10 px below.
+    Menu
+      TopMenu               Menu       Window menu bar (~20 px). Top-level items padding 6,1; submenu items 22 px
+                                       (Dmx.MenuItemHeight) with a 14 px icon slot (MenuItem.Icon = DmxIcon Size 14),
+                                       right-aligned InputGestureText, checkmark for IsChecked, separators.
+      Dmx.MenuItem          MenuItem   The item style used by TopMenu and (via App.xaml) by every ContextMenu.
+                                       BasedOn it for keyed menu-item styles in views.
+      Dmx.MenuSeparator     Separator  Thin divider used inside menus.
+    Navigation
+      NavRail               ListBox    Left section rail (62 px). ItemContainerStyle = NavRailItem (set by the style).
+      NavRailItem           ListBoxItem  Icon 18 above 10.5 px label; selected = 3 px accent bar (grows in) + fill.
+      NavRailLabel          TextBlock  Label under the nav icon (10.5 px, centred, wraps).
+    Tables
+      DataTable             DataGrid   Row 22, header 22, 12 px text, horizontal divider lines only, subtle accent
+                                       selection, header text 11 semibold secondary. Do NOT set GridLinesVisibility locally.
+      DataTableRow / DataTableCell / DataTableColumnHeader  The parts used by DataTable; BasedOn these when a view
+                                       needs a RowStyle trigger (e.g. dim disabled rows).
+    Status bar
+      StatusBarStrip        Border     Bottom status bar (padding 6,0, min height 20, top divider).
+      StatusPill            Border     Rounded state pill (radius 8, padding 6,0, 10.5 px). Tag = Disabled | Connected |
+                                       Sending | Warning | Error picks the colours (enum values bind directly).
+      StatusText            TextBlock  11 px status text, vertically centred, secondary.
+    Splitters
+      VerticalSplitter / HorizontalSplitter  GridSplitter, 4 px (Dmx.SplitterSize), transparent. Put them in a 4 px
+                                       Row/ColumnDefinition.
+    Metrics: see Themes/Metrics.xaml (Dmx.* constants).
+    NOTE: FormTextBox, FormNumberBox, FormComboBox, DataTable and the compact implicit styles for WPF-UI controls
+    (Button, CheckBox, RadioButton, ComboBoxItem, ListBoxItem, TreeViewItem, InfoBar, TitleBar, ContextMenu, TextBlock) derive from
+    WPF-UI's default styles, so they are defined in App.xaml's own dictionary (a StaticResource BasedOn inside this
+    merged dictionary cannot see the sibling ui:ControlsDictionary). Use them exactly like the keys defined here.
+-->
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:c="clr-namespace:DmxPro.App.Controls"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
+
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="Metrics.xaml" />
+    </ResourceDictionary.MergedDictionaries>
+
+    <!-- ═════════════════════════════ Shared templates ═════════════════════════════ -->
+
+    <!-- Fades the "HoverFill" layer of a template in on hover and out again (instant when animations are off). -->
+    <Storyboard x:Key="Dmx.HoverIn">
+        <DoubleAnimation
+            Storyboard.TargetName="HoverFill"
+            Storyboard.TargetProperty="Opacity"
+            To="1"
+            Duration="{x:Static c:DmxMotion.Fast}" />
+    </Storyboard>
+    <Storyboard x:Key="Dmx.HoverOut">
+        <DoubleAnimation
+            Storyboard.TargetName="HoverFill"
+            Storyboard.TargetProperty="Opacity"
+            To="0"
+            Duration="{x:Static c:DmxMotion.Fast}" />
+    </Storyboard>
+
+    <!-- Transparent button: no border at rest, subtle fill fading in on hover, darker fill while pressed. -->
+    <ControlTemplate x:Key="Dmx.SubtleButtonTemplate" TargetType="ButtonBase">
+        <Grid SnapsToDevicePixels="True">
+            <Border
+                x:Name="Bd"
+                Background="{TemplateBinding Background}"
+                BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}"
+                CornerRadius="{StaticResource Dmx.CornerRadius}" />
+            <Border
+                x:Name="HoverFill"
+                Background="{DynamicResource SubtleFillColorSecondaryBrush}"
+                CornerRadius="{StaticResource Dmx.CornerRadius}"
+                Opacity="0" />
+            <Border Padding="{TemplateBinding Padding}" BorderThickness="{TemplateBinding BorderThickness}">
+                <ContentPresenter
+                    HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                    VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                    Focusable="False"
+                    RecognizesAccessKey="True" />
+            </Border>
+        </Grid>
+        <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Trigger.EnterActions>
+                    <BeginStoryboard Storyboard="{StaticResource Dmx.HoverIn}" />
+                </Trigger.EnterActions>
+                <Trigger.ExitActions>
+                    <BeginStoryboard Storyboard="{StaticResource Dmx.HoverOut}" />
+                </Trigger.ExitActions>
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+                <Setter TargetName="HoverFill" Property="Background" Value="{DynamicResource SubtleFillColorTertiaryBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter TargetName="Bd" Property="Background" Value="Transparent" />
+                <Setter TargetName="HoverFill" Property="Visibility" Value="Collapsed" />
+                <Setter Property="Foreground" Value="{DynamicResource TextFillColorDisabledBrush}" />
+            </Trigger>
+        </ControlTemplate.Triggers>
+    </ControlTemplate>
+
+    <Style x:Key="Dmx.SubtleButtonBase" TargetType="Button">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Template" Value="{StaticResource Dmx.SubtleButtonTemplate}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+        <Setter Property="FontSize" Value="{StaticResource Dmx.FontSize.Body}" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="FocusVisualStyle" Value="{DynamicResource DefaultControlFocusVisualStyle}" />
+        <Setter Property="ToolTipService.ShowOnDisabled" Value="True" />
+        <Setter Property="Cursor" Value="Arrow" />
+        <Setter Property="c:DmxIcon.MaxSize" Value="{StaticResource Dmx.ToolbarIconSize}" />
+    </Style>
+
+    <!-- ═════════════════════════════ Toolbars ═════════════════════════════ -->
+
+    <Style x:Key="ToolbarStrip" TargetType="Border">
+        <Setter Property="Padding" Value="{StaticResource Dmx.ToolbarStripPadding}" />
+        <Setter Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource DividerStrokeColorDefaultBrush}" />
+        <Setter Property="BorderThickness" Value="0,0,0,1" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+    </Style>
+
+    <Style x:Key="PageToolbar" TargetType="Border">
+        <Setter Property="Padding" Value="{StaticResource Dmx.PageToolbarPadding}" />
+        <Setter Property="MinHeight" Value="{StaticResource Dmx.ToolbarHeight}" />
+        <Setter Property="Background" Value="{DynamicResource LayerFillColorDefaultBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource DividerStrokeColorDefaultBrush}" />
+        <Setter Property="BorderThickness" Value="0,0,0,1" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+    </Style>
+
+    <Style
+        x:Key="ToolbarButton"
+        BasedOn="{StaticResource Dmx.SubtleButtonBase}"
+        TargetType="Button">
+        <Setter Property="Width" Value="{StaticResource Dmx.ToolbarButtonSize}" />
+        <Setter Property="Height" Value="{StaticResource Dmx.ToolbarButtonSize}" />
+        <Setter Property="Padding" Value="0" />
+        <!-- 2 px gap between neighbouring buttons. -->
+        <Setter Property="Margin" Value="1,0" />
+    </Style>
+
+    <Style x:Key="ToolbarToggleButton" TargetType="ToggleButton">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Width" Value="{StaticResource Dmx.ToolbarButtonSize}" />
+        <Setter Property="Height" Value="{StaticResource Dmx.ToolbarButtonSize}" />
+        <Setter Property="Margin" Value="1,0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+        <Setter Property="FontSize" Value="{StaticResource Dmx.FontSize.Body}" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="FocusVisualStyle" Value="{DynamicResource DefaultControlFocusVisualStyle}" />
+        <Setter Property="ToolTipService.ShowOnDisabled" Value="True" />
+        <Setter Property="c:DmxIcon.MaxSize" Value="{StaticResource Dmx.ToolbarIconSize}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Grid SnapsToDevicePixels="True">
+                        <Border
+                            x:Name="Bd"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{StaticResource Dmx.CornerRadius}" />
+                        <Border
+                            x:Name="HoverFill"
+                            Background="{DynamicResource SubtleFillColorSecondaryBrush}"
+                            CornerRadius="{StaticResource Dmx.CornerRadius}"
+                            Opacity="0" />
+                        <Border Padding="{TemplateBinding Padding}" BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter
+                                HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                Focusable="False"
+                                RecognizesAccessKey="True" />
+                        </Border>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Trigger.EnterActions>
+                                <BeginStoryboard Storyboard="{StaticResource Dmx.HoverIn}" />
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard Storyboard="{StaticResource Dmx.HoverOut}" />
+                            </Trigger.ExitActions>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="HoverFill" Property="Background" Value="{DynamicResource SubtleFillColorTertiaryBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+                            <Setter TargetName="HoverFill" Property="Visibility" Value="Collapsed" />
+                            <Setter Property="Foreground" Value="{DynamicResource TextOnAccentFillColorPrimaryBrush}" />
+                        </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsChecked" Value="True" />
+                                <Condition Property="IsMouseOver" Value="True" />
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource AccentFillColorSecondaryBrush}" />
+                        </MultiTrigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsChecked" Value="True" />
+                                <Condition Property="IsPressed" Value="True" />
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource AccentFillColorTertiaryBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource TextOnAccentFillColorSecondaryBrush}" />
+                        </MultiTrigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Bd" Property="Background" Value="Transparent" />
+                            <Setter TargetName="HoverFill" Property="Visibility" Value="Collapsed" />
+                            <Setter Property="Foreground" Value="{DynamicResource TextFillColorDisabledBrush}" />
+                        </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsChecked" Value="True" />
+                                <Condition Property="IsEnabled" Value="False" />
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ControlFillColorDisabledBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource TextFillColorDisabledBrush}" />
+                        </MultiTrigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style
+        x:Key="ToolbarLabelButton"
+        BasedOn="{StaticResource Dmx.SubtleButtonBase}"
+        TargetType="Button">
+        <Setter Property="Height" Value="{StaticResource Dmx.ControlHeight}" />
+        <Setter Property="Padding" Value="{StaticResource Dmx.LabelledButtonPadding}" />
+        <Setter Property="Margin" Value="1,0" />
+    </Style>
+
+    <Style x:Key="ToolbarPrimaryButton" TargetType="Button">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Height" Value="{StaticResource Dmx.ControlHeight}" />
+        <Setter Property="Padding" Value="{StaticResource Dmx.LabelledButtonPadding}" />
+        <Setter Property="Margin" Value="1,0" />
+        <Setter Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentControlElevationBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Foreground" Value="{DynamicResource TextOnAccentFillColorPrimaryBrush}" />
+        <Setter Property="FontSize" Value="{StaticResource Dmx.FontSize.Body}" />
+        <Setter Property="c:DmxIcon.MaxSize" Value="{StaticResource Dmx.ButtonIconSize}" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="FocusVisualStyle" Value="{DynamicResource DefaultControlFocusVisualStyle}" />
+        <Setter Property="ToolTipService.ShowOnDisabled" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border
+                        x:Name="Bd"
+                        Padding="{TemplateBinding Padding}"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="{StaticResource Dmx.CornerRadius}"
+                        SnapsToDevicePixels="True">
+                        <ContentPresenter
+                            HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                            Focusable="False"
+                            RecognizesAccessKey="True" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource AccentFillColorSecondaryBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource AccentFillColorTertiaryBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource TextOnAccentFillColorSecondaryBrush}" />
+                        </Trigger>
+                        <!-- Theme-neutral disabled look (WPF-UI's accent-disabled brushes vanish in the light theme). -->
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ControlFillColorDisabledBrush}" />
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource TextFillColorDisabledBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Text next to an icon inside ToolbarPrimaryButton / ToolbarLabelButton. -->
+    <Style x:Key="ButtonLabel" TargetType="TextBlock">
+        <Setter Property="Margin" Value="4,0,0,0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style x:Key="ToolbarSeparator" TargetType="Rectangle">
+        <Setter Property="Width" Value="1" />
+        <Setter Property="Height" Value="{StaticResource Dmx.ToolbarSeparatorHeight}" />
+        <Setter Property="Margin" Value="4,0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Fill" Value="{DynamicResource DividerStrokeColorDefaultBrush}" />
+    </Style>
+
+    <!-- ═════════════════════════════ Panels ═════════════════════════════ -->
+
+    <Style x:Key="PanelBorder" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorDefaultBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource DividerStrokeColorDefaultBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+    </Style>
+
+    <Style x:Key="PanelHeader" TargetType="Border">
+        <Setter Property="MinHeight" Value="{StaticResource Dmx.PanelHeaderHeight}" />
+        <Setter Property="Padding" Value="6,0,2,0" />
+        <Setter Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource DividerStrokeColorDefaultBrush}" />
+        <Setter Property="BorderThickness" Value="0,0,0,1" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+    </Style>
+
+    <Style x:Key="PanelTitle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{StaticResource Dmx.FontSize.Body}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+    </Style>
+
+    <Style
+        x:Key="PanelHeaderButton"
+        BasedOn="{StaticResource Dmx.SubtleButtonBase}"
+        TargetType="Button">
+        <Setter Property="Width" Value="{StaticResource Dmx.PanelHeaderButtonSize}" />
+        <Setter Property="Height" Value="{StaticResource Dmx.PanelHeaderButtonSize}" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Margin" Value="1,0" />
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+    </Style>
+
+    <!-- ═════════════════════════════ Forms ═════════════════════════════ -->
+
+    <Style x:Key="FormLabel" TargetType="TextBlock">
+        <!-- Bottom 3 matches the input's bottom margin (Dmx.FormRowMargin), so the label stays centred on the input. -->
+        <Setter Property="Margin" Value="0,0,6,3" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+    </Style>
+
+    <Style x:Key="FormSection" TargetType="TextBlock">
+        <Setter Property="Margin" Value="0,6,0,3" />
+        <Setter Property="FontSize" Value="{StaticResource Dmx.FontSize.Small}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+    </Style>
+
+    <Style x:Key="FormSectionBorder" TargetType="Border">
+        <Setter Property="Padding" Value="6" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{StaticResource Dmx.CornerRadius}" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+    </Style>
+
+    <!-- FormTextBox / FormNumberBox / FormComboBox are defined in App.xaml (they derive from WPF-UI defaults). -->
+
+    <!-- ═════════════════════════════ Text & empty states ═════════════════════════════ -->
+
+    <Style x:Key="HintText" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{StaticResource Dmx.FontSize.Small}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorTertiaryBrush}" />
+    </Style>
+
+    <Style x:Key="EmptyStatePanel" TargetType="StackPanel">
+        <Setter Property="MaxWidth" Value="340" />
+        <Setter Property="Margin" Value="10" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Orientation" Value="Vertical" />
+    </Style>
+
+    <!-- TargetType FrameworkElement so it applies to <c:DmxIcon />; MaxSize keeps it at the 28 px design size. -->
+    <Style x:Key="EmptyStateIcon" TargetType="FrameworkElement">
+        <Setter Property="Margin" Value="0,0,0,6" />
+        <Setter Property="c:DmxIcon.MaxSize" Value="{StaticResource Dmx.EmptyStateIconSize}" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource TextFillColorTertiaryBrush}" />
+    </Style>
+
+    <Style x:Key="EmptyStateTitle" TargetType="TextBlock">
+        <Setter Property="Margin" Value="0,0,0,4" />
+        <Setter Property="FontSize" Value="{StaticResource Dmx.FontSize.Title}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="TextAlignment" Value="Center" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+    </Style>
+
+    <Style x:Key="EmptyStateText" TargetType="TextBlock">
+        <Setter Property="Margin" Value="0,0,0,10" />
+        <Setter Property="FontSize" Value="{StaticResource Dmx.FontSize.Body}" />
+        <Setter Property="TextAlignment" Value="Center" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+    </Style>
+
+    <!-- ═════════════════════════════ Menu bar ═════════════════════════════ -->
+
+    <!-- Top-level item that opens a submenu (File, Edit, …). -->
+    <ControlTemplate x:Key="Dmx.TopLevelHeaderTemplate" TargetType="MenuItem">
+        <Border
+            x:Name="Bd"
+            Margin="1,1"
+            Padding="{TemplateBinding Padding}"
+            Background="Transparent"
+            CornerRadius="{StaticResource Dmx.CornerRadius}"
+            SnapsToDevicePixels="True">
+            <Grid>
+                <StackPanel Orientation="Horizontal">
+                    <ContentPresenter
+                        x:Name="Icon"
+                        Margin="0,0,8,0"
+                        VerticalAlignment="Center"
+                        Content="{TemplateBinding Icon}" />
+                    <ContentPresenter
+                        VerticalAlignment="Center"
+                        ContentSource="Header"
+                        RecognizesAccessKey="True" />
+                </StackPanel>
+                <Popup
+                    x:Name="PART_Popup"
+                    AllowsTransparency="True"
+                    Focusable="False"
+                    HorizontalOffset="-8"
+                    IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}"
+                    Placement="Bottom"
+                    PlacementTarget="{Binding ElementName=Bd}"
+                    PopupAnimation="{DynamicResource {x:Static SystemParameters.MenuPopupAnimationKey}}"
+                    VerticalOffset="2">
+                    <Border
+                        x:Name="SubmenuBorder"
+                        MinWidth="220"
+                        Margin="8,0,8,12"
+                        Padding="4"
+                        Background="{DynamicResource FlyoutBackground}"
+                        BorderBrush="{DynamicResource FlyoutBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        SnapsToDevicePixels="True">
+                        <Border.Effect>
+                            <DropShadowEffect
+                                BlurRadius="16"
+                                Direction="270"
+                                Opacity="0.28"
+                                ShadowDepth="4" />
+                        </Border.Effect>
+                        <ScrollViewer
+                            CanContentScroll="True"
+                            HorizontalScrollBarVisibility="Disabled"
+                            VerticalScrollBarVisibility="Auto">
+                            <StackPanel
+                                Grid.IsSharedSizeScope="True"
+                                IsItemsHost="True"
+                                KeyboardNavigation.DirectionalNavigation="Cycle" />
+                        </ScrollViewer>
+                    </Border>
+                </Popup>
+            </Grid>
+        </Border>
+        <ControlTemplate.Triggers>
+            <Trigger Property="Icon" Value="{x:Null}">
+                <Setter TargetName="Icon" Property="Visibility" Value="Collapsed" />
+            </Trigger>
+            <Trigger Property="IsHighlighted" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+            </Trigger>
+            <Trigger Property="IsSubmenuOpen" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SubtleFillColorTertiaryBrush}" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Foreground" Value="{DynamicResource TextFillColorDisabledBrush}" />
+            </Trigger>
+        </ControlTemplate.Triggers>
+    </ControlTemplate>
+
+    <!-- Top-level item without a submenu (a command directly on the bar). -->
+    <ControlTemplate x:Key="Dmx.TopLevelItemTemplate" TargetType="MenuItem">
+        <Border
+            x:Name="Bd"
+            Margin="1,1"
+            Padding="{TemplateBinding Padding}"
+            Background="Transparent"
+            CornerRadius="{StaticResource Dmx.CornerRadius}"
+            SnapsToDevicePixels="True">
+            <StackPanel Orientation="Horizontal">
+                <ContentPresenter
+                    x:Name="Icon"
+                    Margin="0,0,8,0"
+                    VerticalAlignment="Center"
+                    Content="{TemplateBinding Icon}" />
+                <ContentPresenter
+                    VerticalAlignment="Center"
+                    ContentSource="Header"
+                    RecognizesAccessKey="True" />
+            </StackPanel>
+        </Border>
+        <ControlTemplate.Triggers>
+            <Trigger Property="Icon" Value="{x:Null}">
+                <Setter TargetName="Icon" Property="Visibility" Value="Collapsed" />
+            </Trigger>
+            <Trigger Property="IsHighlighted" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SubtleFillColorTertiaryBrush}" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Foreground" Value="{DynamicResource TextFillColorDisabledBrush}" />
+            </Trigger>
+        </ControlTemplate.Triggers>
+    </ControlTemplate>
+
+    <!-- Submenu leaf item: [icon/check 14] [header] [gesture, right aligned]. Columns are shared across the popup. -->
+    <ControlTemplate x:Key="Dmx.SubmenuItemTemplate" TargetType="MenuItem">
+        <Border
+            x:Name="Bd"
+            MinHeight="{StaticResource Dmx.MenuItemHeight}"
+            Padding="{TemplateBinding Padding}"
+            Background="Transparent"
+            CornerRadius="{StaticResource Dmx.CornerRadius}"
+            SnapsToDevicePixels="True">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="MenuItemIcon" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="MenuItemGesture" />
+                    <ColumnDefinition Width="16" />
+                </Grid.ColumnDefinitions>
+                <Grid
+                    Width="{StaticResource Dmx.MenuIconSize}"
+                    Height="{StaticResource Dmx.MenuIconSize}"
+                    Margin="0,0,8,0"
+                    VerticalAlignment="Center">
+                    <ContentPresenter
+                        x:Name="Icon"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Content="{TemplateBinding Icon}" />
+                    <Path
+                        x:Name="CheckMark"
+                        Data="M 2,7.5 L 5.5,10.5 L 12,4"
+                        Stroke="{TemplateBinding Foreground}"
+                        StrokeEndLineCap="Round"
+                        StrokeLineJoin="Round"
+                        StrokeStartLineCap="Round"
+                        StrokeThickness="1.5"
+                        Visibility="Collapsed" />
+                </Grid>
+                <ContentPresenter
+                    Grid.Column="1"
+                    VerticalAlignment="Center"
+                    ContentSource="Header"
+                    RecognizesAccessKey="True" />
+                <TextBlock
+                    x:Name="GestureText"
+                    Grid.Column="2"
+                    Margin="20,0,0,0"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Center"
+                    FontSize="{StaticResource Dmx.FontSize.Small}"
+                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                    Text="{TemplateBinding InputGestureText}" />
+            </Grid>
+        </Border>
+        <ControlTemplate.Triggers>
+            <Trigger Property="IsChecked" Value="True">
+                <Setter TargetName="CheckMark" Property="Visibility" Value="Visible" />
+                <Setter TargetName="Icon" Property="Visibility" Value="Collapsed" />
+            </Trigger>
+            <Trigger Property="IsHighlighted" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SubtleFillColorTertiaryBrush}" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Foreground" Value="{DynamicResource TextFillColorDisabledBrush}" />
+                <Setter TargetName="GestureText" Property="Foreground" Value="{DynamicResource TextFillColorDisabledBrush}" />
+            </Trigger>
+        </ControlTemplate.Triggers>
+    </ControlTemplate>
+
+    <!-- Submenu item that opens a nested submenu (chevron on the right). -->
+    <ControlTemplate x:Key="Dmx.SubmenuHeaderTemplate" TargetType="MenuItem">
+        <Border
+            x:Name="Bd"
+            MinHeight="{StaticResource Dmx.MenuItemHeight}"
+            Padding="{TemplateBinding Padding}"
+            Background="Transparent"
+            CornerRadius="{StaticResource Dmx.CornerRadius}"
+            SnapsToDevicePixels="True">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="MenuItemIcon" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="MenuItemGesture" />
+                    <ColumnDefinition Width="16" />
+                </Grid.ColumnDefinitions>
+                <Grid
+                    Width="{StaticResource Dmx.MenuIconSize}"
+                    Height="{StaticResource Dmx.MenuIconSize}"
+                    Margin="0,0,8,0"
+                    VerticalAlignment="Center">
+                    <ContentPresenter
+                        x:Name="Icon"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Content="{TemplateBinding Icon}" />
+                </Grid>
+                <ContentPresenter
+                    Grid.Column="1"
+                    VerticalAlignment="Center"
+                    ContentSource="Header"
+                    RecognizesAccessKey="True" />
+                <Path
+                    Grid.Column="3"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Center"
+                    Data="M 0,0 L 4,4 L 0,8"
+                    Stroke="{TemplateBinding Foreground}"
+                    StrokeEndLineCap="Round"
+                    StrokeLineJoin="Round"
+                    StrokeStartLineCap="Round"
+                    StrokeThickness="1.5" />
+                <Popup
+                    x:Name="PART_Popup"
+                    AllowsTransparency="True"
+                    Focusable="False"
+                    HorizontalOffset="0"
+                    IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}"
+                    Placement="Right"
+                    PlacementTarget="{Binding ElementName=Bd}"
+                    PopupAnimation="{DynamicResource {x:Static SystemParameters.MenuPopupAnimationKey}}"
+                    VerticalOffset="-5">
+                    <Border
+                        MinWidth="200"
+                        Margin="0,0,8,12"
+                        Padding="4"
+                        Background="{DynamicResource FlyoutBackground}"
+                        BorderBrush="{DynamicResource FlyoutBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        SnapsToDevicePixels="True">
+                        <Border.Effect>
+                            <DropShadowEffect
+                                BlurRadius="16"
+                                Direction="270"
+                                Opacity="0.28"
+                                ShadowDepth="4" />
+                        </Border.Effect>
+                        <ScrollViewer
+                            CanContentScroll="True"
+                            HorizontalScrollBarVisibility="Disabled"
+                            VerticalScrollBarVisibility="Auto">
+                            <StackPanel
+                                Grid.IsSharedSizeScope="True"
+                                IsItemsHost="True"
+                                KeyboardNavigation.DirectionalNavigation="Cycle" />
+                        </ScrollViewer>
+                    </Border>
+                </Popup>
+            </Grid>
+        </Border>
+        <ControlTemplate.Triggers>
+            <Trigger Property="IsHighlighted" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+            </Trigger>
+            <Trigger Property="IsSubmenuOpen" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Foreground" Value="{DynamicResource TextFillColorDisabledBrush}" />
+            </Trigger>
+        </ControlTemplate.Triggers>
+    </ControlTemplate>
+
+    <!-- Menu item of the menu bar and (via App.xaml) of every ContextMenu: 22 px rows, 14 px icon slot. -->
+    <Style x:Key="Dmx.MenuItem" TargetType="MenuItem">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+        <Setter Property="FontSize" Value="{StaticResource Dmx.FontSize.Body}" />
+        <Setter Property="Padding" Value="6,0" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="ToolTipService.ShowOnDisabled" Value="True" />
+        <Setter Property="Template" Value="{StaticResource Dmx.SubmenuItemTemplate}" />
+        <Style.Triggers>
+            <Trigger Property="Role" Value="TopLevelHeader">
+                <Setter Property="Padding" Value="6,1" />
+                <Setter Property="Template" Value="{StaticResource Dmx.TopLevelHeaderTemplate}" />
+            </Trigger>
+            <Trigger Property="Role" Value="TopLevelItem">
+                <Setter Property="Padding" Value="6,1" />
+                <Setter Property="Template" Value="{StaticResource Dmx.TopLevelItemTemplate}" />
+            </Trigger>
+            <Trigger Property="Role" Value="SubmenuHeader">
+                <Setter Property="Template" Value="{StaticResource Dmx.SubmenuHeaderTemplate}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="Dmx.MenuSeparator" TargetType="Separator">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Margin" Value="-4,2" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Separator">
+                    <Border
+                        Height="1"
+                        Background="{DynamicResource DividerStrokeColorDefaultBrush}"
+                        SnapsToDevicePixels="True" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="TopMenu" TargetType="Menu">
+        <Style.Resources>
+            <!-- Applies to every MenuItem in the bar and its submenus (popups inherit resources through the logical
+                 tree). ContextMenus get the same item style from App.xaml. -->
+            <Style BasedOn="{StaticResource Dmx.MenuItem}" TargetType="MenuItem" />
+            <Style
+                x:Key="{x:Static MenuItem.SeparatorStyleKey}"
+                BasedOn="{StaticResource Dmx.MenuSeparator}"
+                TargetType="Separator" />
+        </Style.Resources>
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Padding" Value="4,0" />
+        <Setter Property="FontSize" Value="{StaticResource Dmx.FontSize.Body}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="KeyboardNavigation.TabNavigation" Value="Cycle" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Menu">
+                    <Border
+                        Padding="{TemplateBinding Padding}"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}">
+                        <StackPanel
+                            ClipToBounds="True"
+                            IsItemsHost="True"
+                            Orientation="Horizontal" />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ═════════════════════════════ Navigation rail ═════════════════════════════ -->
+
+    <Style x:Key="NavRailItem" TargetType="ListBoxItem">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Margin" Value="3,1" />
+        <Setter Property="Padding" Value="2,4" />
+        <Setter Property="MinHeight" Value="{StaticResource Dmx.NavItemMinHeight}" />
+        <Setter Property="FontSize" Value="{StaticResource Dmx.FontSize.Caption}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="FocusVisualStyle" Value="{DynamicResource DefaultControlFocusVisualStyle}" />
+        <Setter Property="Cursor" Value="Arrow" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListBoxItem">
+                    <Grid>
+                        <Border
+                            x:Name="Bd"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="{StaticResource Dmx.CornerRadius}"
+                            SnapsToDevicePixels="True" />
+                        <Border
+                            x:Name="HoverFill"
+                            Background="{DynamicResource SubtleFillColorSecondaryBrush}"
+                            CornerRadius="{StaticResource Dmx.CornerRadius}"
+                            Opacity="0" />
+                        <ContentPresenter
+                            Margin="{TemplateBinding Padding}"
+                            HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                        <!-- Selection indicator: 3 px accent pill on the left edge; grows in from its centre when selected. -->
+                        <Border
+                            x:Name="Indicator"
+                            Width="3"
+                            Height="16"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center"
+                            Background="{DynamicResource AccentFillColorDefaultBrush}"
+                            CornerRadius="1.5"
+                            RenderTransformOrigin="0.5,0.5"
+                            Visibility="Collapsed">
+                            <Border.RenderTransform>
+                                <ScaleTransform />
+                            </Border.RenderTransform>
+                        </Border>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Trigger.EnterActions>
+                                <BeginStoryboard Storyboard="{StaticResource Dmx.HoverIn}" />
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard Storyboard="{StaticResource Dmx.HoverOut}" />
+                            </Trigger.ExitActions>
+                            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard FillBehavior="Stop">
+                                        <DoubleAnimation
+                                            EasingFunction="{x:Static c:DmxMotion.EaseOut}"
+                                            Storyboard.TargetName="Indicator"
+                                            Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                            From="0.3"
+                                            To="1"
+                                            Duration="{x:Static c:DmxMotion.Normal}" />
+                                        <DoubleAnimation
+                                            EasingFunction="{x:Static c:DmxMotion.EaseOut}"
+                                            Storyboard.TargetName="Indicator"
+                                            Storyboard.TargetProperty="Opacity"
+                                            From="0"
+                                            To="1"
+                                            Duration="{x:Static c:DmxMotion.Normal}" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+                            <Setter TargetName="Indicator" Property="Visibility" Value="Visible" />
+                            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Foreground" Value="{DynamicResource TextFillColorDisabledBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="NavRail" TargetType="ListBox">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0,4" />
+        <Setter Property="SelectionMode" Value="Single" />
+        <Setter Property="ItemContainerStyle" Value="{StaticResource NavRailItem}" />
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+        <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
+        <Setter Property="KeyboardNavigation.DirectionalNavigation" Value="Contained" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListBox">
+                    <Border
+                        Padding="{TemplateBinding Padding}"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}">
+                        <ScrollViewer Focusable="False">
+                            <ItemsPresenter />
+                        </ScrollViewer>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="NavRailLabel" TargetType="TextBlock">
+        <Setter Property="Margin" Value="0,2,0,0" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="FontSize" Value="{StaticResource Dmx.FontSize.Caption}" />
+        <Setter Property="TextAlignment" Value="Center" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+
+    <!-- ═════════════════════════════ Tables ═════════════════════════════ -->
+
+    <Style x:Key="DataTableColumnHeader" TargetType="DataGridColumnHeader">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Padding" Value="6,0,4,0" />
+        <Setter Property="MinHeight" Value="{StaticResource Dmx.TableHeaderHeight}" />
+        <Setter Property="FontSize" Value="{StaticResource Dmx.FontSize.Small}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="{DynamicResource DividerStrokeColorDefaultBrush}" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="IsTabStop" Value="False" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="DataGridColumnHeader">
+                    <Grid>
+                        <Border
+                            x:Name="Bd"
+                            Padding="{TemplateBinding Padding}"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="0,0,0,1">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <ContentPresenter
+                                    HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                    VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                    RecognizesAccessKey="True"
+                                    SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                                <Path
+                                    x:Name="SortArrow"
+                                    Grid.Column="1"
+                                    Margin="6,0,0,0"
+                                    VerticalAlignment="Center"
+                                    Data="M 0,0 L 4,4 L 8,0"
+                                    RenderTransformOrigin="0.5,0.5"
+                                    Stroke="{TemplateBinding Foreground}"
+                                    StrokeEndLineCap="Round"
+                                    StrokeLineJoin="Round"
+                                    StrokeStartLineCap="Round"
+                                    StrokeThickness="1.5"
+                                    Visibility="Collapsed" />
+                            </Grid>
+                        </Border>
+                        <Thumb
+                            x:Name="PART_LeftHeaderGripper"
+                            HorizontalAlignment="Left">
+                            <Thumb.Style>
+                                <Style TargetType="Thumb">
+                                    <Setter Property="Width" Value="8" />
+                                    <Setter Property="Cursor" Value="SizeWE" />
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Border Background="Transparent" />
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </Thumb.Style>
+                        </Thumb>
+                        <Thumb
+                            x:Name="PART_RightHeaderGripper"
+                            HorizontalAlignment="Right">
+                            <Thumb.Style>
+                                <Style TargetType="Thumb">
+                                    <Setter Property="Width" Value="8" />
+                                    <Setter Property="Cursor" Value="SizeWE" />
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Border Background="Transparent" />
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </Thumb.Style>
+                        </Thumb>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+                        </Trigger>
+                        <Trigger Property="SortDirection" Value="Ascending">
+                            <Setter TargetName="SortArrow" Property="Visibility" Value="Visible" />
+                            <Setter TargetName="SortArrow" Property="RenderTransform">
+                                <Setter.Value>
+                                    <RotateTransform Angle="180" />
+                                </Setter.Value>
+                            </Setter>
+                        </Trigger>
+                        <Trigger Property="SortDirection" Value="Descending">
+                            <Setter TargetName="SortArrow" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="DataTableCell" TargetType="DataGridCell">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Padding" Value="6,0,4,0" />
+        <Setter Property="c:DmxIcon.MaxSize" Value="{StaticResource Dmx.DenseIconSize}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="IsTabStop" Value="False" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="DataGridCell">
+                    <Border
+                        Padding="{TemplateBinding Padding}"
+                        Background="{TemplateBinding Background}"
+                        SnapsToDevicePixels="True">
+                        <ContentPresenter VerticalAlignment="Center" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="DataTableRow" TargetType="DataGridRow">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="{DynamicResource DividerStrokeColorDefaultBrush}" />
+        <Setter Property="BorderThickness" Value="0,0,0,1" />
+        <Setter Property="IsTabStop" Value="False" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Validation.ErrorTemplate" Value="{x:Null}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="DataGridRow">
+                    <Border
+                        x:Name="DGR_Border"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        SnapsToDevicePixels="True">
+                        <Grid>
+                            <Border
+                                x:Name="HoverFill"
+                                Background="{DynamicResource SubtleFillColorSecondaryBrush}"
+                                IsHitTestVisible="False"
+                                Opacity="0" />
+                            <SelectiveScrollingGrid>
+                                <SelectiveScrollingGrid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </SelectiveScrollingGrid.ColumnDefinitions>
+                                <SelectiveScrollingGrid.RowDefinitions>
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
+                                </SelectiveScrollingGrid.RowDefinitions>
+                                <DataGridCellsPresenter
+                                    Grid.Column="1"
+                                    ItemsPanel="{TemplateBinding ItemsPanel}"
+                                    SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                                <DataGridDetailsPresenter
+                                    Grid.Row="1"
+                                    Grid.Column="1"
+                                    SelectiveScrollingGrid.SelectiveScrollingOrientation="{Binding AreRowDetailsFrozen, ConverterParameter={x:Static SelectiveScrollingOrientation.Vertical}, Converter={x:Static DataGrid.RowDetailsScrollingConverter}, RelativeSource={RelativeSource AncestorType={x:Type DataGrid}}}"
+                                    Visibility="{TemplateBinding DetailsVisibility}" />
+                                <DataGridRowHeader
+                                    Grid.RowSpan="2"
+                                    SelectiveScrollingGrid.SelectiveScrollingOrientation="Vertical"
+                                    Visibility="{Binding HeadersVisibility, ConverterParameter={x:Static DataGridHeadersVisibility.Row}, Converter={x:Static DataGrid.HeadersVisibilityConverter}, RelativeSource={RelativeSource AncestorType={x:Type DataGrid}}}" />
+                            </SelectiveScrollingGrid>
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Trigger.EnterActions>
+                                <BeginStoryboard Storyboard="{StaticResource Dmx.HoverIn}" />
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard Storyboard="{StaticResource Dmx.HoverOut}" />
+                            </Trigger.ExitActions>
+                        </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsSelected" Value="True" />
+                                <Condition Property="Selector.IsSelectionActive" Value="False" />
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="DGR_Border" Property="Background">
+                                <Setter.Value>
+                                    <SolidColorBrush Opacity="0.14" Color="{DynamicResource SystemAccentColorPrimary}" />
+                                </Setter.Value>
+                            </Setter>
+                        </MultiTrigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsSelected" Value="True" />
+                                <Condition Property="Selector.IsSelectionActive" Value="True" />
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="DGR_Border" Property="Background">
+                                <Setter.Value>
+                                    <SolidColorBrush Opacity="0.24" Color="{DynamicResource SystemAccentColorPrimary}" />
+                                </Setter.Value>
+                            </Setter>
+                        </MultiTrigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- DataTable (the DataGrid style itself) is defined in App.xaml (it derives from WPF-UI's DataGrid style). -->
+
+    <!-- ═════════════════════════════ Status bar ═════════════════════════════ -->
+
+    <Style x:Key="StatusBarStrip" TargetType="Border">
+        <Setter Property="MinHeight" Value="{StaticResource Dmx.StatusBarHeight}" />
+        <Setter Property="Padding" Value="6,0" />
+        <Setter Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource DividerStrokeColorDefaultBrush}" />
+        <Setter Property="BorderThickness" Value="0,1,0,0" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+    </Style>
+
+    <!-- Tag selects the state colours; content is a StackPanel (dot/icon + text) so state is never colour-only. -->
+    <Style x:Key="StatusPill" TargetType="Border">
+        <Setter Property="Padding" Value="6,0" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+        <Setter Property="TextElement.FontSize" Value="{StaticResource Dmx.FontSize.Caption}" />
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="Connected">
+                <!-- Not the accent colour: with a red Windows accent "Connected" would look like "Error". -->
+                <Setter Property="Background" Value="{DynamicResource SystemFillColorAttentionBackgroundBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource ControlStrongStrokeColorDefaultBrush}" />
+                <Setter Property="TextElement.Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="Sending">
+                <Setter Property="Background" Value="{DynamicResource SystemFillColorSuccessBackgroundBrush}" />
+                <Setter Property="TextElement.Foreground" Value="{DynamicResource SystemFillColorSuccessBrush}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="Warning">
+                <Setter Property="Background" Value="{DynamicResource SystemFillColorCautionBackgroundBrush}" />
+                <Setter Property="TextElement.Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="Error">
+                <Setter Property="Background" Value="{DynamicResource SystemFillColorCriticalBackgroundBrush}" />
+                <Setter Property="TextElement.Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="StatusText" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{StaticResource Dmx.FontSize.Small}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+    </Style>
+
+    <!-- ═════════════════════════════ Splitters ═════════════════════════════ -->
+
+    <Style x:Key="VerticalSplitter" TargetType="GridSplitter">
+        <Setter Property="Width" Value="{StaticResource Dmx.SplitterSize}" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="VerticalAlignment" Value="Stretch" />
+        <Setter Property="ResizeBehavior" Value="PreviousAndNext" />
+        <Setter Property="ResizeDirection" Value="Columns" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Focusable" Value="False" />
+    </Style>
+
+    <Style x:Key="HorizontalSplitter" TargetType="GridSplitter">
+        <Setter Property="Height" Value="{StaticResource Dmx.SplitterSize}" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="VerticalAlignment" Value="Stretch" />
+        <Setter Property="ResizeBehavior" Value="PreviousAndNext" />
+        <Setter Property="ResizeDirection" Value="Rows" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Focusable" Value="False" />
+    </Style>
+</ResourceDictionary>

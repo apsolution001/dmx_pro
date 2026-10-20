@@ -10,6 +10,7 @@ A modern, easy-to-use **Windows DMX lighting controller** for RGB/RGBW fixtures 
 - **Scene Creator** — color picker, RGBW handling, fades, live stage preview
 - **Virtual Console** — pages of buttons/sliders, drag & drop layout, operator lock
 - **Music Show** — upload a song, automatic beat/energy analysis, auto-generated editable light show
+- **Virtual Stage** — 2D top view of your lights showing exactly what is sent, drag to place them
 - **Test & Preview** — raw channel tests, DMX monitor, diagnostics
 - **Input / Output** — Art-Net, sACN (E1.31), Enttec USB-DMX
 - **Projects** — save/load, autosave, crash recovery

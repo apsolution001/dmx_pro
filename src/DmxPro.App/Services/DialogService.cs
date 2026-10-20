@@ -30,6 +30,15 @@ public sealed class DialogService : IDialogService
         return window.ShowDialog() == true;
     }
 
+    public bool ShowChannelLayout(ChannelLayoutViewModel viewModel)
+    {
+        // Opened from the Fixtures page or from the Add Fixture dialog: own it by whichever window is active.
+        var app = System.Windows.Application.Current;
+        var owner = app.Windows.OfType<System.Windows.Window>().FirstOrDefault(w => w.IsActive) ?? app.MainWindow;
+        var window = new ChannelLayoutWindow(viewModel) { Owner = owner };
+        return window.ShowDialog() == true;
+    }
+
     public async Task<SaveChangesChoice> AskSaveChangesAsync(string projectName)
     {
         var box = new MessageBox

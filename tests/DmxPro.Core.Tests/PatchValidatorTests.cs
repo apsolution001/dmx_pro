@@ -121,4 +121,22 @@ public class PatchValidatorTests
         Assert.Equal(511, DmxAddress.ToIndex(512));
         Assert.Throws<ArgumentOutOfRangeException>(() => DmxAddress.ToIndex(0));
     }
+
+    [Fact]
+    public void Validate_OverlapsInSeveralUniverses_ReportsEachAgainstEarlierFixturesInPatchOrder()
+    {
+        var project = ProjectWith(
+            Par("A", 1),
+            Par("B", 1, universe: 2),
+            Par("C", 5),
+            Par("D", 3),
+            Par("E", 8, universe: 2));
+
+        var issues = PatchValidator.Validate(project.Fixtures, project);
+
+        Assert.All(issues, i => Assert.Equal("ADDRESS_OVERLAP", i.Code));
+        Assert.Equal(
+            ["'C' (U1 5–12) overlaps 'A'", "'D' (U1 3–10) overlaps 'A'", "'D' (U1 3–10) overlaps 'C'", "'E' (U2 8–15) overlaps 'B'"],
+            issues.Select(i => i.Message[..i.Message.IndexOf(" (U", i.Message.IndexOf("overlaps", StringComparison.Ordinal), StringComparison.Ordinal)]));
+    }
 }

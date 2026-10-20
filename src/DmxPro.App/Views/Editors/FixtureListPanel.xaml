@@ -1,0 +1,269 @@
+<UserControl
+    x:Class="DmxPro.App.Views.Editors.FixtureListPanel"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:c="clr-namespace:DmxPro.App.Controls"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:ed="clr-namespace:DmxPro.App.ViewModels.Editors"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    xmlns:vm="clr-namespace:DmxPro.App.ViewModels"
+    d:DataContext="{d:DesignInstance Type=ed:FixtureListEditorViewModel}"
+    d:DesignHeight="400"
+    d:DesignWidth="320"
+    mc:Ignorable="d">
+    <!--
+        "Fixtures" panel of the sequence and effect editors (DataContext: FixtureListEditorViewModel). The fixtures
+        the function drives, in order, one dense line each (QLC+-style); the Add flyout lists groups and every
+        patched fixture with a search box (ticked = used). Del removes the selected fixture, Alt+Up / Alt+Down move it.
+
+        ┌ Fixtures · 3 fixtures   [Add ▾][-][↑][↓] ┐
+        │ 1  PAR 1   U1 · 1–8 · Generic RGBW     ⚠ │
+        │ 2  PAR 2   U1 · 9–16 · Generic RGBW      │
+        └──────────────────────────────────────────┘
+    -->
+    <UserControl.Resources>
+        <!-- Labelled "Add ▾" toggle in a panel header: as high as PanelHeaderButton. -->
+        <Style
+            x:Key="HeaderToggle"
+            BasedOn="{StaticResource ToolbarToggleButton}"
+            TargetType="ToggleButton">
+            <Setter Property="Width" Value="NaN" />
+            <Setter Property="Height" Value="{StaticResource Dmx.PanelHeaderButtonSize}" />
+            <Setter Property="Padding" Value="6,0" />
+        </Style>
+
+        <!-- Fixture or group row of the flyout, one line: icon, name, detail. -->
+        <DataTemplate x:Key="ChoiceCheckBox" DataType="{x:Type vm:SceneFixtureChoice}">
+            <CheckBox
+                MinHeight="{StaticResource Dmx.ListRowMinHeight}"
+                Margin="0"
+                Padding="6,0,0,0"
+                VerticalContentAlignment="Center"
+                AutomationProperties.Name="{Binding AutomationName}"
+                IsChecked="{Binding IsInScene, Mode=TwoWay}"
+                ToolTip="{Binding Detail}">
+                <DockPanel>
+                    <c:DmxIcon
+                        Margin="0,0,4,0"
+                        VerticalAlignment="Center"
+                        DockPanel.Dock="Left"
+                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                        Kind="{Binding IconKind}"
+                        Size="{StaticResource Dmx.DenseIconSize}" />
+                    <TextBlock VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
+                        <Run Text="{Binding Name, Mode=OneWay}" />
+                        <Run
+                            FontSize="{StaticResource Dmx.FontSize.Small}"
+                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                            Text="{Binding Detail, Mode=OneWay}" />
+                    </TextBlock>
+                </DockPanel>
+            </CheckBox>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Border Style="{StaticResource PanelBorder}">
+        <DockPanel>
+            <Border DockPanel.Dock="Top" Style="{StaticResource PanelHeader}">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                        <ToggleButton
+                            x:Name="AddToggle"
+                            AutomationProperties.Name="Add fixtures or groups"
+                            IsHitTestVisible="{Binding IsOpen, ElementName=AddPopup, Converter={StaticResource InvertBool}}"
+                            Style="{StaticResource HeaderToggle}"
+                            ToolTip="Add fixtures or groups">
+                            <StackPanel Orientation="Horizontal">
+                                <c:DmxIcon Kind="Add" Size="{StaticResource Dmx.DenseIconSize}" />
+                                <TextBlock
+                                    Margin="4,0"
+                                    VerticalAlignment="Center"
+                                    FontSize="{StaticResource Dmx.FontSize.Small}"
+                                    Text="Add" />
+                                <c:DmxIcon Kind="ChevronDown" Size="{StaticResource Dmx.DenseIconSize}" />
+                            </StackPanel>
+                        </ToggleButton>
+                        <Button
+                            AutomationProperties.Name="Remove selected fixture"
+                            Command="{Binding RemoveSelectedCommand}"
+                            Style="{StaticResource PanelHeaderButton}"
+                            ToolTip="Remove the selected fixture (Del)">
+                            <c:DmxIcon Kind="Remove" Size="{StaticResource Dmx.DenseIconSize}" />
+                        </Button>
+                        <Button
+                            AutomationProperties.Name="Move fixture up"
+                            Command="{Binding MoveUpCommand}"
+                            Style="{StaticResource PanelHeaderButton}"
+                            ToolTip="Move up: earlier in the order (Alt+Up)">
+                            <c:DmxIcon Kind="MoveUp" Size="{StaticResource Dmx.DenseIconSize}" />
+                        </Button>
+                        <Button
+                            AutomationProperties.Name="Move fixture down"
+                            Command="{Binding MoveDownCommand}"
+                            Style="{StaticResource PanelHeaderButton}"
+                            ToolTip="Move down: later in the order (Alt+Down)">
+                            <c:DmxIcon Kind="MoveDown" Size="{StaticResource Dmx.DenseIconSize}" />
+                        </Button>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Style="{StaticResource PanelTitle}" Text="Fixtures" />
+                        <TextBlock
+                            Margin="8,0,0,0"
+                            VerticalAlignment="Center"
+                            Style="{StaticResource StatusText}"
+                            Text="{Binding CountText}" />
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+
+            <!-- Add flyout: search, groups, fixtures; ticked = used. -->
+            <Popup
+                x:Name="AddPopup"
+                AllowsTransparency="True"
+                DockPanel.Dock="Top"
+                IsOpen="{Binding IsChecked, ElementName=AddToggle, Mode=TwoWay}"
+                KeyDown="OnAddPopupKeyDown"
+                Opened="OnAddPopupOpened"
+                Placement="Bottom"
+                PlacementTarget="{Binding ElementName=AddToggle}"
+                StaysOpen="False">
+                <Border
+                    Width="320"
+                    Margin="8,0,8,6"
+                    Padding="4"
+                    Background="{DynamicResource FlyoutBackground}"
+                    BorderBrush="{DynamicResource FlyoutBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="{StaticResource Dmx.CornerRadius}"
+                    KeyboardNavigation.TabNavigation="Cycle"
+                    ToolTip="Tick to add, untick to remove; new fixtures go to the end. Esc closes.">
+                    <Border.Effect>
+                        <DropShadowEffect
+                            BlurRadius="16"
+                            Direction="270"
+                            Opacity="0.28"
+                            ShadowDepth="4" />
+                    </Border.Effect>
+                    <StackPanel>
+                        <ui:TextBox
+                            x:Name="SearchBox"
+                            AutomationProperties.Name="Search fixtures"
+                            PlaceholderText="Search fixtures"
+                            Style="{StaticResource FormTextBox}"
+                            Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                            ToolTip="Filter the fixtures by name, address or profile">
+                            <ui:TextBox.Icon>
+                                <ui:SymbolIcon Symbol="Search24" />
+                            </ui:TextBox.Icon>
+                        </ui:TextBox>
+                        <ScrollViewer MaxHeight="420" VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <TextBlock
+                                    Margin="0,0,0,2"
+                                    Style="{StaticResource FormSection}"
+                                    Text="Groups" />
+                                <TextBlock
+                                    Style="{StaticResource HintText}"
+                                    Text="No groups (create them on the Fixtures page)"
+                                    Visibility="{Binding HasNoGroups, Converter={StaticResource BoolToVisibility}}" />
+                                <ItemsControl
+                                    AutomationProperties.Name="Channel groups"
+                                    IsTabStop="False"
+                                    ItemTemplate="{StaticResource ChoiceCheckBox}"
+                                    ItemsSource="{Binding AvailableGroups}" />
+
+                                <TextBlock
+                                    Margin="0,4,0,2"
+                                    Style="{StaticResource FormSection}"
+                                    Text="Fixtures" />
+                                <ItemsControl
+                                    AutomationProperties.Name="Fixtures"
+                                    IsTabStop="False"
+                                    ItemTemplate="{StaticResource ChoiceCheckBox}"
+                                    ItemsSource="{Binding FilteredFixtures}" />
+                                <TextBlock
+                                    Style="{StaticResource HintText}"
+                                    Text="No fixtures (patch them on the Fixtures page)"
+                                    Visibility="{Binding HasNoPatchedFixtures, Converter={StaticResource BoolToVisibility}}" />
+                            </StackPanel>
+                        </ScrollViewer>
+                    </StackPanel>
+                </Border>
+            </Popup>
+
+            <Grid>
+                <ListBox
+                    AutomationProperties.Name="Fixtures used, in order"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    ItemsSource="{Binding Items}"
+                    SelectedItem="{Binding SelectedItem}">
+                    <ListBox.InputBindings>
+                        <KeyBinding Command="{Binding RemoveSelectedCommand}" Gesture="Delete" />
+                        <KeyBinding Command="{Binding MoveUpCommand}" Gesture="Alt+Up" />
+                        <KeyBinding Command="{Binding MoveDownCommand}" Gesture="Alt+Down" />
+                    </ListBox.InputBindings>
+                    <ListBox.ItemContainerStyle>
+                        <Style BasedOn="{StaticResource {x:Type ListBoxItem}}" TargetType="ListBoxItem">
+                            <Setter Property="Padding" Value="6,0" />
+                            <Setter Property="Margin" Value="0" />
+                            <Setter Property="MinHeight" Value="{StaticResource Dmx.ListRowMinHeight}" />
+                            <Setter Property="AutomationProperties.Name" Value="{Binding AutomationName}" />
+                            <Setter Property="ToolTip" Value="{Binding Detail}" />
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate DataType="{x:Type ed:FixtureListItem}">
+                            <DockPanel>
+                                <TextBlock
+                                    MinWidth="20"
+                                    VerticalAlignment="Center"
+                                    DockPanel.Dock="Left"
+                                    FontSize="{StaticResource Dmx.FontSize.Small}"
+                                    Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                    Text="{Binding Number}" />
+                                <c:DmxIcon
+                                    Margin="4,0,0,0"
+                                    VerticalAlignment="Center"
+                                    AutomationProperties.Name="Unverified profile"
+                                    DockPanel.Dock="Right"
+                                    Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                                    Kind="Unverified"
+                                    Size="{StaticResource Dmx.DenseIconSize}"
+                                    ToolTip="Unverified profile: channel meanings are not confirmed"
+                                    Visibility="{Binding Unverified, Converter={StaticResource BoolToVisibility}}" />
+                                <c:DmxIcon
+                                    Margin="4,0,0,0"
+                                    VerticalAlignment="Center"
+                                    AutomationProperties.Name="Missing fixture"
+                                    DockPanel.Dock="Right"
+                                    Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                                    Kind="Warning"
+                                    Size="{StaticResource Dmx.DenseIconSize}"
+                                    ToolTip="This fixture was deleted from the patch; it is skipped. Remove it here."
+                                    Visibility="{Binding IsMissing, Converter={StaticResource BoolToVisibility}}" />
+                                <TextBlock VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
+                                    <Run Text="{Binding Name, Mode=OneWay}" />
+                                    <Run
+                                        FontSize="{StaticResource Dmx.FontSize.Small}"
+                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                        Text="{Binding Detail, Mode=OneWay}" />
+                                </TextBlock>
+                            </DockPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <StackPanel Style="{StaticResource EmptyStatePanel}" Visibility="{Binding HasNoItems, Converter={StaticResource BoolToVisibility}}">
+                    <c:DmxIcon
+                        Kind="Fixtures"
+                        Size="{StaticResource Dmx.EmptyStateIconSize}"
+                        Style="{StaticResource EmptyStateIcon}" />
+                    <TextBlock Style="{StaticResource EmptyStateTitle}" Text="No fixtures" />
+                    <TextBlock Style="{StaticResource EmptyStateText}" Text="Click Add to pick fixtures or groups." />
+                </StackPanel>
+            </Grid>
+        </DockPanel>
+    </Border>
+</UserControl>
