@@ -6,21 +6,27 @@ namespace DmxPro.App.Services;
 
 public sealed class DialogService : IDialogService
 {
+    /// <summary>
+    /// Every message box gets this minimum width: WPF-UI splits the width evenly between the buttons, so a box sized to
+    /// a short question cut "Don't save" and long confirm labels off.
+    /// </summary>
+    private const double MessageBoxMinWidth = 420;
+
     public async Task ShowErrorAsync(string title, string message)
     {
-        var box = new MessageBox { Title = title, Content = message, CloseButtonText = "OK" };
+        var box = new MessageBox { Title = title, Content = message, CloseButtonText = "OK", MinWidth = MessageBoxMinWidth };
         await box.ShowDialogAsync();
     }
 
     public async Task ShowInfoAsync(string title, string message)
     {
-        var box = new MessageBox { Title = title, Content = message, CloseButtonText = "Close", MinWidth = 420 };
+        var box = new MessageBox { Title = title, Content = message, CloseButtonText = "Close", MinWidth = MessageBoxMinWidth };
         await box.ShowDialogAsync();
     }
 
     public async Task<bool> ConfirmAsync(string title, string message, string confirmText)
     {
-        var box = new MessageBox { Title = title, Content = message, PrimaryButtonText = confirmText, CloseButtonText = "Cancel" };
+        var box = new MessageBox { Title = title, Content = message, PrimaryButtonText = confirmText, CloseButtonText = "Cancel", MinWidth = MessageBoxMinWidth };
         return await box.ShowDialogAsync() == MessageBoxResult.Primary;
     }
 
@@ -48,6 +54,7 @@ public sealed class DialogService : IDialogService
             PrimaryButtonText = "Save",
             SecondaryButtonText = "Don't save",
             CloseButtonText = "Cancel",
+            MinWidth = MessageBoxMinWidth,
         };
 
         return await box.ShowDialogAsync() switch
