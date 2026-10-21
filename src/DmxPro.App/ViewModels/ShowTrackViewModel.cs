@@ -6,9 +6,9 @@ using DmxPro.Core.Shows;
 namespace DmxPro.App.ViewModels;
 
 /// <summary>
-/// One lane of the show timeline: header (name, inline rename with F2/Enter/Esc, delete) and its item blocks. The
-/// time-range selection and drag-and-drop highlight are drawn per lane from <see cref="HasRange"/> and
-/// <see cref="IsDropTarget"/>.
+/// One lane of the show timeline: header (name, inline rename with F2/Enter/Esc, delete, right-click menu to add or
+/// insert tracks like a video editor) and its item blocks. The time-range selection and drag-and-drop highlight are
+/// drawn per lane from <see cref="HasRange"/> and <see cref="IsDropTarget"/>.
 /// </summary>
 public sealed partial class ShowTrackViewModel : ObservableObject
 {
@@ -79,4 +79,22 @@ public sealed partial class ShowTrackViewModel : ObservableObject
 
     [RelayCommand]
     private void Activate() => _owner.SetActiveTrack(this);
+
+    /// <summary>Header menu "Add track": a new empty track after the last one.</summary>
+    [RelayCommand]
+    private void AddTrackAtEnd()
+    {
+        if (_owner.AddTrackCommand.CanExecute(null))
+        {
+            _owner.AddTrackCommand.Execute(null);
+        }
+    }
+
+    /// <summary>Header menu: a new empty track right above this one.</summary>
+    [RelayCommand]
+    private void InsertAbove() => _owner.InsertTrackNextTo(this, below: false);
+
+    /// <summary>Header menu: a new empty track right below this one.</summary>
+    [RelayCommand]
+    private void InsertBelow() => _owner.InsertTrackNextTo(this, below: true);
 }

@@ -296,6 +296,16 @@
             </DockPanel>
         </Border>
 
+        <!-- Result of "Save as function…" (closable). -->
+        <ui:InfoBar
+            Margin="2,2,2,0"
+            DockPanel.Dock="Top"
+            IsClosable="True"
+            IsOpen="{Binding IsNoticeOpen, Mode=TwoWay}"
+            Message="{Binding NoticeMessage}"
+            Severity="Success"
+            Visibility="{Binding IsNoticeOpen, Converter={StaticResource BoolToVisibility}}" />
+
         <Grid>
             <!-- ═════════════ Empty state: no shows ═════════════ -->
             <StackPanel Style="{StaticResource EmptyStatePanel}" Visibility="{Binding HasNoShows, Converter={StaticResource BoolToVisibility}}">
@@ -715,6 +725,10 @@
                         </Grid>
 
                         <!-- Track headers: vertical offset synced with the lanes. -->
+                        <!--
+                            Right-click (or Shift+F10 / the menu key on a focused header): track menu like a video
+                            editor timeline. Below the last header only "Add track".
+                        -->
                         <ScrollViewer
                             x:Name="HeaderScroll"
                             Grid.Row="3"
@@ -723,6 +737,15 @@
                             HorizontalScrollBarVisibility="Disabled"
                             PreviewMouseWheel="OnHeaderPreviewMouseWheel"
                             VerticalScrollBarVisibility="Hidden">
+                            <ScrollViewer.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Command="{Binding AddTrackCommand}" Header="Add track">
+                                        <MenuItem.Icon>
+                                            <c:DmxIcon Kind="Add" Size="{StaticResource Dmx.SmallIconSize}" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                </ContextMenu>
+                            </ScrollViewer.ContextMenu>
                             <Border
                                 Background="{DynamicResource ControlFillColorDefaultBrush}"
                                 BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
@@ -738,13 +761,53 @@
                                                 x:Name="Header"
                                                 Height="{x:Static vm:ShowsViewModel.TrackHeight}"
                                                 Padding="6,0,1,0"
+                                                AutomationProperties.Name="{Binding Name, StringFormat=Track {0}}"
                                                 Background="Transparent"
                                                 BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
-                                                BorderThickness="0,0,0,1">
+                                                BorderThickness="0,0,0,1"
+                                                FocusVisualStyle="{DynamicResource DefaultControlFocusVisualStyle}"
+                                                Focusable="True"
+                                                GotKeyboardFocus="OnTrackHeaderGotKeyboardFocus"
+                                                PreviewMouseDown="OnTrackHeaderPreviewMouseDown"
+                                                ToolTip="Right-click (or Shift+F10) for track actions · double-click or F2 to rename">
                                                 <Border.InputBindings>
                                                     <MouseBinding Command="{Binding ActivateCommand}" Gesture="LeftClick" />
                                                     <MouseBinding Command="{Binding BeginRenameCommand}" Gesture="LeftDoubleClick" />
+                                                    <KeyBinding Command="{Binding BeginRenameCommand}" Gesture="F2" />
                                                 </Border.InputBindings>
+                                                <Border.ContextMenu>
+                                                    <ContextMenu>
+                                                        <MenuItem Command="{Binding AddTrackAtEndCommand}" Header="Add track">
+                                                            <MenuItem.Icon>
+                                                                <c:DmxIcon Kind="Add" Size="{StaticResource Dmx.SmallIconSize}" />
+                                                            </MenuItem.Icon>
+                                                        </MenuItem>
+                                                        <MenuItem Command="{Binding InsertAboveCommand}" Header="Insert track above">
+                                                            <MenuItem.Icon>
+                                                                <c:DmxIcon Kind="MoveUp" Size="{StaticResource Dmx.SmallIconSize}" />
+                                                            </MenuItem.Icon>
+                                                        </MenuItem>
+                                                        <MenuItem Command="{Binding InsertBelowCommand}" Header="Insert track below">
+                                                            <MenuItem.Icon>
+                                                                <c:DmxIcon Kind="MoveDown" Size="{StaticResource Dmx.SmallIconSize}" />
+                                                            </MenuItem.Icon>
+                                                        </MenuItem>
+                                                        <Separator />
+                                                        <MenuItem
+                                                            Command="{Binding BeginRenameCommand}"
+                                                            Header="Rename"
+                                                            InputGestureText="F2">
+                                                            <MenuItem.Icon>
+                                                                <c:DmxIcon Kind="Rename" Size="{StaticResource Dmx.SmallIconSize}" />
+                                                            </MenuItem.Icon>
+                                                        </MenuItem>
+                                                        <MenuItem Command="{Binding DeleteCommand}" Header="Delete track">
+                                                            <MenuItem.Icon>
+                                                                <c:DmxIcon Kind="Delete" Size="{StaticResource Dmx.SmallIconSize}" />
+                                                            </MenuItem.Icon>
+                                                        </MenuItem>
+                                                    </ContextMenu>
+                                                </Border.ContextMenu>
                                                 <DockPanel>
                                                     <Button
                                                         AutomationProperties.Name="{Binding Name, StringFormat=Delete track {0}}"
@@ -814,10 +877,46 @@
                             AutomationProperties.Name="Show timeline"
                             FocusVisualStyle="{x:Null}"
                             Focusable="True"
+                            ContextMenuOpening="OnLaneContextMenuOpening"
                             HorizontalScrollBarVisibility="Auto"
                             PreviewMouseWheel="OnLanePreviewMouseWheel"
                             ScrollChanged="OnLaneScrollChanged"
                             VerticalScrollBarVisibility="Auto">
+                            <!-- Block menu: only over a block (right-click selects it first), or Shift+F10 / menu key for the selected block. -->
+                            <ScrollViewer.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem
+                                        Command="{Binding EditSelectedItemCommand}"
+                                        Header="Edit"
+                                        InputGestureText="Enter">
+                                        <MenuItem.Icon>
+                                            <c:DmxIcon Kind="Edit" Size="{StaticResource Dmx.SmallIconSize}" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Command="{Binding SaveSelectedItemAsFunctionCommand}" Header="Save as function…">
+                                        <MenuItem.Icon>
+                                            <c:DmxIcon Kind="SaveAs" Size="{StaticResource Dmx.SmallIconSize}" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem
+                                        Command="{Binding DuplicateSelectedItemCommand}"
+                                        Header="Duplicate"
+                                        InputGestureText="Ctrl+D">
+                                        <MenuItem.Icon>
+                                            <c:DmxIcon Kind="Duplicate" Size="{StaticResource Dmx.SmallIconSize}" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <Separator />
+                                    <MenuItem
+                                        Command="{Binding DeleteSelectedItemCommand}"
+                                        Header="Delete"
+                                        InputGestureText="Del">
+                                        <MenuItem.Icon>
+                                            <c:DmxIcon Kind="Delete" Size="{StaticResource Dmx.SmallIconSize}" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                </ContextMenu>
+                            </ScrollViewer.ContextMenu>
                             <Grid
                                 x:Name="LaneHost"
                                 Width="{Binding TimelineWidth}"
@@ -832,7 +931,8 @@
                                 LostMouseCapture="OnLaneLostMouseCapture"
                                 MouseLeftButtonDown="OnLaneMouseLeftButtonDown"
                                 MouseLeftButtonUp="OnLaneMouseLeftButtonUp"
-                                MouseMove="OnLaneMouseMove">
+                                MouseMove="OnLaneMouseMove"
+                                MouseRightButtonDown="OnLaneMouseRightButtonDown">
                                 <!-- Beat / bar grid behind the lanes, drawn in one pass and only around the visible part. -->
                                 <c:TimelineBeatMarks
                                     BarBrush="{DynamicResource ControlStrongStrokeColorDisabledBrush}"
@@ -1015,7 +1115,7 @@
                             BorderThickness="0,1,0,0">
                             <TextBlock
                                 Style="{StaticResource HintText}"
-                                Text="Drag on an empty part of a track to select a time range · drag items to move (also to another track) · drag their edges to resize · drag the song to move it in time · Space plays / pauses · Del deletes · Ctrl+D duplicates · Ctrl+wheel zooms"
+                                Text="Drag on an empty part of a track to select a time range · right-click a block or a track name for more · drag items to move (also to another track) · drag their edges to resize · drag the song to move it in time · Space plays / pauses · Del deletes · Ctrl+D duplicates · Ctrl+wheel zooms"
                                 TextTrimming="CharacterEllipsis" />
                         </Border>
                     </Grid>
@@ -1053,6 +1153,14 @@
                                             ToolTip="Edit this show's own copy of the function (Enter or double-click the block). The library original never changes."
                                             ToolTipService.ShowOnDisabled="True">
                                             <c:DmxIcon Kind="Edit" Size="{StaticResource Dmx.SmallIconSize}" />
+                                        </Button>
+                                        <Button
+                                            AutomationProperties.Name="Save as function"
+                                            Command="{Binding SaveSelectedItemAsFunctionCommand}"
+                                            Style="{StaticResource PanelHeaderButton}"
+                                            ToolTip="Save as function…: save this show's copy, with its changes, as a new function in the Functions list. The block keeps its own copy."
+                                            ToolTipService.ShowOnDisabled="True">
+                                            <c:DmxIcon Kind="SaveAs" Size="{StaticResource Dmx.SmallIconSize}" />
                                         </Button>
                                         <Button
                                             AutomationProperties.Name="Duplicate item"

@@ -58,6 +58,9 @@ public partial class ShowsView : UserControl
 
     private ShowsViewModel? _hooked;
 
+    /// <summary>The last right-click on the lanes hit a block (the block menu may open).</summary>
+    private bool _rightClickOnItem;
+
     public ShowsView()
     {
         InitializeComponent();
@@ -217,6 +220,62 @@ public partial class ShowsView : UserControl
         _drag = DragKind.None;
         _dragItem = null;
         _dragTrack = null;
+    }
+
+    // ───────────── Block menu (right-click a block, or Shift+F10 / menu key for the selected block) ─────────────
+
+    /// <summary>Right-click on a block selects it, so the menu acts on it; elsewhere on the lanes no menu opens.</summary>
+    private void OnLaneMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (ViewModel is not { } vm)
+        {
+            return;
+        }
+
+        LaneScroll.Focus();
+        var item = FindData<ShowItemViewModel>(e.OriginalSource as DependencyObject);
+        _rightClickOnItem = item is not null;
+        if (item is not null)
+        {
+            vm.SelectItem(item);
+        }
+    }
+
+    private void OnLaneContextMenuOpening(object sender, ContextMenuEventArgs e)
+    {
+        if (LaneScroll.ContextMenu is not { } menu)
+        {
+            return;
+        }
+
+        // Keyboard (Shift+F10 / menu key) reports -1, -1.
+        var fromKeyboard = e.CursorLeft < 0 && e.CursorTop < 0;
+        var item = ViewModel?.SelectedItem;
+        var onItem = fromKeyboard ? item is not null : _rightClickOnItem && item is not null;
+        _rightClickOnItem = false;
+        if (!onItem)
+        {
+            e.Handled = true;
+            return;
+        }
+
+        if (!fromKeyboard)
+        {
+            menu.ClearValue(ContextMenu.PlacementTargetProperty);
+            menu.Placement = PlacementMode.MousePoint;
+            menu.HorizontalOffset = 0;
+            menu.VerticalOffset = 0;
+            return;
+        }
+
+        // By keyboard: open it under the selected block instead of at the corner of the timeline.
+        e.Handled = true;
+        var row = ViewModel!.Tracks.IndexOf(item!.Track);
+        menu.PlacementTarget = LaneHost;
+        menu.Placement = PlacementMode.Relative;
+        menu.HorizontalOffset = item.Left;
+        menu.VerticalOffset = (Math.Max(0, row) * ShowsViewModel.TrackHeight) + ShowsViewModel.ItemTop + ShowsViewModel.ItemHeight;
+        menu.IsOpen = true;
     }
 
     private void OnLanePreviewMouseWheel(object sender, MouseWheelEventArgs e)
@@ -599,6 +658,54 @@ public partial class ShowsView : UserControl
         {
             track.CommitRenameCommand.Execute(null);
         }
+    }
+
+    // ───────────── Track headers: focus (for Shift+F10 / F2) and activation ─────────────
+
+    /// <summary>
+    /// A click on a header focuses it (so Shift+F10, the menu key and F2 work on it); a right-click also makes it the
+    /// active track. Clicks on its buttons and the rename box keep their own focus handling.
+    /// </summary>
+    private void OnTrackHeaderPreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: ShowTrackViewModel track } header
+            || IsInside<TextBoxBase>(e.OriginalSource as DependencyObject, header)
+            || IsInside<ButtonBase>(e.OriginalSource as DependencyObject, header))
+        {
+            return;
+        }
+
+        header.Focus();
+        if (e.ChangedButton == MouseButton.Right)
+        {
+            track.ActivateCommand.Execute(null);
+        }
+    }
+
+    /// <summary>Tabbing onto a header makes it the active track (where Place puts functions).</summary>
+    private void OnTrackHeaderGotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (ReferenceEquals(e.NewFocus, sender) && sender is FrameworkElement { DataContext: ShowTrackViewModel track })
+        {
+            track.ActivateCommand.Execute(null);
+        }
+    }
+
+    /// <summary>True when <paramref name="element"/> is (inside) a <typeparamref name="T"/> below <paramref name="root"/>.</summary>
+    private static bool IsInside<T>(DependencyObject? element, DependencyObject root)
+        where T : DependencyObject
+    {
+        while (element is not null && !ReferenceEquals(element, root))
+        {
+            if (element is T)
+            {
+                return true;
+            }
+
+            element = element is Visual ? VisualTreeHelper.GetParent(element) : LogicalTreeHelper.GetParent(element);
+        }
+
+        return false;
     }
 
     // ───────────── Helpers ─────────────

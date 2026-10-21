@@ -125,7 +125,7 @@ public sealed partial class ShowsViewModel : PageViewModel
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsItemPanelVisible), nameof(IsRangePanelVisible), nameof(IsShowPanelVisible))]
-    [NotifyCanExecuteChangedFor(nameof(DeleteSelectedItemCommand), nameof(DuplicateSelectedItemCommand), nameof(EditSelectedItemCommand))]
+    [NotifyCanExecuteChangedFor(nameof(DeleteSelectedItemCommand), nameof(DuplicateSelectedItemCommand), nameof(EditSelectedItemCommand), nameof(SaveSelectedItemAsFunctionCommand))]
     private ShowItemViewModel? _selectedItem;
 
     [ObservableProperty]
@@ -159,6 +159,13 @@ public sealed partial class ShowsViewModel : PageViewModel
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsEditing), nameof(IsNotEditing), nameof(IsTimelineVisible))]
     private FunctionEditorViewModel? _editor;
+
+    /// <summary>Page info bar text (e.g. "Saved 'Red' to Functions."); shown while <see cref="IsNoticeOpen"/>.</summary>
+    [ObservableProperty]
+    private string _noticeMessage = string.Empty;
+
+    [ObservableProperty]
+    private bool _isNoticeOpen;
 
     public ShowsViewModel(
         ProjectService projects,
@@ -353,6 +360,7 @@ public sealed partial class ShowsViewModel : PageViewModel
     public override void OnNavigatedFrom()
     {
         _isPageVisible = false;
+        IsNoticeOpen = false;
         UpdateTicker();
     }
 
@@ -681,6 +689,26 @@ public sealed partial class ShowsViewModel : PageViewModel
         OnPropertyChanged(nameof(RangeText));
     }
 
+    /// <summary>Header menu "Insert track above / below": a new empty track next to <paramref name="track"/>, made active.</summary>
+    internal void InsertTrackNextTo(ShowTrackViewModel track, bool below)
+    {
+        if (SelectedShow is not { } show)
+        {
+            return;
+        }
+
+        var index = show.Tracks.IndexOf(track.Track);
+        if (index < 0)
+        {
+            return;
+        }
+
+        var inserted = _projects.Current.InsertTrack(show.Id, below ? index + 1 : index);
+        MarkChanged();
+        RebuildTimeline(SelectedItem?.Item.Id);
+        ActiveTrack = Tracks.FirstOrDefault(t => t.Track == inserted);
+    }
+
     internal async Task DeleteTrackAsync(ShowTrackViewModel track)
     {
         if (SelectedShow is null)
@@ -761,11 +789,11 @@ public sealed partial class ShowsViewModel : PageViewModel
         Reload(next?.Id);
     }
 
+    /// <summary>Adds an empty track at the end (toolbar, empty state, track header menus).</summary>
     [RelayCommand(CanExecute = nameof(HasShow))]
     private void AddTrack()
     {
-        var track = _projects.Current.AddTrack(
-            SelectedShow!.Id, UniqueName("Track", SelectedShow.Tracks.Select(t => t.Name)));
+        var track = _projects.Current.InsertTrack(SelectedShow!.Id, SelectedShow.Tracks.Count);
         MarkChanged();
         RebuildTimeline(SelectedItem?.Item.Id);
         ActiveTrack = Tracks.FirstOrDefault(t => t.Track == track);
@@ -857,6 +885,47 @@ public sealed partial class ShowsViewModel : PageViewModel
 
     [RelayCommand]
     private async Task CloseEditorAsync() => await ConfirmCloseEditorAsync();
+
+    /// <summary>
+    /// "Save as function…": saves a copy of the selected block's function (the show's own copy, with every change made
+    /// in the show) to the Functions list as a new library function under a name the user picks. The block keeps
+    /// playing its show copy, unchanged.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanEditSelectedFunction))]
+    private void SaveSelectedItemAsFunction()
+    {
+        if (SelectedItem?.Function is not { } function)
+        {
+            return;
+        }
+
+        var project = _projects.Current;
+        var dialog = new SaveFunctionDialogViewModel(
+            "Save as function",
+            $"Saves a copy of \"{function.Name}\" as it is in this show to the Functions list. The show keeps its own copy.",
+            project.SuggestFunctionName(function.Name),
+            showFades: false,
+            project.IsFunctionNameTaken);
+        if (!_dialogs.ShowSaveFunction(dialog) || project.FindFunction(function.Id) is null)
+        {
+            return;
+        }
+
+        var saved = project.DuplicateFunction(function.Id, dialog.TrimmedName);
+        MarkChanged();
+        RebuildLibrary();
+        SelectedLibraryItem = Library.FirstOrDefault(l => l.Id == saved.Id);
+        ShowNotice($"Saved '{saved.Name}' to Functions.");
+    }
+
+    private void ShowNotice(string message)
+    {
+        NoticeMessage = message;
+
+        // Re-open even when a previous notice is still showing, so the info bar announces the new text.
+        IsNoticeOpen = false;
+        IsNoticeOpen = true;
+    }
 
     private bool CanEditSelectedFunction() => SelectedItem?.Function is not null && SelectedShow is not null;
 

@@ -28,4 +28,7 @@ public interface IDialogService
 
     /// <summary>Shows the modal "Choose lights" dialog; returns true when the user clicked OK.</summary>
     bool ShowFixturePicker(ViewModels.FixturePickerViewModel viewModel);
+
+    /// <summary>Shows the "Save as function" name dialog; returns true when the user clicked Save (name is valid).</summary>
+    bool ShowSaveFunction(ViewModels.SaveFunctionDialogViewModel viewModel);
 }

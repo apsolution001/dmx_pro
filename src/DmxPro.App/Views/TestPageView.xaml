@@ -50,7 +50,7 @@
             <Setter Property="c:DmxIcon.MaxSize" Value="{StaticResource Dmx.DenseIconSize}" />
         </Style>
 
-        <!-- Dense status mark in a light's header (unverified, missing profile, overlap). -->
+        <!-- Dense status mark in a light's header (missing profile, overlap). -->
         <Style x:Key="TestMarkIcon" TargetType="c:DmxIcon">
             <Setter Property="Margin" Value="0,0,3,0" />
             <Setter Property="VerticalAlignment" Value="Center" />
@@ -98,17 +98,18 @@
                         <c:DmxIcon Kind="Close" Size="{StaticResource Dmx.DenseIconSize}" />
                     </Button>
 
-                    <!-- Status line: [⚠ unknown] [strobe blocked] or "→N" when the real output differs. -->
+                    <!-- Status line: [ⓘ unknown meaning] [strobe blocked] or "→N" when the real output differs. -->
                     <StackPanel
                         Height="14"
                         HorizontalAlignment="Center"
                         DockPanel.Dock="Bottom"
                         Orientation="Horizontal">
+                        <!-- Neutral information, not a warning colour (owner 2026-10-22). -->
                         <c:DmxIcon
                             VerticalAlignment="Center"
                             AutomationProperties.Name="Unknown channel meaning"
-                            Foreground="{DynamicResource SystemFillColorCautionBrush}"
-                            Kind="Warning"
+                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                            Kind="Info"
                             Size="{StaticResource Dmx.DenseIconSize}"
                             ToolTip="The profile does not say what this channel does. Check it on the real light."
                             Visibility="{Binding IsUnknown, Converter={StaticResource BoolToVisibility}}" />
@@ -183,14 +184,6 @@
                             <c:DmxIcon Kind="ReleaseAll" Size="{StaticResource Dmx.DenseIconSize}" />
                         </Button>
 
-                        <c:DmxIcon
-                            AutomationProperties.Name="Unverified profile"
-                            DockPanel.Dock="Left"
-                            Foreground="{DynamicResource SystemFillColorCautionBrush}"
-                            Kind="Unverified"
-                            Style="{StaticResource TestMarkIcon}"
-                            ToolTip="Unverified profile: channel meanings are not confirmed. Check each channel on the real light."
-                            Visibility="{Binding ProfileUnverified, Converter={StaticResource BoolToVisibility}}" />
                         <c:DmxIcon
                             AutomationProperties.Name="Profile missing"
                             DockPanel.Dock="Left"
@@ -336,6 +329,19 @@
                         Margin="6,0,0,0"
                         Style="{StaticResource StatusText}"
                         Text="{Binding OverrideSummary}" />
+                    <!-- Saves the channels under test as a new scene (name dialog); disabled until a channel is under test. -->
+                    <Button
+                        Margin="6,0,0,0"
+                        AutomationProperties.Name="Save as function"
+                        Command="{Binding SaveAsFunctionCommand}"
+                        Style="{StaticResource ToolbarLabelButton}"
+                        ToolTip="{Binding SaveAsFunctionToolTip}"
+                        ToolTipService.ShowOnDisabled="True">
+                        <StackPanel Orientation="Horizontal">
+                            <c:DmxIcon Kind="Scenes" Size="{StaticResource Dmx.ButtonIconSize}" />
+                            <TextBlock Style="{StaticResource ButtonLabel}" Text="Save as function…" />
+                        </StackPanel>
+                    </Button>
 
                     <Rectangle Style="{StaticResource ToolbarSeparator}" />
 
@@ -416,6 +422,16 @@
                 </StackPanel>
             </DockPanel>
         </Border>
+
+        <!-- Result of "Save as function…" (closable). -->
+        <ui:InfoBar
+            Margin="2,2,2,0"
+            DockPanel.Dock="Top"
+            IsClosable="True"
+            IsOpen="{Binding IsNoticeOpen, Mode=TwoWay}"
+            Message="{Binding NoticeMessage}"
+            Severity="Success"
+            Visibility="{Binding IsNoticeOpen, Converter={StaticResource BoolToVisibility}}" />
 
         <!-- ═════════════ Warnings strip (only when there are warnings) ═════════════ -->
         <Border

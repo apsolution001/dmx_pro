@@ -21,7 +21,6 @@ public sealed partial class TestFixtureRowViewModel : ObservableObject
         Fixture = health.Fixture;
         Name = string.IsNullOrWhiteSpace(health.Fixture.Name) ? "(unnamed light)" : health.Fixture.Name;
         Detail = detail;
-        ProfileUnverified = health.IsUnverified;
         IsMissingProfile = health.IsMissingProfile || health.IsMissingMode;
         IsDisabled = health.IsDisabled;
         HasOverlap = health.HasOverlap;
@@ -39,8 +38,6 @@ public sealed partial class TestFixtureRowViewModel : ObservableObject
 
     /// <summary>"U1 · 1–8 · Generic RGBW · 8ch Full".</summary>
     public string Detail { get; }
-
-    public bool ProfileUnverified { get; }
 
     /// <summary>The profile or its mode is missing (no faders).</summary>
     public bool IsMissingProfile { get; }
