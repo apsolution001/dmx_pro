@@ -12,6 +12,9 @@ internal sealed class ShowPlayer
     /// <summary>While true the position does not advance; the show keeps rendering at its frozen position.</summary>
     public bool Paused { get; set; }
 
+    /// <summary>Where the show was started from (live mode stops <see cref="ShowOrigin.Editor"/> shows).</summary>
+    public ShowOrigin Origin { get; set; }
+
     /// <summary>Start order of the show; LTP tie-breaker between shows.</summary>
     public long Seq { get; set; }
 }

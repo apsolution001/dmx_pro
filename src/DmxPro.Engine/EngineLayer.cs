@@ -12,6 +12,9 @@ public enum EngineLayer
     /// <summary>Functions started from the Virtual Console; override a running show.</summary>
     Console = 1,
 
-    /// <summary>The one function being checked from the Functions page / an editor ("Live on lights").</summary>
+    /// <summary>
+    /// The one function being checked: the open editor's draft (live edit preview), shown automatically while live mode
+    /// is off. Emptied and refused in live mode.
+    /// </summary>
     Preview = 2,
 }

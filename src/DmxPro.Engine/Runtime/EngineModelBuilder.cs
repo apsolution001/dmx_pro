@@ -1,3 +1,4 @@
+using DmxPro.Core.Functions;
 using DmxPro.Core.Patching;
 using DmxPro.Core.Profiles;
 using DmxPro.Core.Projects;
@@ -94,7 +95,21 @@ internal static class EngineModelBuilder
             shows[show.Id] = new ShowProgram(show.Id, length, [.. items]);
         }
 
-        return new EngineModel(universes, defaults, isIntensity, isStrobe, strobeSafe, patch, functions, shows);
+        return new EngineModel(universes, defaults, isIntensity, isStrobe, strobeSafe, patch, functions, shows, index);
+    }
+
+    /// <summary>
+    /// Compiles one (possibly unsaved) function against an already built model's patch, for the preview layer. Functions
+    /// the draft references (chaser steps, fade scenes) are resolved from <paramref name="project"/> as saved; the draft
+    /// replaces the project's function with the same id. A timed flash is compiled as held (the editor is open, so the
+    /// "button" is down). Returns null for types the engine cannot play. Runs on the caller's thread; the project must
+    /// not be modified concurrently.
+    /// </summary>
+    public static FunctionProgram? CompileDraft(Project project, LightFunction draft, EngineModel model, ILogger logger)
+    {
+        ArgumentNullException.ThrowIfNull(project);
+        ArgumentNullException.ThrowIfNull(draft);
+        return new FunctionCompiler(project, model.PatchIndex, logger, draft).CompileDraft();
     }
 
     /// <summary>

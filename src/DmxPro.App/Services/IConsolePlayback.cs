@@ -65,7 +65,15 @@ public interface IConsolePlayback
 
     /// <summary>Plays the show: resumes when paused, starts from <paramref name="fromSeconds"/> (default 0) when stopped.
     /// Starting a show stops any other show started from the player.</summary>
-    void PlayShow(Guid showId, double fromSeconds = 0);
+    /// <param name="showId">Show to play.</param>
+    /// <param name="fromSeconds">Start position when the show is stopped.</param>
+    /// <param name="origin">
+    /// Who asks: <see cref="DmxPro.Engine.ShowOrigin.Console"/> (Virtual Console, default) or
+    /// <see cref="DmxPro.Engine.ShowOrigin.Editor"/> (the Shows page transport). While live mode is on
+    /// (<see cref="ILiveModeService"/>) an editor request is refused (nothing starts or resumes; <see cref="StateChanged"/>
+    /// is still raised so the UI shows the real state), and turning live mode on stops every editor show.
+    /// </param>
+    void PlayShow(Guid showId, double fromSeconds = 0, DmxPro.Engine.ShowOrigin origin = DmxPro.Engine.ShowOrigin.Console);
 
     /// <summary>Pauses the show: the timeline position freezes and the show's lights hold their current look.</summary>
     void PauseShow(Guid showId);

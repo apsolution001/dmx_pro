@@ -32,7 +32,7 @@ public sealed class FlashEditorViewModel : EffectEditorViewModel
         ? "0 = on while held"
         : $"Off after {EditorTiming.FormatDuration(_durationSeconds)} (or on release)";
 
-    private FlashFunction Flash => (FlashFunction)Original;
+    private FlashFunction Flash => (FlashFunction)Target;
 
     protected override void LoadEffect()
     {

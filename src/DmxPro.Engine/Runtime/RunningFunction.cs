@@ -24,6 +24,12 @@ internal sealed class RunningFunction
 
     public bool Stopping { get; set; }
 
+    /// <summary>
+    /// A preview of an unsaved editor draft (<see cref="DmxEngine.SetPreviewFunction"/>): its program is not part of the
+    /// model, so a model refresh keeps it instead of re-binding it by id, and it starts and stops without fades.
+    /// </summary>
+    public bool IsDraft { get; set; }
+
     public double ElapsedSeconds { get; set; }
 
     /// <summary>Engine time when started (LTP order).</summary>

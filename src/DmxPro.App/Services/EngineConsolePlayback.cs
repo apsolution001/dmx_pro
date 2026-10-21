@@ -140,7 +140,7 @@ public sealed class EngineConsolePlayback : IConsolePlayback, IDisposable
                 _engine.StopShow(showId);
                 transport = new ShowTransportEventArgs(ShowTransportKind.Stopped, showId);
             }
-            else if (StartShowLocked(showId, 0, fromPlayer: false))
+            else if (StartShowLocked(showId, 0, fromPlayer: false, ShowOrigin.Console))
             {
                 transport = new ShowTransportEventArgs(ShowTransportKind.Started, showId, 0);
             }
@@ -150,8 +150,16 @@ public sealed class EngineConsolePlayback : IConsolePlayback, IDisposable
         Changed();
     }
 
-    public void PlayShow(Guid showId, double fromSeconds = 0)
+    public void PlayShow(Guid showId, double fromSeconds = 0, ShowOrigin origin = ShowOrigin.Console)
     {
+        if (origin == ShowOrigin.Editor && _engine.IsLiveMode)
+        {
+            // Live mode: only the Virtual Console drives the lights (owner decision 2026-10-22).
+            _logger.LogInformation("Show {ShowId} not played from the editor: live mode is on", showId);
+            Changed();
+            return;
+        }
+
         List<Guid>? stopped = null;
         ShowTransportEventArgs? transport = null;
         lock (_gate)
@@ -171,7 +179,7 @@ public sealed class EngineConsolePlayback : IConsolePlayback, IDisposable
             {
                 stopped = StopOtherPlayerShowsLocked(showId);
                 var position = StartPosition(fromSeconds);
-                if (StartShowLocked(showId, position, fromPlayer: true))
+                if (StartShowLocked(showId, position, fromPlayer: true, origin))
                 {
                     transport = new ShowTransportEventArgs(ShowTransportKind.Started, showId, position);
                 }
@@ -461,6 +469,48 @@ public sealed class EngineConsolePlayback : IConsolePlayback, IDisposable
         }
     }
 
+    /// <summary>
+    /// Live mode turned on: forget every show started from an editor (<see cref="ShowOrigin.Editor"/>) and stop it, with a
+    /// <see cref="ShowTransportKind.Stopped"/> event each so their music stops too. The engine stops them by itself when
+    /// it applies live mode; the explicit stop keeps this working in either order. Returns the number stopped.
+    /// </summary>
+    public int StopEditorShows()
+    {
+        List<Guid>? stopped = null;
+        lock (_gate)
+        {
+            foreach (var (id, state) in _shows)
+            {
+                if (state.Origin == ShowOrigin.Editor)
+                {
+                    (stopped ??= []).Add(id);
+                }
+            }
+
+            if (stopped is not null)
+            {
+                foreach (var id in stopped)
+                {
+                    _shows.Remove(id);
+                    _engine.StopShow(id);
+                }
+            }
+        }
+
+        if (stopped is null)
+        {
+            return 0;
+        }
+
+        foreach (var id in stopped)
+        {
+            Transport(new ShowTransportEventArgs(ShowTransportKind.Stopped, id));
+        }
+
+        Changed();
+        return stopped.Count;
+    }
+
     public void Dispose() => _poll.Dispose();
 
     private static double Clamp01(double value) => double.IsFinite(value) ? Math.Clamp(value, 0, 1) : 0;
@@ -519,7 +569,7 @@ public sealed class EngineConsolePlayback : IConsolePlayback, IDisposable
 
     private static double StartPosition(double fromSeconds) => double.IsFinite(fromSeconds) ? Math.Max(0, fromSeconds) : 0;
 
-    private bool StartShowLocked(Guid showId, double fromSeconds, bool fromPlayer)
+    private bool StartShowLocked(Guid showId, double fromSeconds, bool fromPlayer, ShowOrigin origin)
     {
         if (!_engine.CanPlayShow(showId))
         {
@@ -528,8 +578,8 @@ public sealed class EngineConsolePlayback : IConsolePlayback, IDisposable
         }
 
         var position = StartPosition(fromSeconds);
-        _engine.StartShow(showId, TimeSpan.FromSeconds(position));
-        var state = new ShowState { FromPlayer = fromPlayer };
+        _engine.StartShow(showId, TimeSpan.FromSeconds(position), origin);
+        var state = new ShowState { FromPlayer = fromPlayer, Origin = origin };
         Confirm(state, position);
         _shows[showId] = state;
         return true;
@@ -666,6 +716,9 @@ public sealed class EngineConsolePlayback : IConsolePlayback, IDisposable
 
         /// <summary>Started from the show player (only one of those plays at a time).</summary>
         public bool FromPlayer { get; set; }
+
+        /// <summary>Where the show was started from; live mode stops <see cref="ShowOrigin.Editor"/> shows.</summary>
+        public ShowOrigin Origin { get; set; }
 
         public double PendingPosition { get; set; }
 

@@ -23,7 +23,7 @@ public abstract partial class EffectEditorViewModel : FunctionEditorViewModel
 
     public override void RefreshPatch() => Fixtures.RefreshPatch();
 
-    private FixtureEffectFunction Effect => (FixtureEffectFunction)Original;
+    private FixtureEffectFunction Effect => (FixtureEffectFunction)Target;
 
     protected sealed override void LoadDraft()
     {

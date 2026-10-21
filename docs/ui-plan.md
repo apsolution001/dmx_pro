@@ -56,8 +56,18 @@ Earlier web-style sketch (superseded look, same content):
 - **Left navigation rail** (Ctrl+1 … Ctrl+8): the main workspaces in workflow order.
 - **Status bar** is always visible, on every page: output state, Grand Master, Blackout, Release All, BPM.
 - **Full screen** (F11) hides the title bar for shows; **Operator mode** (F12) locks editing.
-- **Main toolbar, right side:** **Stage window** (Ctrl+Shift+8) opens the live stage window (section 3.10). The future
-  **Go Live** button goes in the same right-hand panel, left of it.
+- **Main toolbar, right side:** **Go live** toggle (Ctrl+F5), then **Stage window** (Ctrl+Shift+8, opens the live stage
+  window, section 3.10).
+- **Go live** (owner decision 2026-10-22) is a **mode switch like QLC+ Operate mode, not output enable**: off = ▶ "Go
+  live"; on = accent fill, ⏸ "Live" (icon and text change, not colour only). While live **only the Virtual Console drives
+  the lights** — console functions, console shows, Grand Master, Blackout, Release All. Function-editor previews, Test &
+  Preview test values and shows played from the Shows page are suppressed **in the engine**. Switching on: the editor
+  preview is removed, every test value is **released** (deterministic, like Release All for overrides; they do not come
+  back), Shows-page shows stop (with their music). Switching off: what the console runs keeps running (no jump); the
+  other sources are allowed again and an open editor previews again by itself. Always **off** on app start and on every
+  project open; never saved. Editing and saving functions stays possible while live (saving a function the console is
+  playing refreshes it in the engine, as before). Output enable/disable (Ctrl+E, status pill) is unchanged and separate.
+  Shortcut is **Ctrl+F5**, not F5: F5 refreshes devices on the Input / Output page and can be a Virtual Console key.
 - **Info bar** (above the page): success messages ("Saved show.dmxpro.", "Opened …") hide themselves after about 3 s;
   warnings and errors stay until closed (safety rule 10). Closing the bar clears the message, so the same message (a
   second save) shows again; a newer message replaces the old one and restarts the timer. Import results stay until
@@ -157,7 +167,7 @@ table (Ch, Name, Type, Default, Ranges). The profile editor was replaced by the 
 ### 3.3 Functions (phase 4)
 
 ```
-[+ New ▾] [Duplicate] [Delete] [▶ Preview]                                   🔍 search  Type ▾
+[+ New ▾] [Duplicate] [Delete]                                               🔍 search  Type ▾
 ┌───────────────────────────────┐ ┌ Editor (changes with type) ────────────────────────────────────┐
 │ 🎨 Red          Scene    0.0s │ │ Chaser "Party colors"   Run: Loop ▾  Direction: Forward ▾       │
 │ 🎨 Blue wash    Scene    1.0s │ │ ┌ Steps ──────────────────────────────────────────────────────┐ │
@@ -171,29 +181,40 @@ table (Ch, Name, Type, Default, Ranges). The profile editor was replaced by the 
 Types: Scene, Chaser, Sequence, Color cycle, Fade, Pulse, Flash, Strobe. Copy/paste and duplicate everywhere.
 
 > **Status 2026-10-18:** the engine and the Core model support all eight types; the Functions page has the scene editor
-> (§3.4). Every other type has its own editor in the same panel (`Views/Editors/`, `ViewModels/Editors/`): chaser and sequence step grids, colour cycle, fade, pulse, flash and strobe forms; Preview stays disabled for now.
+> (§3.4). Every other type has its own editor in the same panel (`Views/Editors/`, `ViewModels/Editors/`): chaser and sequence step grids, colour cycle, fade, pulse, flash and strobe forms. Since 2026-10-22 the open editor previews its draft on the lights automatically (below).
 
-**Select ≠ edit ≠ preview ≠ play** (decided 2026-10-17 — unlike QLC+, selecting or editing never changes the lights):
+**Select ≠ edit ≠ play** (decided 2026-10-17, preview changed 2026-10-22 — selecting never changes the lights; the open
+editor shows its draft on the lights automatically while not live):
 
 | User action | Result | Lights change? |
 |---|---|---|
 | Single click | Select; right panel shows summary + on-screen stage preview | No |
-| Double-click / Enter / **Edit** button | Open the editor in the right panel | No |
-| **▶ Preview** button / Space | Run the selected function on the lights for checking; button becomes **■ Stop preview** | Yes, until stopped |
-| Esc / **■ Stop preview** | Stop the preview; lights return to their previous state | Back to previous |
-| Right-click | Edit · Preview · Rename (F2) · Duplicate (Ctrl+D) · Copy / Paste · Add to Virtual Console · Delete | — |
+| Double-click / Enter / **Edit** button | Open the editor in the right panel; its function shows on the lights (**live edit preview**) | Yes, while the editor is open and live mode is off |
+| Edit anything in the editor | The lights follow the unsaved draft (~25 updates/s while dragging) | Yes |
+| Close / Save and close / Cancel / Esc / other page | Preview stops at once; lights return to whatever else runs, or to defaults | Back to previous |
+| Right-click | Edit · Rename (F2) · Duplicate (Ctrl+D) · Copy / Paste · Add to Virtual Console · Delete | — |
 
-- **Editor:** edits are on-screen only by default. A **"Live on lights"** switch streams edits to the real fixtures; it turns
-  off automatically when the editor closes, another function is selected, or the page changes. Step-based editors
-  (chaser, sequence) have **"Preview from this step"**. Closing with unsaved changes asks Save / Don't save / Cancel.
+- **Live edit preview (owner decision 2026-10-22):** while a function editor is open (Functions page, and the same editor
+  panel on the Shows page) and **Go live** is off, the function being edited is shown on the real lights automatically
+  and follows every edit of the **unsaved draft** — there is no Preview button and no "Live on lights" switch. Edits are
+  throttled to one update per ~40 ms, so a dragged fader stays smooth. Effects (chaser, sequence, colour cycle, pulse,
+  strobe) run live; changing them keeps them running (no restart). A scene's fade-in is skipped (the draft shows at
+  once); the preview also ends without fade. A **Flash previews as held** while its editor is open, whatever its
+  duration. A single-shot chaser plays once; the next edit plays it again.
+- **Preview stops** (deterministically) on: editor close / save-and-close / cancel, Esc closing the editor, another
+  function opened, leaving the page, project replaced, **Go live** on, app close and **Release All**. After Release All it
+  stays off until the next edit in the still-open editor ("Released — change something to show it again"); after Go live
+  is switched off it comes back by itself.
+- **Editor toolbar hint** (neutral info, not a warning) instead of the removed toggle: "Showing on lights" (output on,
+  not live), "Output off — not on lights", "Live mode — not on lights", "Released — change something to show it again".
 - **Playing for the show** happens only from the Virtual Console or the Show Timeline, never by clicking in this page.
-- **Preview rules:** one preview at a time (a new one replaces it); preview is layered **on top** of running functions
-  (it wins on the channels it touches) and never stops them; it never enables output — with output disabled it is
-  on-screen only and says "Output is off — showing on screen only"; Grand Master, Blackout and strobe safety apply;
-  Release All also stops the preview. The list marks **● Preview** vs **▶ Live** (playing from console/timeline).
-- **Engine (phase 4):** a dedicated preview layer after running functions and before manual overrides
-  (`docs/architecture.md` §4). Real-light preview works once outputs exist (phase 7); until then on-screen only.
-- The Scene Creator (§3.4) follows the same rules: editing is on-screen only unless "Live on lights" is on.
+- **Preview rules:** one preview at a time (the most recently opened editor wins); preview is layered **on top** of
+  running functions (it wins on the channels it touches) and never stops them; it never enables output — with output
+  disabled nothing reaches the lights; Grand Master, Blackout, "allow strobe" and the maximum strobe rate (safety rule 8)
+  and clamping apply.
+- **Engine:** a dedicated preview layer after running functions and before manual overrides; the draft is compiled on
+  the UI thread and swapped in by the engine (`docs/architecture.md` §4).
+- The Scene Creator (§3.4) follows the same rules.
 - **Function-type assumptions** (decided 2026-10-18, see decisions log): Strobe defaults to Software mode; Fade references
   scenes; Flash duration 0 = while held; Pulse/Strobe/Color cycle drive the Dimmer channel when a fixture has one.
 

@@ -98,7 +98,7 @@ public sealed partial class StrobeEditorViewModel : EffectEditorViewModel
     public string RateCapText =>
         $"Capped: flashes at {MaxStrobeRateHz} Hz, not {_rateHz.ToString("0.##", CultureInfo.CurrentCulture)} Hz (Settings maximum)";
 
-    private StrobeFunction Strobe => (StrobeFunction)Original;
+    private StrobeFunction Strobe => (StrobeFunction)Target;
 
     public override void Detach() => _settings.Changed -= OnSettingsChanged;
 

@@ -16,6 +16,9 @@ public sealed partial class DmxEngine
     private bool _showsMuted;
     private StrobeLimit _frameStrobeLimit;
 
+    // Live mode as applied on the engine thread (in command order); _liveRequested is what callers last asked for.
+    private bool _live;
+
     /// <summary>
     /// Applies queued commands, advances time by <paramref name="delta"/> (negative/NaN = 0), renders all layers, merges
     /// and clamps every universe, hands the frames to the sinks and (throttled) publishes a snapshot.
@@ -67,7 +70,25 @@ public sealed partial class DmxEngine
         switch (command.Kind)
         {
             case EngineCommandKind.StartFunction:
+                if (command.Layer == EngineLayer.Preview && _live)
+                {
+                    _logger.LogDebug("Preview of {FunctionId} ignored: live mode is on", command.Id);
+                    break;
+                }
+
                 ApplyStart(command.Id, command.Layer, command.Value);
+                break;
+
+            case EngineCommandKind.SetPreviewDraft:
+                ApplyPreviewDraft(command);
+                break;
+
+            case EngineCommandKind.ClearPreview:
+                RemovePreviewNow();
+                break;
+
+            case EngineCommandKind.SetLiveMode:
+                ApplyLiveMode(command.Value > 0f);
                 break;
 
             case EngineCommandKind.StopFunction:
@@ -99,7 +120,15 @@ public sealed partial class DmxEngine
                 {
                     if (function.InUse && function.Layer == EngineLayer.Preview)
                     {
-                        function.Stopping = true;
+                        // A draft preview has no fade-out (it came up without fade-in either).
+                        if (function.IsDraft)
+                        {
+                            function.InUse = false;
+                        }
+                        else
+                        {
+                            function.Stopping = true;
+                        }
                     }
                 }
 
@@ -107,6 +136,12 @@ public sealed partial class DmxEngine
 
             case EngineCommandKind.SetOverride:
             case EngineCommandKind.ClearOverride:
+                if (_live && command.Kind == EngineCommandKind.SetOverride)
+                {
+                    // Live mode: only the Virtual Console drives the lights; manual overrides are refused.
+                    break;
+                }
+
                 var flat = _model.FlatIndex(command.Universe, command.Address);
                 if (flat >= 0)
                 {
@@ -126,7 +161,13 @@ public sealed partial class DmxEngine
                 break;
 
             case EngineCommandKind.StartShow:
-                ApplyStartShow(command.Id, command.Seconds);
+                if (_live && command.Origin == ShowOrigin.Editor)
+                {
+                    _logger.LogInformation("Show {ShowId} not started from the editor: live mode is on", command.Id);
+                    break;
+                }
+
+                ApplyStartShow(command.Id, command.Seconds, command.Origin);
                 break;
 
             case EngineCommandKind.StopShow:
@@ -182,9 +223,10 @@ public sealed partial class DmxEngine
         if (layer == EngineLayer.Preview)
         {
             // One preview at a time: the old one goes immediately, without fade.
+            // A draft preview is replaced too, even with the same id: this start plays the saved function.
             foreach (var function in _functions)
             {
-                if (function.InUse && function.Layer == EngineLayer.Preview && function.FunctionId != functionId)
+                if (function.InUse && function.Layer == EngineLayer.Preview && (function.FunctionId != functionId || function.IsDraft))
                 {
                     function.InUse = false;
                 }
@@ -209,6 +251,7 @@ public sealed partial class DmxEngine
             instance.ElapsedSeconds = 0;
             instance.Speed = 1f;
             instance.StrobeLimit = StrobeLimit.None;
+            instance.IsDraft = false;
         }
 
         instance.Stopping = false;
@@ -217,7 +260,114 @@ public sealed partial class DmxEngine
         instance.Seq = ++_seq;
     }
 
-    private void ApplyStartShow(Guid showId, double startSeconds)
+    /// <summary>
+    /// Shows a compiled editor draft in the preview layer. The same draft (by id) keeps its instance: only the program is
+    /// swapped, so time and level continue. Anything else in the preview layer goes at once.
+    /// </summary>
+    private void ApplyPreviewDraft(in EngineCommand command)
+    {
+        if (_live)
+        {
+            _logger.LogDebug("Preview of draft {FunctionId} ignored: live mode is on", command.Id);
+            return;
+        }
+
+        // Compiled against an older/newer layout (a project open or universe change raced it): its flat indexes would
+        // land on the wrong channels. The app re-sends the draft after every refresh.
+        if (command.Program is not { } program || command.Model is not { } compiledFor || !compiledFor.HasSameLayout(_model))
+        {
+            return;
+        }
+
+        RunningFunction? instance = null;
+        foreach (var function in _functions)
+        {
+            if (!function.InUse || function.Layer != EngineLayer.Preview)
+            {
+                continue;
+            }
+
+            if (function.IsDraft && function.FunctionId == command.Id && instance is null)
+            {
+                instance = function;
+            }
+            else
+            {
+                function.InUse = false;
+            }
+        }
+
+        if (instance is not null && !instance.Stopping)
+        {
+            instance.Program = program;
+            _snapshotDue = true;
+            return;
+        }
+
+        instance ??= FindFree();
+        if (instance is null)
+        {
+            _logger.LogWarning("Too many running functions ({Max}); preview of {FunctionId} ignored", MaxRunningFunctions, command.Id);
+            return;
+        }
+
+        // Draft previews come up at once (no fade-in): the user is editing and wants to see the result now.
+        instance.InUse = true;
+        instance.Program = program;
+        instance.FunctionId = command.Id;
+        instance.Layer = EngineLayer.Preview;
+        instance.Level = 1f;
+        instance.ElapsedSeconds = 0;
+        instance.Speed = 1f;
+        instance.StrobeLimit = StrobeLimit.None;
+        instance.IsDraft = true;
+        instance.Stopping = false;
+        instance.Intensity = 1f;
+        instance.Stamp = _now;
+        instance.Seq = ++_seq;
+        _snapshotDue = true;
+    }
+
+    /// <summary>Removes everything in the preview layer at once, without fade.</summary>
+    private void RemovePreviewNow()
+    {
+        foreach (var function in _functions)
+        {
+            if (function.InUse && function.Layer == EngineLayer.Preview)
+            {
+                function.InUse = false;
+                _snapshotDue = true;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Live mode on: drop the preview and manual overrides and stop editor shows, deterministically at this tick. Off:
+    /// nothing that runs changes; previews, overrides and editor shows are simply accepted again.
+    /// </summary>
+    private void ApplyLiveMode(bool live)
+    {
+        _live = live;
+        if (!live)
+        {
+            return;
+        }
+
+        RemovePreviewNow();
+        Array.Fill(_model.Overrides, EngineModel.NoOverride);
+        foreach (var show in _shows)
+        {
+            if (show.InUse && show.Origin == ShowOrigin.Editor)
+            {
+                show.InUse = false;
+                show.Paused = false;
+            }
+        }
+
+        _snapshotDue = true;
+    }
+
+    private void ApplyStartShow(Guid showId, double startSeconds, ShowOrigin origin)
     {
         if (!_model.Shows.TryGetValue(showId, out var program))
         {
@@ -250,6 +400,7 @@ public sealed partial class DmxEngine
         player.Program = program;
         player.PositionSeconds = startSeconds;
         player.Paused = false;
+        player.Origin = origin;
         player.Seq = ++_seq;
         _snapshotDue = true;
     }
@@ -291,7 +442,16 @@ public sealed partial class DmxEngine
         {
             if (function.InUse)
             {
-                if (model.Functions.TryGetValue(function.FunctionId, out var program))
+                if (function.IsDraft)
+                {
+                    // Not part of any model: keep it while its flat indexes stay valid (the app re-sends the draft
+                    // compiled against the new patch right after the refresh).
+                    if (!_model.HasSameLayout(model))
+                    {
+                        function.InUse = false;
+                    }
+                }
+                else if (model.Functions.TryGetValue(function.FunctionId, out var program))
                 {
                     function.Program = program;
                 }
@@ -441,9 +601,11 @@ public sealed partial class DmxEngine
             }
         }
 
+        var live = _live;
         foreach (var function in _functions)
         {
-            if (!function.InUse)
+            // Live mode gate: nothing reaches the preview layer (it is also emptied when live mode turns on).
+            if (!function.InUse || (live && function.Layer == EngineLayer.Preview))
             {
                 continue;
             }

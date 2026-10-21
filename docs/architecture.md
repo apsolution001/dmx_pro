@@ -61,9 +61,9 @@ Dependency direction (no cycles): `App → Engine → Core`, `App → Output →
    touches; when it releases, the lower layer's values show again (owner decision 2026-10-17: the console overrides a
    running show).
 3. Merge inside a layer: HTP for intensity types, LTP for others (latest start time wins).
-4. Apply the **preview layer** (one function being checked from the Functions page / an editor with "Live on lights";
-   it wins on the channels it touches and is removed on stop, editor close, page change or Release All —
-   `ui-plan.md` §3.3), then manual overrides (Test tab / Simple desk).
+4. Apply the **preview layer** (the open function editor's unsaved draft, shown automatically while not live; it wins
+   on the channels it touches and is removed on editor close, page change, project open, live mode on or Release All —
+   `ui-plan.md` §3.3), then manual overrides (Test tab / Simple desk). Both are skipped in **live mode** (below).
 5. Color policy (RGB→RGBW), software dimming where no Dimmer channel.
 6. Grand Master (intensity only) → Blackout.
 7. Clamp, write per-universe `byte[512]`, publish snapshot, hand to outputs.
@@ -83,6 +83,23 @@ Details (`src/DmxPro.Engine/DmxEngine.cs`, `Runtime/`):
   flash, strobe) into a program (`SceneProgram`, `StepProgram`, `ColorCycleProgram`, `FadeProgram`, `PulseProgram`,
   `FlashProgram`, `StrobeProgram`) when a project is loaded or refreshed. Effects write color via `EffectFixture`
   (profile-resolved; the Dimmer channel carries the level when the fixture has one).
+- **Live edit preview (2026-10-22):** `SetPreviewFunction(project, draft)` compiles one (unsaved) `LightFunction` on the
+  calling (UI) thread against the patch of the latest model (`EngineModel.PatchIndex`; referenced scenes/steps come from
+  the project as saved; a timed flash compiles as held) and queues the program; the tick only swaps it in. The same
+  draft id keeps its `RunningFunction` (elapsed time and level stay, effects keep running); anything else in the preview
+  layer goes. Draft previews start at full level and stop without fade (`ClearPreview`, `StopPreview`). A draft is not
+  part of any model: `RefreshPatch` keeps it while the universe layout is unchanged (the app re-sends the draft after
+  every refresh) and drops it otherwise; a draft compiled for a different layout is ignored. App side:
+  `FunctionPreviewService` (`Attach`/`Detach` from the page, `FunctionEditorViewModel.DraftChanged`, ~40 ms trailing
+  throttle, `BuildPreviewFunction()` = deep copy with the draft applied, editor hint `PreviewStatus`).
+- **Live mode (2026-10-22, "Go live"):** `SetLiveMode(bool)` is an engine-level gate, applied in queue order. On: the
+  preview layer is emptied, every manual override is cleared (bumps `ReleaseGeneration`, so `ChannelTestSession`
+  forgets them) and every show started with `ShowOrigin.Editor` stops; while on, preview starts/drafts, `SetChannelOverride`
+  and editor show starts are ignored (and the preview layer is skipped in the render). Console functions, console shows
+  (`ShowOrigin.Console`, the default), Grand Master, Blackout and Release All are untouched; switching off changes
+  nothing that runs. Not output enable (safety rules 1–3). App side: `ILiveModeService` / `LiveModeService` (off on every
+  project open, never persisted; stops editor shows through `EngineConsolePlayback.StopEditorShows` so their music stops),
+  `IConsolePlayback.PlayShow(id, from, ShowOrigin)` refuses editor starts while live.
 - **Speed:** `SetFunctionSpeed(id, layer, factor)` scales a running function's own time (0..8, a new start resets it
   to 1); fades on start/stop stay real time. The console Speed widget feeds it (per-function speed × global speed).
 - **Strobe enforcement (safety rule 8):** `AllowStrobe` (off = every Strobe channel forced to its safe value) and

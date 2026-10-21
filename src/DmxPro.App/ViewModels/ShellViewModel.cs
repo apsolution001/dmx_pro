@@ -57,8 +57,10 @@ public sealed partial class ShellViewModel : ObservableObject
         InputOutputViewModel inputOutput,
         SettingsViewModel settings,
         AppSettingsService appSettings,
-        IStageWindowService stageWindow)
+        IStageWindowService stageWindow,
+        ILiveModeService liveMode)
     {
+        InitializeLiveMode(liveMode);
         _stageWindow = stageWindow;
         _inputOutput = inputOutput;
         _settings = settings;
