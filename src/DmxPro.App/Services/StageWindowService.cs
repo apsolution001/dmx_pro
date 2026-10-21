@@ -8,7 +8,13 @@ namespace DmxPro.App.Services;
 /// Keeps exactly one live stage window. While it is open it holds one viewer on the shared
 /// <see cref="StagePageViewModel"/>, so the live preview keeps running when the Stage page is not shown.
 /// </summary>
-public sealed class StageWindowService(StagePageViewModel stage) : IStageWindowService
+/// <param name="stage">The shared stage ViewModel shown in the window.</param>
+/// <param name="shell">
+/// Resolves the shell whose safety commands (Blackout, Release all, output on/off, Go live, Save) the window binds as
+/// shortcuts. Lazy because <see cref="ShellViewModel"/> itself depends on this service; it is only called on
+/// <see cref="Show"/>, long after the shell exists.
+/// </param>
+public sealed class StageWindowService(StagePageViewModel stage, Func<ShellViewModel> shell) : IStageWindowService
 {
     private StageWindow? _window;
 
@@ -29,7 +35,7 @@ public sealed class StageWindowService(StagePageViewModel stage) : IStageWindowS
             return;
         }
 
-        var window = new StageWindow(stage);
+        var window = new StageWindow(stage, shell());
         window.Closed += OnWindowClosed;
         _window = window;
         stage.AddViewer();

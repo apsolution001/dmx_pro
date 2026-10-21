@@ -133,11 +133,7 @@ public sealed partial class ShellViewModel
         _lastBlackout = _virtualConsole.Playback.IsBlackout;
         _virtualConsole.Playback.StateChanged += OnPlaybackStateChanged;
         _virtualConsole.PropertyChanged += OnVirtualConsolePropertyChanged;
-        _functions.StatusMessage += (_, message) =>
-        {
-            InfoSeverity = InfoBarSeverity.Success;
-            InfoMessage = message;
-        };
+        _functions.StatusMessage += (_, message) => ShowInfo(InfoBarSeverity.Success, message);
         _projects.StateChanged += (_, _) => RememberRecentProject();
         _appSettings.Changed += (_, _) => RebuildRecentProjects();
         RebuildRecentProjects();
@@ -191,9 +187,10 @@ public sealed partial class ShellViewModel
     private void ForgetMissingProject(string path)
     {
         _appSettings.Update(s => s.RecentProjects = RecentProjectList.Remove(s.RecentProjects, path));
-        InfoSeverity = InfoBarSeverity.Warning;
-        InfoMessage = $"\"{Path.GetFileName(path)}\" was not found (moved, renamed or deleted), so it was removed from " +
-                      $"Open recent. It was at {path}";
+        ShowInfo(
+            InfoBarSeverity.Warning,
+            $"\"{Path.GetFileName(path)}\" was not found (moved, renamed or deleted), so it was removed from " +
+            $"Open recent. It was at {path}");
     }
 
     /// <summary>After every open and save (the project is clean and has a file), that file moves to the top of the list.</summary>
@@ -249,8 +246,9 @@ public sealed partial class ShellViewModel
         var editor = new ChannelLayoutViewModel(_profileLibrary, _projects, _dialogs);
         if (_dialogs.ShowChannelLayout(editor) && editor.SavedProfile is { } saved)
         {
-            InfoSeverity = InfoBarSeverity.Success;
-            InfoMessage = $"Created channel layout \"{saved.DisplayName}\". Patch lights with it in Fixtures ▸ Add fixture (Ctrl+Shift+A).";
+            ShowInfo(
+                InfoBarSeverity.Success,
+                $"Created channel layout \"{saved.DisplayName}\". Patch lights with it in Fixtures ▸ Add fixture (Ctrl+Shift+A).");
         }
     }
 

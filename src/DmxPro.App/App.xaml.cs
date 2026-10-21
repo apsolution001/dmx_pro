@@ -64,7 +64,10 @@ public partial class App : Application
             services.AddSingleton(sp => new DmxPro.Engine.Testing.ChannelTestSession(sp.GetRequiredService<DmxEngine>()));
             services.AddSingleton<TestPageViewModel>();
             services.AddSingleton<StagePageViewModel>();
-            services.AddSingleton<IStageWindowService, StageWindowService>();
+            // The stage window binds the shell's safety shortcuts; the shell needs this service, so resolve it lazily.
+            services.AddSingleton<IStageWindowService>(sp => new StageWindowService(
+                sp.GetRequiredService<StagePageViewModel>(),
+                () => sp.GetRequiredService<ShellViewModel>()));
             services.AddSingleton<ShellViewModel>();
             services.AddSingleton<MainWindow>();
         })

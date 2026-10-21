@@ -433,6 +433,8 @@ as a coloured disc (`StageCanvas` / `StageLightVisual`, drawn in one control, no
   working on Functions, Virtual Console, Shows or Test & Preview, or on a second monitor. Only one: the button again
   restores and activates it. It has no owner window (it never floats over the main window) and shows in the taskbar;
   closing the main window closes it. Edits in it act on the same layout as the page. Size/position are not remembered.
+  The live safety shortcuts also work while it has focus, with the same commands as the main window: Ctrl+B Blackout,
+  Shift+Esc Release all, Ctrl+E / Ctrl+Shift+E output enable / disable, Ctrl+F5 Go live, and Ctrl+S Save.
 - Not built: rotation editing, strobe marker, undo (`open-questions.md` 29-31).
 
 ## 4. Build order for the menu/shell

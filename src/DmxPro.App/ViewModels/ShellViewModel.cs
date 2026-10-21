@@ -30,6 +30,8 @@ public sealed partial class ShellViewModel : ObservableObject
     private NavigationItem _selectedItem;
 
     /// <summary>Message of the shell info bar; null hides it. Set through <see cref="ShowInfo"/>.</summary>
+    // Only ShowInfo (plus its own auto-hide / close handling) writes InfoMessage and InfoSeverity: a direct write would
+    // leave a pending success auto-hide timer running, which could then wipe a later warning (safety rule 10).
     [ObservableProperty]
     private string? _infoMessage;
 
@@ -209,7 +211,8 @@ public sealed partial class ShellViewModel : ObservableObject
         ShowInfo(
             errors.Count > 0 ? InfoBarSeverity.Warning : InfoBarSeverity.Success,
             $"Imported {Count(imported.Count, "profile", "profiles")}." +
-            (errors.Count > 0 ? $" {Count(errors.Count, "file", "files")} failed: {failures}" : string.Empty));
+            (errors.Count > 0 ? $" {Count(errors.Count, "file", "files")} failed: {failures}" : string.Empty),
+            autoHide: false);
     }
 
     [RelayCommand]

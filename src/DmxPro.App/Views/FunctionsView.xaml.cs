@@ -42,6 +42,11 @@ public partial class FunctionsView : UserControl
     /// <summary>Enter on a function opens the editor (type folders keep their default behaviour).</summary>
     private void OnFunctionTreePreviewKeyDown(object sender, KeyEventArgs e)
     {
+        if (e.OriginalSource is TextBoxBase box && HandleRenameBoxShortcut(box, e))
+        {
+            return;
+        }
+
         // The view model's selection, not TreeView.SelectedItem: the tree is virtualized, so a row selected in code
         // while scrolled out of view has no container and the tree's SelectedItem can be stale.
         if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.None && e.OriginalSource is not TextBox
@@ -51,6 +56,36 @@ public partial class FunctionsView : UserControl
             edit.Execute(null);
             e.Handled = true;
         }
+    }
+
+    /// <summary>
+    /// Inside the inline rename box, Ctrl+X/C/V edit the text and never reach the tree's function Cut/Copy/Paste
+    /// bindings: a TextBox leaves those keys unhandled when it cannot run them (Ctrl+X with no selection, Ctrl+V with
+    /// no clipboard text), so they bubbled up and cut (delete prompt) or pasted a whole function. Ctrl+D (duplicate)
+    /// is swallowed for the same reason. Returns true when the key was taken here.
+    /// </summary>
+    private static bool HandleRenameBoxShortcut(TextBoxBase box, KeyEventArgs e)
+    {
+        if (Keyboard.Modifiers != ModifierKeys.Control || e.Key is not (Key.X or Key.C or Key.V or Key.D))
+        {
+            return false;
+        }
+
+        RoutedUICommand? command = e.Key switch
+        {
+            Key.X => ApplicationCommands.Cut,
+            Key.C => ApplicationCommands.Copy,
+            Key.V => ApplicationCommands.Paste,
+            _ => null,
+        };
+
+        if (command is not null && command.CanExecute(null, box))
+        {
+            command.Execute(null, box);
+        }
+
+        e.Handled = true;
+        return true;
     }
 
     /// <summary>Double-click on a function opens the editor.</summary>
