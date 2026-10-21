@@ -218,11 +218,11 @@ editor shows its draft on the lights automatically while not live):
 - **Editor toolbar hint** (neutral info, not a warning) instead of the removed toggle: "Showing on lights" (output on,
   not live), "Output off — not on lights", "Live mode — not on lights", "Released — change something to show it again".
 - **Playing for the show** happens only from the Virtual Console or the Show Timeline, never by clicking in this page.
+- **Function clipboard (2026-10-22):** Copy keeps a snapshot of the whole function (later edits or deleting the source
   do not change it). Paste adds a new library function named `<name> (copy)`, `<name> (copy 2)`, … and selects it (filters
   are cleared if they would hide it); pasting a show's copy gives a normal listed library function. Cut = Delete with
   its usual confirmation, then copy (cancelling keeps the clipboard). In memory only, separate from the Windows
   clipboard, and cleared when another project is opened (functions refer to that project's lights by id).
-- The Scene Creator (§3.4) follows the same rules: editing is on-screen only unless "Live on lights" is on.
 - **Preview rules:** one preview at a time (the most recently opened editor wins); preview is layered **on top** of
   running functions (it wins on the channels it touches) and never stops them; it never enables output — with output
   disabled nothing reaches the lights; Grand Master, Blackout, "allow strobe" and the maximum strobe rate (safety rule 8)
