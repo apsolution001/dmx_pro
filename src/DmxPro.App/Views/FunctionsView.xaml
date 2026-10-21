@@ -33,16 +33,6 @@
             <Setter Property="BorderThickness" Value="1" />
         </Style>
 
-        <!-- "Coming soon" entries of menus: disabled, tooltip still shown. -->
-        <Style
-            x:Key="ComingSoonMenuItem"
-            BasedOn="{StaticResource Dmx.MenuItem}"
-            TargetType="MenuItem">
-            <Setter Property="IsEnabled" Value="False" />
-            <Setter Property="ToolTip" Value="Coming soon" />
-            <Setter Property="ToolTipService.ShowOnDisabled" Value="True" />
-        </Style>
-
         <!-- On-screen stage preview: one circle per targeted fixture, coloured from its scene values. -->
         <DataTemplate x:Key="PreviewLightTemplate" DataType="{x:Type vm:PreviewLight}">
             <StackPanel
@@ -160,16 +150,6 @@
                 </MenuItem.Icon>
             </MenuItem>
             <MenuItem
-                Header="Preview"
-                InputGestureText="Space"
-                IsEnabled="False"
-                ToolTip="Works when the engine and DMX output are connected"
-                ToolTipService.ShowOnDisabled="True">
-                <MenuItem.Icon>
-                    <c:DmxIcon Kind="Play" Size="{StaticResource Dmx.SmallIconSize}" />
-                </MenuItem.Icon>
-            </MenuItem>
-            <MenuItem
                 Command="{Binding BeginRenameCommand}"
                 Header="Rename"
                 InputGestureText="F2">
@@ -187,22 +167,25 @@
             </MenuItem>
             <Separator />
             <MenuItem
+                Command="{Binding CopyCommand}"
                 Header="Copy"
-                InputGestureText="Ctrl+C"
-                Style="{StaticResource ComingSoonMenuItem}">
+                InputGestureText="Ctrl+C">
                 <MenuItem.Icon>
                     <c:DmxIcon Kind="Copy" Size="{StaticResource Dmx.SmallIconSize}" />
                 </MenuItem.Icon>
             </MenuItem>
             <MenuItem
+                Command="{Binding PasteCommand}"
                 Header="Paste"
-                InputGestureText="Ctrl+V"
-                Style="{StaticResource ComingSoonMenuItem}">
+                InputGestureText="Ctrl+V">
                 <MenuItem.Icon>
                     <c:DmxIcon Kind="Paste" Size="{StaticResource Dmx.SmallIconSize}" />
                 </MenuItem.Icon>
             </MenuItem>
-            <MenuItem Header="Add to Virtual Console" Style="{StaticResource ComingSoonMenuItem}">
+            <MenuItem
+                Command="{Binding AddToVirtualConsoleCommand}"
+                Header="Add to Virtual Console"
+                ToolTip="Adds an on/off button for this function to the current Virtual Console page">
                 <MenuItem.Icon>
                     <c:DmxIcon Kind="Console" Size="{StaticResource Dmx.SmallIconSize}" />
                 </MenuItem.Icon>
@@ -418,6 +401,9 @@
                                 <KeyBinding Command="{Binding DeleteCommand}" Gesture="Delete" />
                                 <KeyBinding Command="{Binding DuplicateCommand}" Gesture="Ctrl+D" />
                                 <KeyBinding Command="{Binding BeginRenameCommand}" Gesture="F2" />
+                                <KeyBinding Command="{Binding CutCommand}" Gesture="Ctrl+X" />
+                                <KeyBinding Command="{Binding CopyCommand}" Gesture="Ctrl+C" />
+                                <KeyBinding Command="{Binding PasteCommand}" Gesture="Ctrl+V" />
                             </TreeView.InputBindings>
                             <TreeView.ItemContainerStyle>
                                 <!-- Type folders -->

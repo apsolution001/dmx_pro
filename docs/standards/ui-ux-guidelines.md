@@ -59,7 +59,8 @@ The owner wants a **proper Windows application**, not a web-page look. Structure
 - Drag & drop: scenes/functions from library into chasers, timelines, console.
 - Right-click context menus mirror toolbar actions (Copy, Paste, Duplicate, Rename, Delete).
 - Keyboard: Ctrl+S save, Ctrl+Z/Y undo/redo, Ctrl+C/V/D copy/paste/duplicate, Ctrl+K command palette, F2 rename,
-  Del delete, **B** blackout, **Esc** release all (in console operate mode), **Space** Go (cue list).
+  Del delete, **Ctrl+B** blackout, **Shift+Esc** release all (bare B / Esc clash with typing and Esc-to-close; decided
+  2026-10-22), **F12** operator mode, **Space** play/pause (show timeline, console).
 - Tooltips on all icon-only buttons. Empty states explain what to do next ("No fixtures yet — Add fixture").
 
 ## Live operation (Virtual Console)

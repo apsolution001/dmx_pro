@@ -324,6 +324,33 @@ public sealed partial class VirtualConsoleViewModel : PageViewModel
         PlaceWidget(page, widget);
     }
 
+    /// <summary>
+    /// Functions page "Add to Virtual Console": adds a toggle button for <paramref name="functionId"/> at the first free
+    /// spot of the selected console page (the first page while the Shows tab is open; a new page when there is none).
+    /// Edit mode and the widget selection stay as they are. Returns the page name, or null when the page is full.
+    /// </summary>
+    public string? AddFunctionButton(Guid functionId)
+    {
+        var page = SelectedPage ?? Pages.FirstOrDefault();
+        if (page is null)
+        {
+            AddPage();
+            page = SelectedPage!;
+        }
+
+        if (_projects.Current.AddFunctionButton(page.Id, functionId) is not { } widget)
+        {
+            return null;
+        }
+
+        // The function may be new since the console last listed targets; without its name the button reads "unassigned".
+        RebuildTargets();
+        page.Widgets.Add(new ConsoleWidgetViewModel(this, page, widget));
+        OnPropertyChanged(nameof(IsSelectedPageEmpty));
+        _projects.MarkChanged(affectsPlayback: false);
+        return page.Name;
+    }
+
     /// <summary>Palette drag-and-drop: places the widget at a grid cell (clamped to the page).</summary>
     public void AddWidgetAt(VirtualConsoleWidgetKind kind, int x, int y)
     {

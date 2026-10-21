@@ -42,6 +42,13 @@
         <KeyBinding Command="{Binding NavigateToCommand}" CommandParameter="7" Gesture="Ctrl+OemComma" />
         <!-- Stage sits before Settings in the rail (index 6) but got Ctrl+8, so Ctrl+1 … Ctrl+7 did not move. -->
         <KeyBinding Command="{Binding NavigateToCommand}" CommandParameter="6" Gesture="Ctrl+8" />
+        <!-- Menu actions that work anywhere. Ctrl+X/C/V, Ctrl+D, Del and F2 are bound on the page lists instead (the
+             focused list decides what they act on). Ctrl+B / Shift+Esc / F12 are free on every page: console widget
+             shortcuts are unmodified keys, and the console handles F12 itself while it has focus. -->
+        <KeyBinding Command="{Binding ShowMonitorCommand}" Gesture="Ctrl+M" />
+        <KeyBinding Command="{Binding ToggleBlackoutCommand}" Gesture="Ctrl+B" />
+        <KeyBinding Command="{Binding ReleaseAllCommand}" Gesture="Shift+Escape" />
+        <KeyBinding Command="{Binding ToggleOperatorModeCommand}" Gesture="F12" />
     </Window.InputBindings>
 
     <!-- Desktop layout modelled on QLC+: title bar, menu, main toolbar, section rail + page area, status bar. -->
@@ -70,10 +77,12 @@
             </ui:TitleBar.Icon>
         </ui:TitleBar>
 
-        <!-- ═══ Menu bar: plan in docs/ui-plan.md §2. Unbuilt items are disabled and say when they arrive. ═══ -->
+        <!-- ═══ Menu bar: plan in docs/ui-plan.md §2. Items act on (and go to) the page they belong to; items for
+             features that are not built yet are disabled with a "Coming soon" tooltip. ═══ -->
         <Menu
             x:Name="MainMenu"
             Grid.Row="1"
+            xmlns:fn="clr-namespace:DmxPro.Core.Functions;assembly=DmxPro.Core"
             AutomationProperties.Name="Main menu"
             Style="{StaticResource TopMenu}">
             <MenuItem Header="_File">
@@ -93,10 +102,30 @@
                         <c:DmxIcon Kind="Open" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
                 </MenuItem>
+                <!-- Last opened / saved projects (app settings). A missing file is removed with a message. -->
                 <MenuItem
                     Header="Open _recent"
-                    IsEnabled="False"
-                    ToolTip="Coming in phase 9">
+                    IsEnabled="{Binding HasRecentProjects}"
+                    ItemsSource="{Binding RecentProjects}">
+                    <MenuItem.Style>
+                        <Style BasedOn="{StaticResource Dmx.MenuItem}" TargetType="MenuItem">
+                            <Setter Property="ToolTip" Value="Projects you opened or saved recently" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasRecentProjects}" Value="False">
+                                    <Setter Property="ToolTip" Value="No recent projects yet: open or save a project first" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </MenuItem.Style>
+                    <MenuItem.ItemContainerStyle>
+                        <Style BasedOn="{StaticResource Dmx.MenuItem}" TargetType="MenuItem">
+                            <Setter Property="Header" Value="{Binding Header}" />
+                            <Setter Property="ToolTip" Value="{Binding Path}" />
+                            <Setter Property="AutomationProperties.Name" Value="{Binding Path}" />
+                            <Setter Property="Command" Value="{Binding OpenCommand}" />
+                            <Setter Property="CommandParameter" Value="{Binding Path}" />
+                        </Style>
+                    </MenuItem.ItemContainerStyle>
                     <MenuItem.Icon>
                         <c:DmxIcon Kind="Recent" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
@@ -122,7 +151,7 @@
                 <MenuItem
                     Header="Import QLC+ workspace (.qxw)…"
                     IsEnabled="False"
-                    ToolTip="Coming in a later phase">
+                    ToolTip="Coming soon">
                     <MenuItem.Icon>
                         <c:DmxIcon Kind="Import" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
@@ -130,7 +159,7 @@
                 <MenuItem
                     Header="Export show report (PDF)…"
                     IsEnabled="False"
-                    ToolTip="Coming in a later phase">
+                    ToolTip="Coming soon">
                     <MenuItem.Icon>
                         <c:DmxIcon Kind="Export" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
@@ -146,12 +175,13 @@
                 </MenuItem>
             </MenuItem>
 
+            <!-- Edit acts on the current page; items are disabled when that page has nothing to act on. -->
             <MenuItem Header="_Edit">
                 <MenuItem
                     Header="_Undo"
                     InputGestureText="Ctrl+Z"
                     IsEnabled="False"
-                    ToolTip="Coming in phase 9">
+                    ToolTip="Coming soon">
                     <MenuItem.Icon>
                         <c:DmxIcon Kind="Undo" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
@@ -160,72 +190,73 @@
                     Header="_Redo"
                     InputGestureText="Ctrl+Y"
                     IsEnabled="False"
-                    ToolTip="Coming in phase 9">
+                    ToolTip="Coming soon">
                     <MenuItem.Icon>
                         <c:DmxIcon Kind="Redo" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
                 </MenuItem>
                 <Separator />
                 <MenuItem
+                    Command="{Binding CutCommand}"
                     Header="Cu_t"
                     InputGestureText="Ctrl+X"
-                    IsEnabled="False"
-                    ToolTip="Coming in phase 4">
+                    ToolTip="Functions page: copy the selected function and delete it">
                     <MenuItem.Icon>
                         <c:DmxIcon Kind="Cut" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem
+                    Command="{Binding CopyCommand}"
                     Header="_Copy"
                     InputGestureText="Ctrl+C"
-                    IsEnabled="False"
-                    ToolTip="Coming in phase 4">
+                    ToolTip="Functions page: copy the selected function">
                     <MenuItem.Icon>
                         <c:DmxIcon Kind="Copy" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem
+                    Command="{Binding PasteCommand}"
                     Header="_Paste"
                     InputGestureText="Ctrl+V"
-                    IsEnabled="False"
-                    ToolTip="Coming in phase 4">
+                    ToolTip="Functions page: add a copy of the copied function">
                     <MenuItem.Icon>
                         <c:DmxIcon Kind="Paste" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem
+                    Command="{Binding DuplicateCommand}"
                     Header="_Duplicate"
                     InputGestureText="Ctrl+D"
-                    IsEnabled="False"
-                    ToolTip="Coming in phase 2">
+                    ToolTip="Duplicate the selected fixtures, function, timeline item or console widget">
                     <MenuItem.Icon>
                         <c:DmxIcon Kind="Duplicate" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem
+                    Command="{Binding DeleteCommand}"
                     Header="De_lete"
                     InputGestureText="Del"
-                    IsEnabled="False"
-                    ToolTip="Coming in phase 2">
+                    ToolTip="Delete the selected fixtures, function, timeline item or console widget">
                     <MenuItem.Icon>
                         <c:DmxIcon Kind="Delete" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem
+                    Command="{Binding RenameCommand}"
                     Header="Rena_me"
                     InputGestureText="F2"
-                    IsEnabled="False"
-                    ToolTip="Coming in phase 2">
+                    ToolTip="Rename the selected function, show or console page">
                     <MenuItem.Icon>
                         <c:DmxIcon Kind="Rename" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
                 </MenuItem>
                 <Separator />
+                <!-- Routed to the focused control: selects every row of a table or all text of a text box. -->
                 <MenuItem
+                    Command="ApplicationCommands.SelectAll"
                     Header="Select _all"
                     InputGestureText="Ctrl+A"
-                    IsEnabled="False"
-                    ToolTip="Coming in phase 2">
+                    ToolTip="Select every row of the focused table, or all text of the focused text box">
                     <MenuItem.Icon>
                         <c:DmxIcon Kind="SelectAll" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
@@ -234,7 +265,7 @@
                     Header="_Search everything…"
                     InputGestureText="Ctrl+K"
                     IsEnabled="False"
-                    ToolTip="Coming in phase 9">
+                    ToolTip="Coming soon">
                     <MenuItem.Icon>
                         <c:DmxIcon Kind="Search" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
@@ -316,10 +347,10 @@
                 </MenuItem>
                 <Separator />
                 <MenuItem
+                    Command="{Binding ShowMonitorCommand}"
                     Header="_DMX monitor"
                     InputGestureText="Ctrl+M"
-                    IsEnabled="False"
-                    ToolTip="Coming in phase 6">
+                    ToolTip="Opens Test &amp; Preview with the live DMX values of every channel">
                     <MenuItem.Icon>
                         <c:DmxIcon Kind="Monitor" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
@@ -369,17 +400,17 @@
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem
-                    Header="Add _group…"
-                    IsEnabled="False"
-                    ToolTip="Coming in phase 2">
+                    Command="{Binding NewGroupCommand}"
+                    Header="Add _group"
+                    ToolTip="New group from the fixtures selected on the Fixtures page (empty when none is selected)">
                     <MenuItem.Icon>
                         <c:DmxIcon Kind="Group" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem
+                    Command="{Binding AutoPatchCommand}"
                     Header="Auto-_patch selected"
-                    IsEnabled="False"
-                    ToolTip="Coming in phase 2">
+                    ToolTip="Moves the fixtures selected on the Fixtures page to the first free addresses, one after another">
                     <MenuItem.Icon>
                         <c:DmxIcon Kind="AutoPatch" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
@@ -391,76 +422,77 @@
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem
+                    Command="{Binding NewFixtureProfileCommand}"
                     Header="_New fixture profile…"
-                    IsEnabled="False"
-                    ToolTip="Coming in phase 2">
+                    ToolTip="Opens the channel layout editor for a new layout">
                     <MenuItem.Icon>
                         <c:DmxIcon Kind="ProfileNew" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
                 </MenuItem>
             </MenuItem>
 
+            <!-- New … opens the Functions page with the new function in its editor. -->
             <MenuItem Header="F_unctions">
                 <MenuItem
-                    Header="New _scene"
-                    IsEnabled="False"
-                    ToolTip="Coming in phase 3">
+                    Command="{Binding NewFunctionCommand}"
+                    CommandParameter="{x:Static fn:FunctionType.Scene}"
+                    Header="New _scene">
                     <MenuItem.Icon>
                         <c:DmxIcon Kind="Scenes" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem
-                    Header="New _chaser"
-                    IsEnabled="False"
-                    ToolTip="Coming in phase 4">
+                    Command="{Binding NewFunctionCommand}"
+                    CommandParameter="{x:Static fn:FunctionType.Chaser}"
+                    Header="New _chaser">
                     <MenuItem.Icon>
                         <c:DmxIcon Kind="Chaser" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem
-                    Header="New se_quence"
-                    IsEnabled="False"
-                    ToolTip="Coming in phase 4">
+                    Command="{Binding NewFunctionCommand}"
+                    CommandParameter="{x:Static fn:FunctionType.Sequence}"
+                    Header="New se_quence">
                     <MenuItem.Icon>
                         <c:DmxIcon Kind="Sequence" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem
-                    Header="New color c_ycle"
-                    IsEnabled="False"
-                    ToolTip="Coming in phase 4">
+                    Command="{Binding NewFunctionCommand}"
+                    CommandParameter="{x:Static fn:FunctionType.ColorCycle}"
+                    Header="New color c_ycle">
                     <MenuItem.Icon>
                         <c:DmxIcon Kind="ColorCycle" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem
-                    Header="New _fade"
-                    IsEnabled="False"
-                    ToolTip="Coming in phase 4">
+                    Command="{Binding NewFunctionCommand}"
+                    CommandParameter="{x:Static fn:FunctionType.Fade}"
+                    Header="New _fade">
                     <MenuItem.Icon>
                         <c:DmxIcon Kind="Fade" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem
-                    Header="New _pulse"
-                    IsEnabled="False"
-                    ToolTip="Coming in phase 4">
+                    Command="{Binding NewFunctionCommand}"
+                    CommandParameter="{x:Static fn:FunctionType.Pulse}"
+                    Header="New _pulse">
                     <MenuItem.Icon>
                         <c:DmxIcon Kind="Pulse" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem
-                    Header="New f_lash"
-                    IsEnabled="False"
-                    ToolTip="Coming in phase 4">
+                    Command="{Binding NewFunctionCommand}"
+                    CommandParameter="{x:Static fn:FunctionType.Flash}"
+                    Header="New f_lash">
                     <MenuItem.Icon>
                         <c:DmxIcon Kind="Flash" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem
-                    Header="New st_robe"
-                    IsEnabled="False"
-                    ToolTip="Coming in phase 4">
+                    Command="{Binding NewFunctionCommand}"
+                    CommandParameter="{x:Static fn:FunctionType.Strobe}"
+                    Header="New st_robe">
                     <MenuItem.Icon>
                         <c:DmxIcon Kind="Strobe" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
@@ -469,55 +501,52 @@
                 <MenuItem
                     Header="Create _starter scenes"
                     IsEnabled="False"
-                    ToolTip="Coming in phase 3">
+                    ToolTip="Coming soon">
                     <MenuItem.Icon>
                         <c:DmxIcon Kind="Wizard" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
                 </MenuItem>
                 <Separator />
                 <MenuItem
+                    Command="{Binding ReleaseAllCommand}"
                     Header="S_top all functions"
                     InputGestureText="Shift+Esc"
-                    IsEnabled="False"
-                    ToolTip="Coming in phase 4">
+                    ToolTip="Stops every function and show and returns channels to their defaults (same as Release all)">
                     <MenuItem.Icon>
                         <c:DmxIcon Kind="StopAll" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
                 </MenuItem>
             </MenuItem>
 
+            <!-- Acts on the show selected on the Shows page (and opens that page). -->
             <MenuItem Header="_Show">
-                <MenuItem
-                    Header="_New show…"
-                    IsEnabled="False"
-                    ToolTip="Coming soon">
+                <MenuItem Command="{Binding NewShowCommand}" Header="_New show">
                     <MenuItem.Icon>
                         <c:DmxIcon Kind="Timeline" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem
+                    Command="{Binding AddTrackCommand}"
                     Header="Add _track"
-                    IsEnabled="False"
-                    ToolTip="Coming soon">
+                    ToolTip="Adds a track to the show selected on the Shows page">
                     <MenuItem.Icon>
                         <c:DmxIcon Kind="Add" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
                 </MenuItem>
                 <Separator />
                 <MenuItem
+                    Command="{Binding ShowPlayPauseCommand}"
                     Header="_Play / Pause"
                     InputGestureText="Space"
-                    IsEnabled="False"
-                    ToolTip="Coming soon">
+                    ToolTip="Plays or pauses the show selected on the Shows page (Space on the timeline)">
                     <MenuItem.Icon>
                         <c:DmxIcon Kind="Play" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem
+                    Command="{Binding ShowStopCommand}"
                     Header="_Stop &amp; return to start"
-                    InputGestureText="Home"
-                    IsEnabled="False"
-                    ToolTip="Coming soon">
+                    ToolTip="Stops the show selected on the Shows page and moves the playhead to 0:00">
                     <MenuItem.Icon>
                         <c:DmxIcon Kind="Stop" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
@@ -542,20 +571,23 @@
                     </MenuItem.Icon>
                 </MenuItem>
                 <Separator />
+                <!-- Safety rule 3: Blackout sends a dark frame; it never disables output. Checked while on. -->
                 <MenuItem
+                    Command="{Binding ToggleBlackoutCommand}"
                     Header="_Blackout"
-                    InputGestureText="B"
-                    IsEnabled="False"
-                    ToolTip="Coming in phase 4">
+                    InputGestureText="Ctrl+B"
+                    IsCheckable="False"
+                    IsChecked="{Binding IsBlackout, Mode=OneWay}"
+                    ToolTip="All lights dark while on; DMX output keeps sending (this is not Disable DMX output)">
                     <MenuItem.Icon>
                         <c:DmxIcon Kind="Blackout" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem
+                    Command="{Binding ReleaseAllCommand}"
                     Header="_Release all"
-                    InputGestureText="Esc"
-                    IsEnabled="False"
-                    ToolTip="Coming in phase 4">
+                    InputGestureText="Shift+Esc"
+                    ToolTip="Stops every function and show and returns channels to their defaults">
                     <MenuItem.Icon>
                         <c:DmxIcon Kind="ReleaseAll" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
@@ -581,18 +613,20 @@
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem
-                    Header="_Profile editor"
-                    IsEnabled="False"
-                    ToolTip="Coming in phase 2">
+                    Command="{Binding OpenProfileEditorCommand}"
+                    Header="_Profile editor…"
+                    ToolTip="Edits the channel layout of the light selected on the Fixtures page, or starts a new layout">
                     <MenuItem.Icon>
                         <c:DmxIcon Kind="Profile" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem
+                    Command="{Binding ToggleOperatorModeCommand}"
                     Header="_Operator mode (lock editing)"
                     InputGestureText="F12"
-                    IsEnabled="False"
-                    ToolTip="Coming in phase 5">
+                    IsCheckable="False"
+                    IsChecked="{Binding IsOperatorMode, Mode=OneWay}"
+                    ToolTip="Locks the Virtual Console for live use (hides page and layout editing)">
                     <MenuItem.Icon>
                         <c:DmxIcon Kind="Lock" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
@@ -614,7 +648,7 @@
                     Header="_Getting started"
                     InputGestureText="F1"
                     IsEnabled="False"
-                    ToolTip="Coming in phase 9">
+                    ToolTip="Coming soon">
                     <MenuItem.Icon>
                         <c:DmxIcon Kind="Help" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
@@ -627,7 +661,7 @@
                 <MenuItem
                     Header="_DMX basics"
                     IsEnabled="False"
-                    ToolTip="Coming in a later phase">
+                    ToolTip="Coming soon">
                     <MenuItem.Icon>
                         <c:DmxIcon Kind="Info" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
@@ -695,23 +729,23 @@
 
                     <Button
                         AutomationProperties.Name="DMX monitor"
-                        IsEnabled="False"
+                        Command="{Binding ShowMonitorCommand}"
                         Style="{StaticResource ToolbarButton}"
-                        ToolTip="DMX monitor (Ctrl+M) — coming in phase 6">
+                        ToolTip="DMX monitor (Ctrl+M): live values of every channel, on Test &amp; Preview">
                         <c:DmxIcon Kind="Monitor" Size="{StaticResource Dmx.ToolbarIconSize}" />
                     </Button>
                     <Button
                         AutomationProperties.Name="Stop all functions"
-                        IsEnabled="False"
+                        Command="{Binding ReleaseAllCommand}"
                         Style="{StaticResource ToolbarButton}"
-                        ToolTip="Stop all functions (Shift+Esc) — coming in phase 4">
+                        ToolTip="Stop all functions and shows (Shift+Esc)">
                         <c:DmxIcon Kind="StopAll" Size="{StaticResource Dmx.ToolbarIconSize}" />
                     </Button>
                     <Button
                         AutomationProperties.Name="Blackout"
-                        IsEnabled="False"
+                        Command="{Binding ToggleBlackoutCommand}"
                         Style="{StaticResource ToolbarButton}"
-                        ToolTip="Blackout (B) — coming in phase 4">
+                        ToolTip="Blackout on/off (Ctrl+B): lights dark, DMX output keeps sending">
                         <c:DmxIcon Kind="Blackout" Size="{StaticResource Dmx.ToolbarIconSize}" />
                     </Button>
 
