@@ -21,12 +21,10 @@ public sealed partial class SceneFixtureTabViewModel : SceneEditorTab
     public SceneFixtureTabViewModel(
         Fixture fixture,
         string detail,
-        bool profileUnverified,
         Action<SceneFixtureTabViewModel, bool> onSetAllIncluded)
     {
         Fixture = fixture;
         Detail = detail;
-        ProfileUnverified = profileUnverified;
         _onSetAllIncluded = onSetAllIncluded;
         SearchKey = $"{fixture.Name} {detail}";
     }
@@ -41,8 +39,6 @@ public sealed partial class SceneFixtureTabViewModel : SceneEditorTab
 
     /// <summary>"U1 · 1–8 · 8ch Full".</summary>
     public string Detail { get; }
-
-    public bool ProfileUnverified { get; }
 
     public ObservableCollection<SceneChannelFaderViewModel> Channels { get; } = [];
 

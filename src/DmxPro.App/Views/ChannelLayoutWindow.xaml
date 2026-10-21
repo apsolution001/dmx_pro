@@ -37,7 +37,6 @@
         │ └──────────────────────────────────────────────────────┘             │
         │ ⚠ Channel 7 has an unknown function …   (validation list)            │
         ├───────────────────────────────────────────────────────────────────────┤
-        │ ⚠ Unverified: test each channel at low intensity on the real light.  │
         │ Use it for [Selected lights (2) ▾]               [Cancel] [Save]      │
         └───────────────────────────────────────────────────────────────────────┘
     -->
@@ -88,9 +87,6 @@
             <Style.Triggers>
                 <DataTrigger Binding="{Binding ColorHex}" Value="{x:Null}">
                     <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
-                </DataTrigger>
-                <DataTrigger Binding="{Binding Type}" Value="Generic">
-                    <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
                 </DataTrigger>
             </Style.Triggers>
         </Style>
@@ -291,9 +287,6 @@
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding ColorHex}" Value="{x:Null}">
                                                             <Setter Property="Fill" Value="{DynamicResource ControlStrongStrokeColorDefaultBrush}" />
-                                                        </DataTrigger>
-                                                        <DataTrigger Binding="{Binding IsUnknown}" Value="True">
-                                                            <Setter Property="Fill" Value="{DynamicResource SystemFillColorCautionBrush}" />
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
@@ -541,7 +534,7 @@
             </Border>
         </DockPanel>
 
-        <!-- ═══════════ Footer: unverified caution, apply choice, save error, [Cancel] [Save] ═══════════ -->
+        <!-- ═══════════ Footer: apply choice, save error, [Cancel] [Save] ═══════════ -->
         <Border
             Grid.Row="2"
             Padding="8,4"
@@ -549,19 +542,6 @@
             BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
             BorderThickness="0,1,0,0">
             <StackPanel>
-                <!-- Safety rule 7: a hand-made layout is never presented as confirmed. -->
-                <DockPanel Margin="0,0,0,4">
-                    <c:DmxIcon
-                        Foreground="{DynamicResource SystemFillColorCautionBrush}"
-                        Kind="Unverified"
-                        Style="{StaticResource FooterIcon}" />
-                    <TextBlock
-                        VerticalAlignment="Center"
-                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                        Text="Unverified: test each channel at low intensity on the real light first."
-                        TextWrapping="Wrap" />
-                </DockPanel>
-
                 <DockPanel Margin="0,0,0,4" Visibility="{Binding HasSaveError, Converter={StaticResource BoolToVisibility}}">
                     <c:DmxIcon
                         Foreground="{DynamicResource SystemFillColorCriticalBrush}"

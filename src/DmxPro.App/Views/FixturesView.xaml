@@ -620,7 +620,7 @@
                                         Text="{Binding Name, UpdateSourceTrigger=LostFocus}"
                                         ToolTip="Fixture name (F2 in the table)" />
 
-                                    <!-- Profile (read-only): name and verified badge on one line -->
+                                    <!-- Profile (read-only): name and the Edit channel layout button on one line -->
                                     <TextBlock
                                         Grid.Row="1"
                                         Style="{StaticResource FormLabel}"
@@ -638,57 +638,6 @@
                                             Style="{StaticResource PanelHeaderButton}"
                                             ToolTip="Edit channel layout: what each DMX channel of this light does (Ctrl+L)">
                                             <c:DmxIcon Kind="Edit" Size="{StaticResource Dmx.DenseIconSize}" />
-                                        </Button>
-                                        <!-- Click: mark the profile as verified after testing it on the real light. -->
-                                        <Button
-                                            Width="Auto"
-                                            Margin="4,0,0,0"
-                                            Padding="4,0"
-                                            VerticalAlignment="Center"
-                                            AutomationProperties.Name="Unverified profile. Mark as verified"
-                                            BorderBrush="{DynamicResource SystemFillColorCautionBrush}"
-                                            BorderThickness="1"
-                                            Command="{Binding DataContext.ToggleProfileVerifiedCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                            DockPanel.Dock="Right"
-                                            Style="{StaticResource PanelHeaderButton}"
-                                            ToolTip="This profile has not been checked against the real fixture. Test each channel at low intensity, then click to mark it as verified."
-                                            Visibility="{Binding ProfileUnverified, Converter={StaticResource BoolToVisibility}}">
-                                            <StackPanel Orientation="Horizontal">
-                                                <c:DmxIcon
-                                                    Foreground="{DynamicResource SystemFillColorCautionBrush}"
-                                                    Kind="Unverified"
-                                                    Size="{StaticResource Dmx.DenseIconSize}" />
-                                                <TextBlock
-                                                    Margin="4,0,0,0"
-                                                    VerticalAlignment="Center"
-                                                    FontSize="{StaticResource Dmx.FontSize.Small}"
-                                                    Foreground="{DynamicResource SystemFillColorCautionBrush}"
-                                                    Text="Unverified" />
-                                            </StackPanel>
-                                        </Button>
-                                        <Button
-                                            Width="Auto"
-                                            Margin="4,0,0,0"
-                                            Padding="4,0"
-                                            VerticalAlignment="Center"
-                                            AutomationProperties.Name="Verified profile. Mark as unverified"
-                                            Command="{Binding DataContext.ToggleProfileVerifiedCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                            DockPanel.Dock="Right"
-                                            Style="{StaticResource PanelHeaderButton}"
-                                            ToolTip="This profile was checked against the real fixture. Click to mark it as unverified again."
-                                            Visibility="{Binding ProfileVerified, Converter={StaticResource BoolToVisibility}}">
-                                            <StackPanel Orientation="Horizontal">
-                                                <c:DmxIcon
-                                                    Foreground="{DynamicResource SystemFillColorSuccessBrush}"
-                                                    Kind="Verified"
-                                                    Size="{StaticResource Dmx.DenseIconSize}" />
-                                                <TextBlock
-                                                    Margin="4,0,0,0"
-                                                    VerticalAlignment="Center"
-                                                    FontSize="{StaticResource Dmx.FontSize.Small}"
-                                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                                    Text="Verified" />
-                                            </StackPanel>
                                         </Button>
                                         <TextBlock
                                             VerticalAlignment="Center"
@@ -888,12 +837,14 @@
                                                             Grid.Column="3"
                                                             VerticalAlignment="Center"
                                                             Orientation="Horizontal">
+                                                            <!-- Neutral info, not a warning: the meaning is simply not known (safety rule 7). -->
                                                             <c:DmxIcon
                                                                 Margin="0,0,4,0"
-                                                                Foreground="{DynamicResource SystemFillColorCautionBrush}"
-                                                                Kind="Warning"
+                                                                AutomationProperties.Name="Meaning unknown: raw channel only"
+                                                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                                Kind="Info"
                                                                 Size="{StaticResource Dmx.DenseIconSize}"
-                                                                ToolTip="Meaning unknown: raw channel only. Test it before using."
+                                                                ToolTip="Meaning unknown: raw channel only."
                                                                 Visibility="{Binding IsGeneric, Converter={StaticResource BoolToVisibility}}" />
                                                             <TextBlock
                                                                 FontSize="{StaticResource Dmx.FontSize.Small}"

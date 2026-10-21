@@ -121,24 +121,6 @@
                         </Style>
                     </DataGrid.RowStyle>
                     <DataGrid.Columns>
-                        <!-- Unverified profile: icon + tooltip (not colour alone). -->
-                        <DataGridTemplateColumn
-                            Width="22"
-                            CanUserResize="False"
-                            CanUserSort="False">
-                            <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate DataType="{x:Type vm:SceneLightRow}">
-                                    <c:DmxIcon
-                                        HorizontalAlignment="Center"
-                                        VerticalAlignment="Center"
-                                        Foreground="{DynamicResource SystemFillColorCautionBrush}"
-                                        Kind="Unverified"
-                                        Size="{StaticResource Dmx.DenseIconSize}"
-                                        ToolTip="{Binding ProfileToolTip}"
-                                        Visibility="{Binding ProfileUnverified, Converter={StaticResource BoolToVisibility}}" />
-                                </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
-                        </DataGridTemplateColumn>
                         <DataGridTextColumn
                             Width="2*"
                             MinWidth="96"

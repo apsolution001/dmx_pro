@@ -25,6 +25,9 @@ public sealed partial class VirtualConsoleViewModel : PageViewModel
     private readonly Dictionary<Guid, string> _groupNames = [];
     private bool _layoutChanged;
 
+    /// <summary><see cref="ProjectService.Revision"/> the target lists were last rebuilt from (-1 = never).</summary>
+    private long _targetsRevision = -1;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelectedPage), nameof(CanvasWidth), nameof(CanvasHeight), nameof(IsSelectedPageEmpty))]
     [NotifyCanExecuteChangedFor(nameof(RenamePageCommand), nameof(DeletePageCommand), nameof(AddWidgetCommand))]
@@ -170,10 +173,19 @@ public sealed partial class VirtualConsoleViewModel : PageViewModel
 
     public override void OnNavigatedTo()
     {
-        // Functions, shows or groups may have been renamed or deleted on other pages.
-        RebuildTargets();
-        RefreshWidgets();
-        ShowPlayer.Refresh();
+        // Functions, shows or groups may have been renamed or deleted on other pages. Rebuilding every target list and
+        // widget on each visit made switching to this page slow on big projects, so only do it when the project changed.
+        if (_targetsRevision != _projects.Revision)
+        {
+            RebuildTargets();
+            RefreshWidgets();
+            ShowPlayer.Refresh();
+        }
+        else
+        {
+            // Live state only (notifies just what changed): playback may have changed while the page was hidden.
+            RefreshPlaybackState();
+        }
     }
 
     /// <summary>Leaving the console ends every held flash (safety rule 5); the view stays alive while hidden.</summary>
@@ -653,6 +665,7 @@ public sealed partial class VirtualConsoleViewModel : PageViewModel
 
     private void RebuildTargets()
     {
+        _targetsRevision = _projects.Revision;
         var project = _projects.Current;
         _functionNames.Clear();
         foreach (var function in project.Functions)

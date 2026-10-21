@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using CommunityToolkit.Mvvm.ComponentModel;
 using DmxPro.Core.Patching;
 using DmxPro.Core.Profiles;
@@ -8,13 +9,14 @@ namespace DmxPro.App.ViewModels;
 
 /// <summary>
 /// One patched fixture: a row in the fixture table and the object edited in the Properties panel.
-/// Setters write straight to the model and tell the page to re-validate.
+/// Setters write straight to the model and tell the page which property changed, so it only refreshes what that
+/// property affects.
 /// </summary>
 public sealed partial class FixtureRowViewModel : ObservableObject
 {
     private readonly Project _project;
     private readonly Func<IReadOnlyList<FixtureProfile>> _profileOptions;
-    private readonly Action<FixtureRowViewModel> _onEdited;
+    private readonly Action<FixtureRowViewModel, string> _onEdited;
 
     [ObservableProperty]
     private string _issueText = string.Empty;
@@ -44,7 +46,7 @@ public sealed partial class FixtureRowViewModel : ObservableObject
         Fixture fixture,
         Project project,
         Func<IReadOnlyList<FixtureProfile>> profileOptions,
-        Action<FixtureRowViewModel> onEdited)
+        Action<FixtureRowViewModel, string> onEdited)
     {
         Fixture = fixture;
         _project = project;
@@ -150,11 +152,6 @@ public sealed partial class FixtureRowViewModel : ObservableObject
 
     public string ProfileName => EmbeddedProfile?.DisplayName ?? $"Missing profile '{Fixture.ProfileId}'";
 
-    public bool ProfileVerified => EmbeddedProfile?.Verified ?? false;
-
-    /// <summary>Shows the "Unverified profile" badge (safety rule 7: unverified meanings are never shown as confirmed).</summary>
-    public bool ProfileUnverified => !ProfileVerified;
-
     public int ChannelCount => EmbeddedProfile?.FindMode(Fixture.ModeName)?.ChannelCount ?? 0;
 
     public string AddressRange => ChannelCount == 0
@@ -193,7 +190,7 @@ public sealed partial class FixtureRowViewModel : ObservableObject
     /// <summary>Re-reads every derived value after the model changed elsewhere (e.g. auto-address).</summary>
     public void RefreshAll() => OnPropertyChanged(string.Empty);
 
-    private void Edit(Action apply, bool skip = false)
+    private void Edit(Action apply, bool skip = false, [CallerMemberName] string property = "")
     {
         if (skip)
         {
@@ -202,6 +199,6 @@ public sealed partial class FixtureRowViewModel : ObservableObject
 
         apply();
         RefreshAll();
-        _onEdited(this);
+        _onEdited(this, property);
     }
 }

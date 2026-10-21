@@ -25,10 +25,6 @@ public abstract partial class FunctionEditorViewModel : ObservableObject
     [ObservableProperty]
     private bool _showInFunctionList;
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasUnverifiedWarning))]
-    private string? _unverifiedWarning;
-
     protected FunctionEditorViewModel(Project project, LightFunction original)
     {
         ArgumentNullException.ThrowIfNull(project);
@@ -60,8 +56,6 @@ public abstract partial class FunctionEditorViewModel : ObservableObject
 
     /// <summary>"Own copy in show Wedding: changes never touch the original." Null for a library function.</summary>
     public string? ShowCopyText => ShowName is null ? null : $"Own copy in show \"{ShowName}\": changes never touch the original.";
-
-    public bool HasUnverifiedWarning => UnverifiedWarning is not null;
 
     /// <summary>Same command as <see cref="SaveChangesCommand"/>.</summary>
     public IRelayCommand SaveCommand => SaveChangesCommand;

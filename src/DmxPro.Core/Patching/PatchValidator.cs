@@ -15,12 +15,18 @@ public static class PatchValidator
         return mode is null ? null : new FixtureFootprint(fixture.Universe, fixture.StartAddress, mode.ChannelCount);
     }
 
+    /// <summary>
+    /// Checks every fixture: profile and mode exist, universe and address are valid, the footprint fits in 512 channels,
+    /// and enabled footprints don't overlap. An overlap is reported on the later fixture, once per earlier fixture it
+    /// overlaps, in patch order. Runs in O(fixtures + occupied channels + overlaps): each universe keeps a 512-slot
+    /// occupancy table, so a big rig is never compared all-pairs.
+    /// </summary>
     public static IReadOnlyList<ValidationIssue> Validate(IReadOnlyList<Fixture> fixtures, IProfileResolver profiles)
     {
         var issues = new List<ValidationIssue>();
-        // Enabled, placed fixtures per universe: footprints only overlap within a universe, so a big multi-universe rig
-        // is not compared all-pairs.
-        var placedByUniverse = new Dictionary<int, List<(Fixture Fixture, FixtureFootprint Footprint)>>();
+        var occupancyByUniverse = new Dictionary<int, OverlapIndex>();
+        var placed = new List<(Fixture Fixture, FixtureFootprint Footprint)>();
+        var overlapping = new List<int>();
 
         foreach (var fixture in fixtures)
         {
@@ -73,39 +79,32 @@ public static class PatchValidator
                 continue;
             }
 
-            if (!profile.Verified)
+            // Disabled fixtures send nothing, so they cannot conflict.
+            if (!fixture.Enabled)
             {
+                continue;
+            }
+
+            if (!occupancyByUniverse.TryGetValue(fixture.Universe, out var occupancy))
+            {
+                occupancy = new OverlapIndex();
+                occupancyByUniverse.Add(fixture.Universe, occupancy);
+            }
+
+            // Earlier fixtures sharing a channel, in patch order (their index in `placed`).
+            occupancy.CollectOwners(footprint, overlapping);
+            foreach (var index in overlapping)
+            {
+                var other = placed[index];
                 issues.Add(ValidationIssue.Warning(
-                    "PROFILE_UNVERIFIED",
-                    $"'{fixture.Name}': profile '{profile.DisplayName}' is not verified. Test each channel at low intensity.",
+                    "ADDRESS_OVERLAP",
+                    $"'{fixture.Name}' ({footprint}) overlaps '{other.Fixture.Name}' ({other.Footprint}). " +
+                    "Both will receive the same values on the shared channels.",
                     fixture.Id));
             }
 
-            // Disabled fixtures send nothing, so they cannot conflict.
-            if (fixture.Enabled)
-            {
-                if (!placedByUniverse.TryGetValue(fixture.Universe, out var placed))
-                {
-                    placed = [];
-                    placedByUniverse.Add(fixture.Universe, placed);
-                }
-
-                foreach (var other in placed)
-                {
-                    if (!other.Footprint.Overlaps(footprint))
-                    {
-                        continue;
-                    }
-
-                    issues.Add(ValidationIssue.Warning(
-                        "ADDRESS_OVERLAP",
-                        $"'{fixture.Name}' ({footprint}) overlaps '{other.Fixture.Name}' ({other.Footprint}). " +
-                        "Both will receive the same values on the shared channels.",
-                        fixture.Id));
-                }
-
-                placed.Add((fixture, footprint));
-            }
+            occupancy.Add(footprint, placed.Count);
+            placed.Add((fixture, footprint));
         }
 
         return issues;
@@ -141,5 +140,47 @@ public static class PatchValidator
         }
 
         return DmxAddress.EndAddress(candidate, channelCount) <= DmxAddress.Max ? candidate : null;
+    }
+
+    /// <summary>
+    /// Which placed fixtures (by their index in placement order) occupy each address of one universe. Only footprints
+    /// inside 1–512 are added (the validator checks that first).
+    /// </summary>
+    private sealed class OverlapIndex
+    {
+        private readonly List<int>?[] _owners = new List<int>?[DmxAddress.UniverseSize];
+        private readonly HashSet<int> _seen = [];
+
+        public void Add(FixtureFootprint footprint, int index)
+        {
+            for (var address = footprint.StartAddress; address <= footprint.EndAddress; address++)
+            {
+                (_owners[DmxAddress.ToIndex(address)] ??= []).Add(index);
+            }
+        }
+
+        /// <summary>Fills <paramref name="result"/> with the distinct owners of the footprint's addresses, ascending.</summary>
+        public void CollectOwners(FixtureFootprint footprint, List<int> result)
+        {
+            result.Clear();
+            _seen.Clear();
+            for (var address = footprint.StartAddress; address <= footprint.EndAddress; address++)
+            {
+                if (_owners[DmxAddress.ToIndex(address)] is not { } owners)
+                {
+                    continue;
+                }
+
+                foreach (var owner in owners)
+                {
+                    if (_seen.Add(owner))
+                    {
+                        result.Add(owner);
+                    }
+                }
+            }
+
+            result.Sort();
+        }
     }
 }

@@ -70,6 +70,45 @@ public sealed class PatchPlan
         ArgumentNullException.ThrowIfNull(existing);
         ArgumentNullException.ThrowIfNull(profiles);
 
+        return Create(
+            universe,
+            startAddress,
+            channelCount,
+            quantity,
+            gap,
+            () => UniverseOccupancy.Build(existing, profiles, universe));
+    }
+
+    /// <summary>
+    /// Builds and validates a plan against a prebuilt <paramref name="occupancy"/> snapshot of the plan's universe, so
+    /// a dialog that re-plans on every keystroke doesn't rescan every patched fixture. Same result as the overload that
+    /// takes the fixture list.
+    /// </summary>
+    public static PatchPlan Create(
+        int universe,
+        int startAddress,
+        int channelCount,
+        int quantity,
+        int gap,
+        UniverseOccupancy occupancy)
+    {
+        ArgumentNullException.ThrowIfNull(occupancy);
+        if (occupancy.Universe != universe)
+        {
+            throw new ArgumentException($"Occupancy is for universe {occupancy.Universe}, not {universe}.", nameof(occupancy));
+        }
+
+        return Create(universe, startAddress, channelCount, quantity, gap, () => occupancy);
+    }
+
+    private static PatchPlan Create(
+        int universe,
+        int startAddress,
+        int channelCount,
+        int quantity,
+        int gap,
+        Func<UniverseOccupancy> occupancyOf)
+    {
         var plan = new PatchPlan(universe, startAddress, channelCount, quantity, gap);
         plan.Problem = plan.CheckInputs();
         if (plan.Problem is not null)
@@ -85,23 +124,14 @@ public sealed class PatchPlan
 
         plan.Footprints = footprints;
 
-        var conflicts = new List<Fixture>();
-        foreach (var fixture in existing)
-        {
-            if (fixture.Enabled && fixture.Universe == universe &&
-                PatchValidator.GetFootprint(fixture, profiles) is { } used &&
-                footprints.Any(f => f.Overlaps(used)))
-            {
-                conflicts.Add(fixture);
-            }
-        }
-
+        var occupancy = occupancyOf();
+        var conflicts = occupancy.FindConflicts(footprints);
         plan.Conflicts = conflicts;
         if (conflicts.Count > 0)
         {
             var first = conflicts[0];
             var more = conflicts.Count > 1 ? $" and {conflicts.Count - 1} more" : string.Empty;
-            plan.Problem = $"Overlaps \"{first.Name}\" ({PatchValidator.GetFootprint(first, profiles)}){more}. " +
+            plan.Problem = $"Overlaps \"{first.Name}\" ({occupancy.FootprintOf(first)}){more}. " +
                            "Pick a free address or use \"Use next free address\".";
         }
 

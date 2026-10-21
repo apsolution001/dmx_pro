@@ -47,16 +47,6 @@
                         <c:DmxIcon Kind="Remove" Size="{StaticResource Dmx.DenseIconSize}" />
                     </Button>
                 </StackPanel>
-                <c:DmxIcon
-                    Margin="0,0,4,0"
-                    VerticalAlignment="Center"
-                    AutomationProperties.Name="Unverified profile"
-                    DockPanel.Dock="Left"
-                    Foreground="{DynamicResource SystemFillColorCautionBrush}"
-                    Kind="Unverified"
-                    Size="{StaticResource Dmx.DenseIconSize}"
-                    ToolTip="Unverified profile: channel meanings are not confirmed. Check each channel on the real fixture."
-                    Visibility="{Binding ProfileUnverified, Converter={StaticResource BoolToVisibility}}" />
                 <TextBlock
                     VerticalAlignment="Center"
                     TextTrimming="CharacterEllipsis"
@@ -115,9 +105,9 @@
                             <c:DmxIcon
                                 Margin="0,0,2,0"
                                 VerticalAlignment="Center"
-                                AutomationProperties.Name="Unknown channel meaning"
-                                Foreground="{DynamicResource SystemFillColorCautionBrush}"
-                                Kind="Warning"
+                                AutomationProperties.Name="Meaning unknown: raw channel only"
+                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                Kind="Info"
                                 Size="{StaticResource Dmx.DenseIconSize}"
                                 Visibility="{Binding IsUnknown, Converter={StaticResource BoolToVisibility}}" />
                             <TextBlock

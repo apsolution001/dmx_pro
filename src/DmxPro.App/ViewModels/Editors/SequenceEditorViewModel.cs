@@ -79,7 +79,6 @@ public sealed partial class SequenceEditorViewModel : FunctionEditorViewModel
         RunOrder = _draft.RunOrder;
         Direction = _draft.Direction;
         Fixtures.Load(_draft.FixtureIds);
-        UnverifiedWarning = Fixtures.UnverifiedWarning;
         RebuildSteps(_draft.Steps.FirstOrDefault());
     }
 
@@ -212,7 +211,6 @@ public sealed partial class SequenceEditorViewModel : FunctionEditorViewModel
 
         // Keep the list's order (it also covers reordering).
         _draft.FixtureIds = [.. Fixtures.FixtureIds];
-        UnverifiedWarning = Fixtures.UnverifiedWarning;
         LoadStepValues();
         OnPropertyChanged(nameof(NoStepHint));
         MarkDirty();
@@ -265,13 +263,12 @@ public sealed partial class SequenceEditorViewModel : FunctionEditorViewModel
     private SceneFixtureTabViewModel CreateBank(Fixture fixture, IReadOnlyDictionary<(Guid FixtureId, string ChannelKey), byte> values)
     {
         var profile = Project.FindProfile(fixture.ProfileId);
-        var unverified = profile is { Verified: false };
         var channels = Project.ResolveFixtureChannels(fixture);
         var mode = profile is null ? "missing profile" : fixture.ModeName;
         var range = channels.Count <= 1
             ? $"U{fixture.Universe} · {fixture.StartAddress}"
             : $"U{fixture.Universe} · {fixture.StartAddress}–{DmxAddress.EndAddress(fixture.StartAddress, channels.Count)}";
-        var bank = new SceneFixtureTabViewModel(fixture, $"{range} · {mode}", unverified, SetAllChannelsIncluded);
+        var bank = new SceneFixtureTabViewModel(fixture, $"{range} · {mode}", SetAllChannelsIncluded);
         for (var i = 0; i < channels.Count; i++)
         {
             var channel = channels[i];
@@ -281,7 +278,6 @@ public sealed partial class SequenceEditorViewModel : FunctionEditorViewModel
                 channel,
                 number: i + 1,
                 dmxAddress: fixture.StartAddress + i,
-                unverified,
                 stored ?? channel.Default,
                 stored is not null,
                 OnFaderChanged));

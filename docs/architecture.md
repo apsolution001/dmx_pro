@@ -185,6 +185,13 @@ Bottom status bar: **Output pill** (Disabled / Connected / Sending 44 fps / Erro
   binary-searches the items near the playhead (`ShowProgram.FirstLiveIndex`).
 - Fixtures `DataGrid`: row virtualization on, selection synced in code-behind. Overlap checks run per universe;
   `ScenePreviewColor` is O(n).
+- (2026-10-22) `Project.FindFixture` / `FindProfile` are O(1) through a self-validating index (`ListLookup`: the
+  lists stay public and freely edited; a stale index falls back to the old linear scan and rebuilds). `PatchValidator`
+  finds overlaps through a 512-slot occupancy table per universe (O(fixtures + channels + overlaps), same issues in the
+  same order as the old all-pairs check). The Add Fixture dialog plans against a `UniverseOccupancy` snapshot built once
+  per universe. The Fixtures page keeps rows of unchanged fixtures across edits (adding lights inserts rows only) and a
+  single-field edit updates the Groups tree in place; the Virtual Console rebuilds its target lists only when
+  `ProjectService.Revision` changed.
 - Project load uses `Utf8JsonReader`, save uses `SerializeToUtf8Bytes`. `TimelineBeatMarks` draws beat lines in one pass.
 - Test page tooltips are built on open (`LazyToolTip` / `IToolTipSource`); a hidden DMX monitor is not updated.
 - Measured: engine tick allocates 0 bytes, about 0.3-1.3 ms at 512 fixtures / 16 universes / 5 shows; `RefreshPatch` about

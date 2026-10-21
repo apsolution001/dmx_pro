@@ -24,6 +24,9 @@ public sealed partial class AddFixtureViewModel : ObservableObject
     private readonly IDialogService? _dialogs;
     private readonly ProjectService? _projects;
 
+    /// <summary>Occupancy snapshots per universe (see <see cref="OccupancyOf"/>).</summary>
+    private readonly Dictionary<int, UniverseOccupancy> _occupancy = [];
+
     /// <summary>True while the address follows the next free block; typing an address switches it off.</summary>
     private bool _autoAddress = true;
     private bool _settingAddress;
@@ -33,7 +36,7 @@ public sealed partial class AddFixtureViewModel : ObservableObject
     private string _search = string.Empty;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(SelectedProfile), nameof(HasProfile), nameof(IsUnverified), nameof(IsCustomSelected), nameof(IsTemplateSelected))]
+    [NotifyPropertyChangedFor(nameof(SelectedProfile), nameof(HasProfile), nameof(IsCustomSelected), nameof(IsTemplateSelected))]
     [NotifyCanExecuteChangedFor(nameof(EditLayoutCommand), nameof(EditAsNewLayoutCommand))]
     private ProfileTreeItem? _selectedItem;
 
@@ -97,8 +100,6 @@ public sealed partial class AddFixtureViewModel : ObservableObject
     public FixtureProfile? SelectedProfile => SelectedItem?.Profile;
 
     public bool HasProfile => SelectedItem is not null;
-
-    public bool IsUnverified => SelectedItem?.IsUnverified ?? false;
 
     public bool IsTreeEmpty => Groups.Count == 0;
 
@@ -331,6 +332,9 @@ public sealed partial class AddFixtureViewModel : ObservableObject
         ImportFailed = false;
         ImportMessage = editSource ? $"Saved \"{saved.DisplayName}\"." : $"Created \"{saved.DisplayName}\".";
 
+        // Editing a layout the project uses changes the footprints of its lights: re-read the patch.
+        _occupancy.Clear();
+
         // Clearing the search rebuilds the tree, so the saved layout is visible before it is selected.
         Search = string.Empty;
         RebuildTree();
@@ -374,10 +378,11 @@ public sealed partial class AddFixtureViewModel : ObservableObject
         if (_autoAddress && ChannelCount > 0 && DmxAddress.IsValidUniverse(Universe) && Quantity >= 1 && Gap >= 0)
         {
             var block = Math.Max(1, PatchPlan.BlockChannels(ChannelCount, Quantity, Gap));
-            var free = PatchValidator.FindFreeAddress(_project.Fixtures, _project, Universe, block);
+            var free = OccupancyOf(Universe).FindFreeAddress(block);
             _noFreeBlock = free is null;
-            if (free is { } address)
+            if (free is { } address && address != Address)
             {
+                // OnAddressChanged re-plans; don't build the same plan twice.
                 _settingAddress = true;
                 try
                 {
@@ -387,14 +392,37 @@ public sealed partial class AddFixtureViewModel : ObservableObject
                 {
                     _settingAddress = false;
                 }
+
+                return;
             }
         }
 
         UpdatePlan();
     }
 
+    /// <summary>
+    /// Re-plans against the cached occupancy of the universe: O(planned channels) instead of a pass over every patched
+    /// fixture per planned fixture, which made typing in Quantity/Address lag on big rigs.
+    /// </summary>
     private void UpdatePlan() =>
-        Plan = PatchPlan.Create(Universe, Address, ChannelCount, Quantity, Gap, _project.Fixtures, _project);
+        Plan = DmxAddress.IsValidUniverse(Universe)
+            ? PatchPlan.Create(Universe, Address, ChannelCount, Quantity, Gap, OccupancyOf(Universe))
+            : PatchPlan.Create(Universe, Address, ChannelCount, Quantity, Gap, [], _project);
+
+    /// <summary>
+    /// Occupancy snapshot of a universe, built once per dialog: the patch does not change while the dialog is open
+    /// (except through the channel layout editor, which clears the cache).
+    /// </summary>
+    private UniverseOccupancy OccupancyOf(int universe)
+    {
+        if (!_occupancy.TryGetValue(universe, out var occupancy))
+        {
+            occupancy = UniverseOccupancy.Build(_project.Fixtures, _project, universe);
+            _occupancy.Add(universe, occupancy);
+        }
+
+        return occupancy;
+    }
 
     private void NotifyValidation()
     {

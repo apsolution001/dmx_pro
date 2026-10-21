@@ -146,7 +146,7 @@ profiles are templates: choosing one shows "Check the channel order matches your
 
 Modal dialog: Name, Manufacturer, **Start from template** picker, channel count, and a row table
 (# / Function / Name / Default 0–255) with insert, delete, move up/down and duplicate; "Order" chips show the resulting
-channel order. Live validation lists the `LAYOUT_*` codes (errors block Save, warnings do not). Footer: "unverified".
+channel order. Live validation lists the `LAYOUT_*` codes (errors block Save, warnings do not). Footer: Use it for, Cancel, Save.
 When opened from a built-in profile with lights using it: **Use it for** selected lights / all lights of that profile / no lights.
 
 ### 3.2 Fixture Library (built in phase 1; page removed from navigation 2026-10-17)
@@ -205,7 +205,7 @@ Types: Scene, Chaser, Sequence, Color cycle, Fade, Pulse, Flash, Strobe. Copy/pa
 │ [Add ▾ (flyout + search)] [Remove]                                  Find light [__________]   │
 │ Name          Profile        Mode     Universe·Address                                        │
 │ Stage L PAR   Generic RGBW   4-ch     1·1                                                     │
-│ Back bar  ⚠   (unverified profile: caution)                                                   │
+│ Back bar      Generic RGB    3-ch     1·5                                                     │
 └────────────────────────────────────────────────────────────────────────────────────────────────┘
 Channels tab: searchable multi-select light list + fader banks (all channel levels are set here).
 ```
@@ -219,7 +219,7 @@ page; matching rules (same profile by channel key, otherwise by channel type and
 Implemented as `SceneEditorPanel` (shared by the Functions page and the Shows page), with two tabs:
 
 - **General** — lights only: **Add ▾** flyout with search, **Remove**, **Find light** search, and a list (name, profile,
-  mode, universe·address, caution for unverified profiles). Colour presets and quick colour/dimmer sliders were removed
+  mode, universe·address). Colour presets and quick colour/dimmer sliders were removed
   (owner decision 2026-10-18); **all channel levels are set on the Channels tab**. Scene **fade in / fade out** are in
   the editor toolbar (scenes only). New lights copy Red/Green/Blue/White/Amber/UV/Dimmer from the first light in the
   scene that has each channel type. **Channels** — searchable multi-select light list plus fader banks of the selected
@@ -300,8 +300,8 @@ profile channel).
 or onto every light on the desk), the same in the right-click menu of a light, and **Ctrl+C / Ctrl+V / Ctrl+Shift+V**. Pasted
 values are test values (released on leaving the page). Matching rules: `CopiedLightValues.cs` (see 3.4). Desk columns are
 34 px wide with a fixed 128 px slider travel.
-The Fixtures Properties *Unverified* / *Verified* badge is a button that marks the profile verified (after testing on
-the real light) or unverified again; verified profiles raise no unverified warnings here.
+No page shows "unverified profile" warnings (owner decision 2026-10-22: lights are checked in QLC+ first); the
+Fixtures Properties panel has no Verified badge any more.
 
 - Faders show the **live output value** (polled ~30 Hz while the page is visible). Moving a fader makes only that channel a
   manual override (wins over show/console/preview; Grand Master, Blackout and strobe safety still apply after it).

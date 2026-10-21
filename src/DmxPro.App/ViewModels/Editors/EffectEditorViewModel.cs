@@ -29,7 +29,6 @@ public abstract partial class EffectEditorViewModel : FunctionEditorViewModel
     {
         Fixtures.Load(Effect.FixtureIds);
         UseWhiteChannel = Effect.UseWhiteChannel;
-        UnverifiedWarning = Fixtures.UnverifiedWarning;
         LoadEffect();
     }
 
@@ -50,7 +49,6 @@ public abstract partial class EffectEditorViewModel : FunctionEditorViewModel
 
     private void OnFixturesChanged(IReadOnlyList<Guid> added, IReadOnlyList<Guid> removed)
     {
-        UnverifiedWarning = Fixtures.UnverifiedWarning;
         MarkDirty();
     }
 }

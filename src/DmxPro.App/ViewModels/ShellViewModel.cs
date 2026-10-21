@@ -201,13 +201,10 @@ public sealed partial class ShellViewModel : ObservableObject
             return;
         }
 
-        // Stays until closed even on success: it carries the "unverified profile" caution (safety rule 7).
         ShowInfo(
             errors.Count > 0 ? InfoBarSeverity.Warning : InfoBarSeverity.Success,
-            $"Imported {Count(imported.Count, "profile", "profiles")}. " +
-            "Imported profiles are unverified — test each channel on the real light." +
-            (errors.Count > 0 ? $" {Count(errors.Count, "file", "files")} failed: {failures}" : string.Empty),
-            autoHide: false);
+            $"Imported {Count(imported.Count, "profile", "profiles")}." +
+            (errors.Count > 0 ? $" {Count(errors.Count, "file", "files")} failed: {failures}" : string.Empty));
     }
 
     [RelayCommand]
