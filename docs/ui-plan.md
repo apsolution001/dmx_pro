@@ -325,6 +325,14 @@ Right panel: selected item properties (start, length, fade in/out, intensity) or
 "New function for selection" (pick type → editor opens with that duration).
 ```
 
+- **Live edit preview (2026-10-22):** an editor opened from the timeline (the show's own copy) previews its draft on the
+  lights like on the Functions page (§3.3): it starts when the editor opens while the page is visible, stops when the
+  editor closes or another opens, and leaving the page stops it (it comes back on return).
+- **Go live:** the transport plays shows as an *editor* source, so while live **Play / Resume are disabled** (Space too)
+  and a neutral hint "Live mode — shows play from the Virtual Console" sits next to the transport; turning live on stops
+  a show started here (with its music). Pause / Stop / seek still act on the shared player, so a show the Virtual Console
+  started can be paused or stopped from here.
+
 ### 3.7 Test & Preview (phase 6, partly built 2026-10-19; desk layout 2026-10-20)
 
 Built layout, modelled on the QLC+ **Simple Desk** (owner request 2026-10-20): toolbar (**Universe** picker, **Release test
@@ -356,6 +364,10 @@ Fixtures Properties panel has no Verified badge any more.
   never saved and never mark the project dirty.
 - Lights with problems stay listed: missing profile/mode shows no faders and the problem text; disabled lights or lights
   past 512 have disabled faders.
+- **Go live (2026-10-22):** turning live mode on releases every test value; while live the channel faders, Paste /
+  Paste to all and **Save as function…** are disabled (the faders still show the live output) and a neutral banner says
+  "Live mode — only the Virtual Console controls the lights. Test values are off." The Grand Master strip stays usable.
+  Test values are **not restored** when live mode is turned off.
 - Not built yet: quick R/G/B/W-only buttons, safe-intensity colour sequence, footprint view beyond the monitor highlight,
   connection diagnostics panel (see `open-questions.md`).
 
