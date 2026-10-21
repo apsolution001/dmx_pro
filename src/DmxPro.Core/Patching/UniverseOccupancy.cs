@@ -73,7 +73,13 @@ public sealed class UniverseOccupancy
     /// </summary>
     public int? FindFreeAddress(int channelCount)
     {
-        var needed = Math.Max(channelCount, 1);
+        // A zero-width block fits anywhere, as in PatchValidator.FindFreeAddress.
+        if (channelCount <= 0)
+        {
+            return DmxAddress.Min;
+        }
+
+        var needed = channelCount;
         var run = 0;
         for (var address = DmxAddress.Min; address <= DmxAddress.Max; address++)
         {
