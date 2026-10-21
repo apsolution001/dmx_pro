@@ -52,13 +52,17 @@ public sealed class AppSettingsService
         return saved;
     }
 
-    /// <summary>Restores every preference to its default. Output configurations and the sACN identity are kept.</summary>
+    /// <summary>
+    /// Restores every preference to its default. Output configurations, the sACN identity and the recent-projects list
+    /// (history, not a preference) are kept.
+    /// </summary>
     public bool ResetToDefaults()
     {
         Current = new AppSettings
         {
             SacnCid = Current.SacnCid,
             Outputs = Current.Outputs,
+            RecentProjects = Current.RecentProjects,
         };
         var saved = Save();
         Changed?.Invoke(this, EventArgs.Empty);

@@ -61,6 +61,8 @@ public sealed partial class ShellViewModel : ObservableObject
     {
         _stageWindow = stageWindow;
         _inputOutput = inputOutput;
+        _virtualConsole = virtualConsole;
+        _testPage = testPage;
         _settings = settings;
         _appSettings = appSettings;
         _fixtures = fixtures;
@@ -105,6 +107,7 @@ public sealed partial class ShellViewModel : ObservableObject
             new("Settings", "Settings", "Ctrl+7", settings),
         ];
         _selectedItem = NavigationItems[0];
+        InitializeMenu();
     }
 
     /// <summary>Raised when the user picks File ▸ Exit; the window closes itself (with the save prompt).</summary>
@@ -228,16 +231,22 @@ public sealed partial class ShellViewModel : ObservableObject
     [RelayCommand]
     private Task ShowShortcutsAsync() => _dialogs.ShowInfoAsync(
         "Keyboard shortcuts",
-        "Ctrl+N   New project\n" +
-        "Ctrl+O   Open project\n" +
-        "Ctrl+S   Save\n" +
-        "Ctrl+Shift+S   Save as\n" +
-        "Ctrl+1 … Ctrl+7   Go to page (Fixtures … Settings)\n" +
-        "Ctrl+8   Stage\n" +
-        "Ctrl+Shift+8   Live stage window\n" +
-        "F11   Full screen\n\n" +
-        "Coming with later phases: Ctrl+Z/Y undo/redo, Ctrl+C/V/D copy/paste/duplicate, Ctrl+K search, " +
-        "B blackout, Esc release all, Space play/pause, F12 operator mode.");
+        "Project\n" +
+        "  Ctrl+N  New project · Ctrl+O  Open · Ctrl+S  Save · Ctrl+Shift+S  Save as\n\n" +
+        "Pages\n" +
+        "  Ctrl+1 … Ctrl+6  Fixtures, Functions, Shows, Virtual Console, Test & Preview, Input / Output\n" +
+        "  Ctrl+7 or Ctrl+,  Settings · Ctrl+8  Stage · Ctrl+Shift+8  Live stage window · Ctrl+M  DMX monitor · F11  Full screen\n\n" +
+        "Editing\n" +
+        "  Ctrl+X / Ctrl+C / Ctrl+V  Cut / copy / paste functions (in the function list)\n" +
+        "  Ctrl+D  Duplicate · Del  Delete · F2  Rename (in the page's list, table or timeline)\n" +
+        "  Ctrl+A  Select all (in tables and text boxes) · Ctrl+Shift+A  Add fixture\n" +
+        "  Ctrl+G  New group · Ctrl+L  Edit channel layout (Fixtures table)\n\n" +
+        "Live\n" +
+        "  Ctrl+E  Enable DMX output · Ctrl+Shift+E  Disable DMX output\n" +
+        "  Ctrl+B  Blackout on/off (output keeps sending) · Shift+Esc  Release all\n" +
+        "  F12  Operator mode · Space  Play/pause the show (Shows timeline, Virtual Console)\n" +
+        "  Home  Back to the show start (Shows timeline)\n\n" +
+        "Not yet available: Ctrl+Z / Ctrl+Y undo/redo, Ctrl+K search everything, F1 help.");
 
     [RelayCommand]
     private Task ShowAboutAsync() => _dialogs.ShowInfoAsync(

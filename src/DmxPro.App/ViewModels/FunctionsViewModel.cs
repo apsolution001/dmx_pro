@@ -12,7 +12,8 @@ namespace DmxPro.App.ViewModels;
 /// <summary>
 /// Functions page (QLC+ Function Manager layout): function tree grouped by type on top, summary or editor below.
 /// Select ≠ edit ≠ preview (ui-plan §3.3): a click only selects and shows an on-screen summary; double-click / Enter /
-/// Edit opens the editor of the function's type; nothing here changes the lights (preview is disabled for now).
+/// Edit opens the editor of the function's type; nothing here changes the lights: there is no function preview, only the
+/// Virtual Console drives lights in live mode (owner decision 2026-10-22).
 /// </summary>
 public sealed partial class FunctionsViewModel : PageViewModel
 {
@@ -22,6 +23,10 @@ public sealed partial class FunctionsViewModel : PageViewModel
     private readonly IDialogService _dialogs;
     private readonly AppSettingsService _settings;
     private readonly LightClipboardService _clipboard;
+    private readonly VirtualConsoleViewModel _virtualConsole;
+
+    /// <summary>Edit ▸ Cut / Copy / Paste of whole functions (in-app, cleared when another project is opened).</summary>
+    private readonly FunctionClipboard _functionClipboard = new();
 
     /// <summary>True while the list rebuilds or a selection is put back, so selection changes don't prompt.</summary>
     private bool _suppressSelection;
@@ -52,7 +57,10 @@ public sealed partial class FunctionsViewModel : PageViewModel
         nameof(EditCommand),
         nameof(DuplicateCommand),
         nameof(DeleteCommand),
-        nameof(BeginRenameCommand))]
+        nameof(BeginRenameCommand),
+        nameof(CopyCommand),
+        nameof(CutCommand),
+        nameof(AddToVirtualConsoleCommand))]
     private FunctionRowViewModel? _selectedRow;
 
     [ObservableProperty]
@@ -69,18 +77,28 @@ public sealed partial class FunctionsViewModel : PageViewModel
     [ObservableProperty]
     private bool _showHiddenShowCopies;
 
-    public FunctionsViewModel(ProjectService projects, IDialogService dialogs, AppSettingsService settings, LightClipboardService clipboard)
+    public FunctionsViewModel(
+        ProjectService projects,
+        IDialogService dialogs,
+        AppSettingsService settings,
+        LightClipboardService clipboard,
+        VirtualConsoleViewModel virtualConsole)
     {
         _projects = projects;
         _dialogs = dialogs;
         _settings = settings;
         _clipboard = clipboard;
+        _virtualConsole = virtualConsole;
+        _functionClipboard.Changed += (_, _) => PasteCommand.NotifyCanExecuteChanged();
         TypeOptions = [AllTypes, .. Enum.GetValues<FunctionType>().Select(t => new FunctionTypeOption(t, FunctionRowViewModel.TypeDisplayName(t)))];
 
         // A different project replaces everything; the shell has already asked about saving the project.
         _projects.ProjectChanged += (_, _) =>
         {
             Editor = null;
+
+            // Copied functions point at this project's lights and functions by id: never paste them into another one.
+            _functionClipboard.Clear();
             Reload();
         };
 
@@ -88,6 +106,12 @@ public sealed partial class FunctionsViewModel : PageViewModel
         _projects.ContentChanged += (_, _) => Editor?.RefreshPatch();
         Reload();
     }
+
+    /// <summary>
+    /// Short success notes for the shell's message bar ("Copied …", "Added … to the Virtual Console"). Failures use
+    /// dialogs instead.
+    /// </summary>
+    public event EventHandler<string>? StatusMessage;
 
     public override string Title => "Functions";
 
@@ -346,6 +370,87 @@ public sealed partial class FunctionsViewModel : PageViewModel
     private void BeginRename() => SelectedRow?.BeginRename();
 
     private bool CanEdit() => SelectedRow is not null;
+
+    /// <summary>Edit ▸ Copy / Ctrl+C: puts a snapshot of the selected function on the function clipboard.</summary>
+    [RelayCommand(CanExecute = nameof(HasSelection))]
+    private void Copy()
+    {
+        if (SelectedRow?.Function is not { } function)
+        {
+            return;
+        }
+
+        _functionClipboard.Copy(function);
+        StatusMessage?.Invoke(this, $"Copied \"{function.Name}\". Paste (Ctrl+V) adds a copy to the Functions list.");
+    }
+
+    /// <summary>
+    /// Edit ▸ Cut / Ctrl+X: Delete (with its usual confirmation); only when the function really left the list is it put
+    /// on the clipboard, so cancelling the confirmation keeps the clipboard as it was.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(HasSelection))]
+    private async Task CutAsync()
+    {
+        if (SelectedRow?.Function is not { } function)
+        {
+            return;
+        }
+
+        await DeleteAsync();
+        if (_projects.Current.FunctionListItems.Contains(function))
+        {
+            return;
+        }
+
+        _functionClipboard.Copy(function);
+        StatusMessage?.Invoke(this, $"Cut \"{function.Name}\". Paste (Ctrl+V) adds it back as a copy.");
+    }
+
+    /// <summary>Edit ▸ Paste / Ctrl+V: adds a copy of the clipboard function to the library and selects it.</summary>
+    [RelayCommand(CanExecute = nameof(CanPaste))]
+    private void Paste()
+    {
+        if (_functionClipboard.PasteInto(_projects.Current) is not { } copy)
+        {
+            return;
+        }
+
+        _projects.MarkChanged();
+        Reload();
+        if (!Rows.Any(r => r.Function == copy))
+        {
+            // The search or type filter would hide the pasted function.
+            ClearFilters();
+        }
+
+        SelectedRow = Rows.FirstOrDefault(r => r.Function == copy) ?? SelectedRow;
+        StatusMessage?.Invoke(this, $"Pasted \"{copy.Name}\".");
+    }
+
+    private bool CanPaste() => _functionClipboard.HasFunction;
+
+    /// <summary>
+    /// Context menu "Add to Virtual Console": a toggle button for the selected function on the current console page
+    /// (a new page when there is none yet). The Functions page stays open.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(HasSelection))]
+    private async Task AddToVirtualConsoleAsync()
+    {
+        if (SelectedRow?.Function is not { } function)
+        {
+            return;
+        }
+
+        if (_virtualConsole.AddFunctionButton(function.Id) is { } pageName)
+        {
+            StatusMessage?.Invoke(this, $"Added a button for \"{function.Name}\" to Virtual Console page \"{pageName}\" (Ctrl+4).");
+            return;
+        }
+
+        await _dialogs.ShowInfoAsync(
+            "Console page is full",
+            "There is no free space for another button on the current Virtual Console page. Make room on that page, or select another page in the Virtual Console, then try again.");
+    }
 
     /// <summary>Bullet list of the chasers / fades (library or show copies) that play the function; null when none.</summary>
     private static string? ReferencesText(Project project, LightFunction function)

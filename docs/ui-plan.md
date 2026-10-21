@@ -65,57 +65,65 @@ Earlier web-style sketch (superseded look, same content):
 
 ## 2. Top menu bar
 
-| Menu | Item | Shortcut | What it does | Phase |
-|------|------|----------|--------------|-------|
-| **File** | New project | Ctrl+N | Start an empty project (asks to save changes) | ✅ 1 |
-| | Open project… | Ctrl+O | Open a `.dmxpro` file | ✅ 1 |
-| | Open recent ▸ | | Last 10 projects | 9 |
-| | Save | Ctrl+S | Save to the current file | ✅ 1 |
-| | Save as… | Ctrl+Shift+S | Save to a new file | ✅ 1 |
-| | Import QLC+ workspace (.qxw)… | | Bring fixtures/scenes from QLC+ | later |
-| | Export show report (PDF)… | | Patch sheet: fixtures, addresses, groups | later |
-| | Exit | Alt+F4 | Close (stops functions, safe frame, stops output) | ✅ 1 |
-| **Edit** | Undo / Redo | Ctrl+Z / Ctrl+Y | All edits | 9 |
-| | Cut / Copy / Paste | Ctrl+X / C / V | Fixtures, functions, scenes, widgets, timeline items | 4 |
-| | Duplicate | Ctrl+D | Copy with new name | 2 |
-| | Delete | Del | With undo | 2 |
-| | Rename | F2 | | 2 |
-| | Select all | Ctrl+A | | 2 |
-| | Search everything… | Ctrl+K | Command palette: pages, fixtures, functions, actions | 9 |
-| **View** | Fixtures … Settings (Settings = Ctrl+7) | Ctrl+1 … Ctrl+7 | Go to a page | ✅ 1 |
+Menu items act on the page they belong to: Fixtures / Functions / Show items first open that page, then run the page's
+own command, so menu, toolbar, context menus and page shortcuts behave the same. Edit items act on the **current** page
+and are disabled when it has nothing to act on. Items for features that are not built yet stay disabled with a
+"Coming soon" tooltip. Shortcuts marked *(list)* work while the page's list / table / timeline has keyboard focus (the
+focused list decides what they act on); the others work anywhere in the window. Code: `MainWindow.xaml`,
+`ViewModels/ShellViewModel.Menu.cs` (decided 2026-10-22).
+
+| Menu | Item | Shortcut | What it does | Status |
+|------|------|----------|--------------|--------|
+| **File** | New project | Ctrl+N | Start an empty project (asks to save changes) | ✅ |
+| | Open project… | Ctrl+O | Open a `.dmxpro` file | ✅ |
+| | Open recent ▸ | | Last 8 opened or saved projects, newest first (app settings, not the project). A file that no longer exists is removed from the list with a message bar warning. Disabled while the list is empty | ✅ |
+| | Save | Ctrl+S | Save to the current file | ✅ |
+| | Save as… | Ctrl+Shift+S | Save to a new file | ✅ |
+| | Import QLC+ workspace (.qxw)… | | Bring fixtures/scenes from QLC+ | Coming soon |
+| | Export show report (PDF)… | | Patch sheet: fixtures, addresses, groups | Coming soon |
+| | Exit | Alt+F4 | Close (stops functions, safe frame, stops output) | ✅ |
+| **Edit** | Undo / Redo | Ctrl+Z / Ctrl+Y | All edits | Coming soon |
+| | Cut / Copy / Paste | Ctrl+X / C / V *(list)* | Functions page: whole functions (§3.3 function clipboard). Disabled on other pages | ✅ |
+| | Duplicate | Ctrl+D *(list)* | Fixtures (selected rows), Functions, Shows (timeline item), Virtual Console (widget, edit layout) | ✅ |
+| | Delete | Del *(list)* | Same targets as Duplicate, each with its page's confirmation | ✅ |
+| | Rename | F2 *(list)* | Function, show, or console page (not in operator mode) | ✅ |
+| | Select all | Ctrl+A | Routed to the focused control: all rows of a table (e.g. Fixtures) or all text of a text box | ✅ |
+| | Search everything… | Ctrl+K | Command palette: pages, fixtures, functions, actions | Coming soon |
+| **View** | Fixtures … Settings (Settings = Ctrl+7) | Ctrl+1 … Ctrl+7 | Go to a page | ✅ |
 | | Stage | Ctrl+8 | Virtual Stage page (section 3.10) | ✅ |
-| | DMX monitor | Ctrl+M | Live values of every channel | 6 |
-| | Dark / Light theme | | Switch theme | ✅ 1 |
-| | Full screen | F11 | | ✅ 1 |
-| **Fixtures** | Add fixture… | Ctrl+Shift+A | Profile → mode → universe → address (auto free address) | 2 |
-| | Add group… | | New group from selection | 2 |
-| | Auto-patch selected | | Re-address selected fixtures one after another | 2 |
-| | Import fixture profile (.qxf / .json)… | | Into the fixture library | ✅ 1 |
-| | New fixture profile… | | Profile editor for any light | 2 |
-| | Fixture library | | Go to library | ✅ 1 |
-| **Functions** | New scene | | Opens Scene Creator | 3 |
-| | New chaser / sequence / color cycle / fade / pulse / flash / strobe | | Opens the function editor | 4 |
-| | Create starter scenes | | Blackout, Red, Green, Blue, White, Cyan, Magenta, Yellow | 3 |
-| | Stop all functions | Shift+Esc | | 4 |
-| **Show** | New show (timeline)… | | | 8 |
-| | Add audio track… | | MP3 / WAV | 8 |
-| | Add function track | | | 8 |
-| | Play / Pause | Space | | 8 |
-| | Stop & return to start | Home | | 8 |
-| | Analyze beats | | Beat/bar markers for snapping | 8 |
-| **Output** | Enable DMX output | Ctrl+E | Only with a valid configuration; starts disabled every launch | ✅ 7 |
-| | Disable DMX output | Ctrl+Shift+E | Stops sending (lights may hold last state) | ✅ 7 |
-| | Blackout | B | Send dark state (≠ disable) | 4 |
-| | Release all | Esc | Stop all functions, return to defaults | 4 |
-| | Configure outputs… | | Go to Input / Output | ✅ 7 |
-| **Tools** | Test fixture… | | Go to Test & Preview | ✅ 1 |
-| | Profile editor | | | 2 |
-| | Operator mode (lock editing) | F12 | | 5 |
-| | Settings | Ctrl+, | Theme, safe frame on exit, strobe safety, folders (§3.9) | ✅ 7 |
-| **Help** | Getting started | F1 | First-run guide | 9 |
-| | Keyboard shortcuts | | List of all shortcuts | ✅ 1 |
-| | DMX basics | | Built-in explanation of DMX, addresses, universes | later |
-| | About DMX Pro | | Version, licences (QLC+ fixture data Apache-2.0) | ✅ 1 |
+| | DMX monitor | Ctrl+M | Opens Test & Preview with its DMX monitor shown (also toolbar *Monitor*) | ✅ |
+| | Dark / Light theme | | Switch theme | ✅ |
+| | Full screen | F11 | | ✅ |
+| **Fixtures** | Add fixture… | Ctrl+Shift+A | Profile → mode → universe → address (auto free address) | ✅ |
+| | Add group | Ctrl+G *(list)* | New group from the selected fixtures (empty when none), opens the Fixtures page and starts renaming it | ✅ |
+| | Auto-patch selected | | Re-address the selected fixtures one after another; disabled without a selection | ✅ |
+| | Import fixture profile (.qxf / .json)… | | Into the fixture library | ✅ |
+| | New fixture profile… | | Channel layout editor for a new layout (as *New layout…* in Add fixture) | ✅ |
+| **Functions** | New scene / chaser / sequence / color cycle / fade / pulse / flash / strobe | | Opens the Functions page with the new function in its editor | ✅ |
+| | Create starter scenes | | Blackout, Red, Green, Blue, White, Cyan, Magenta, Yellow | Coming soon |
+| | Stop all functions | Shift+Esc | Same as Output ▸ Release all (also toolbar *Stop all*) | ✅ |
+| **Show** | New show | | Opens the Shows page with a new show | ✅ |
+| | Add track | | Adds a track to the show selected on the Shows page | ✅ |
+| | Play / Pause | Space *(timeline)* | Plays / pauses the show selected on the Shows page | ✅ |
+| | Stop & return to start | | Stops that show and moves its playhead to 0:00 (Home on the timeline only seeks to 0:00) | ✅ |
+| **Output** | Enable DMX output | Ctrl+E | Only with a valid configuration; starts disabled every launch | ✅ |
+| | Disable DMX output | Ctrl+Shift+E | Stops sending (lights may hold last state) | ✅ |
+| | Blackout | Ctrl+B | Toggle; checked while on. Sends a dark state — output keeps sending (≠ disable, safety rule 3). Also toolbar *Blackout* | ✅ |
+| | Release all | Shift+Esc | Ends held flashes, then stops every function and show and returns channels to defaults (safety rule 4); asks first only when Settings ▸ *Confirm Release All* is on. Grand Master and Blackout stay | ✅ |
+| | Configure outputs… | | Go to Input / Output | ✅ |
+| **Tools** | Test fixture… | | Go to Test & Preview | ✅ |
+| | Profile editor… | | On the Fixtures page with a light selected: edits its channel layout (as Ctrl+L); otherwise a new layout | ✅ |
+| | Operator mode (lock editing) | F12 | Toggles Virtual Console operator mode (checked while on) and opens the Virtual Console | ✅ |
+| | Settings | Ctrl+, | Theme, safe frame on exit, strobe safety, folders (§3.9) | ✅ |
+| **Help** | Getting started | F1 | First-run guide | Coming soon |
+| | Keyboard shortcuts | | List of all shortcuts | ✅ |
+| | DMX basics | | Built-in explanation of DMX, addresses, universes | Coming soon |
+| | About DMX Pro | | Version, licences (QLC+ fixture data Apache-2.0) | ✅ |
+
+**Shortcut changes (2026-10-22):** Blackout is **Ctrl+B** (a bare **B** cannot be a window shortcut: it would eat the
+letter in text boxes and clash with console widget keys) and Release all is **Shift+Esc** (bare **Esc** already closes
+editors, clears searches and leaves full screen). Live actions (Blackout, Release all) show no message bar, so the
+console layout never moves during a show.
 
 ## 3. Screens
 
@@ -157,7 +165,7 @@ table (Ch, Name, Type, Default, Ranges). The profile editor was replaced by the 
 ### 3.3 Functions (phase 4)
 
 ```
-[+ New ▾] [Duplicate] [Delete] [▶ Preview]                                   🔍 search  Type ▾
+[+ New ▾] [Duplicate] [Delete]                                               🔍 search  Type ▾
 ┌───────────────────────────────┐ ┌ Editor (changes with type) ────────────────────────────────────┐
 │ 🎨 Red          Scene    0.0s │ │ Chaser "Party colors"   Run: Loop ▾  Direction: Forward ▾       │
 │ 🎨 Blue wash    Scene    1.0s │ │ ┌ Steps ──────────────────────────────────────────────────────┐ │
@@ -171,7 +179,8 @@ table (Ch, Name, Type, Default, Ranges). The profile editor was replaced by the 
 Types: Scene, Chaser, Sequence, Color cycle, Fade, Pulse, Flash, Strobe. Copy/paste and duplicate everywhere.
 
 > **Status 2026-10-18:** the engine and the Core model support all eight types; the Functions page has the scene editor
-> (§3.4). Every other type has its own editor in the same panel (`Views/Editors/`, `ViewModels/Editors/`): chaser and sequence step grids, colour cycle, fade, pulse, flash and strobe forms; Preview stays disabled for now.
+> (§3.4). Every other type has its own editor in the same panel (`Views/Editors/`, `ViewModels/Editors/`): chaser and sequence step grids, colour cycle, fade, pulse, flash and strobe forms. **Preview was removed on
+> 2026-10-22** (owner: functions do not drive lights; only the Virtual Console does in live mode).
 
 **Select ≠ edit ≠ preview ≠ play** (decided 2026-10-17 — unlike QLC+, selecting or editing never changes the lights):
 
@@ -179,20 +188,21 @@ Types: Scene, Chaser, Sequence, Color cycle, Fade, Pulse, Flash, Strobe. Copy/pa
 |---|---|---|
 | Single click | Select; right panel shows summary + on-screen stage preview | No |
 | Double-click / Enter / **Edit** button | Open the editor in the right panel | No |
-| **▶ Preview** button / Space | Run the selected function on the lights for checking; button becomes **■ Stop preview** | Yes, until stopped |
-| Esc / **■ Stop preview** | Stop the preview; lights return to their previous state | Back to previous |
-| Right-click | Edit · Preview · Rename (F2) · Duplicate (Ctrl+D) · Copy / Paste · Add to Virtual Console · Delete | — |
+| Right-click | New ▸ · Edit · Rename (F2) · Duplicate (Ctrl+D) · Copy (Ctrl+C) / Paste (Ctrl+V) · Add to Virtual Console · Delete | — |
+| Ctrl+X / Ctrl+C / Ctrl+V in the list (or Edit menu) | Cut / copy / paste whole functions (in-app clipboard, see below) | No |
+| **Add to Virtual Console** | Adds an on/off button for the function at the first free spot of the current console page (a new page when there is none); message bar confirms, "page is full" dialog otherwise | No |
 
 - **Editor:** edits are on-screen only by default. A **"Live on lights"** switch streams edits to the real fixtures; it turns
   off automatically when the editor closes, another function is selected, or the page changes. Step-based editors
   (chaser, sequence) have **"Preview from this step"**. Closing with unsaved changes asks Save / Don't save / Cancel.
 - **Playing for the show** happens only from the Virtual Console or the Show Timeline, never by clicking in this page.
-- **Preview rules:** one preview at a time (a new one replaces it); preview is layered **on top** of running functions
-  (it wins on the channels it touches) and never stops them; it never enables output — with output disabled it is
-  on-screen only and says "Output is off — showing on screen only"; Grand Master, Blackout and strobe safety apply;
-  Release All also stops the preview. The list marks **● Preview** vs **▶ Live** (playing from console/timeline).
-- **Engine (phase 4):** a dedicated preview layer after running functions and before manual overrides
-  (`docs/architecture.md` §4). Real-light preview works once outputs exist (phase 7); until then on-screen only.
+- **No function preview (2026-10-22):** the planned ▶ Preview button / Space and the context-menu item were removed.
+  The Functions page never runs a function on the lights; the summary panel shows an on-screen preview only.
+- **Function clipboard (2026-10-22):** Copy keeps a snapshot of the whole function (later edits or deleting the source
+  do not change it). Paste adds a new library function named `<name> (copy)`, `<name> (copy 2)`, … and selects it (filters
+  are cleared if they would hide it); pasting a show's copy gives a normal listed library function. Cut = Delete with
+  its usual confirmation, then copy (cancelling keeps the clipboard). In memory only, separate from the Windows
+  clipboard, and cleared when another project is opened (functions refer to that project's lights by id).
 - The Scene Creator (§3.4) follows the same rules: editing is on-screen only unless "Live on lights" is on.
 - **Function-type assumptions** (decided 2026-10-18, see decisions log): Strobe defaults to Software mode; Fade references
   scenes; Flash duration 0 = while held; Pulse/Strobe/Color cycle drive the Dimmer channel when a fixture has one.

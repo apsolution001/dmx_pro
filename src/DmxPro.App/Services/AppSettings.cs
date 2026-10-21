@@ -1,3 +1,4 @@
+using DmxPro.Core.Projects;
 using DmxPro.Output.Configuration;
 
 namespace DmxPro.App.Services;
@@ -55,6 +56,9 @@ public sealed class AppSettings
     /// <summary>Extra folders scanned for fixture profiles (besides the built-in and user folders).</summary>
     public List<string> ProfileFolders { get; set; } = [];
 
+    /// <summary>File ▸ Open recent: last opened or saved project files, newest first (see <see cref="RecentProjectList"/>).</summary>
+    public List<string> RecentProjects { get; set; } = [];
+
     // ── Outputs (Input / Output page) ──
     /// <summary>Per-install sACN component identifier; must stay stable so receivers recognise this source.</summary>
     public Guid SacnCid { get; set; } = Guid.NewGuid();
@@ -93,6 +97,7 @@ public sealed class AppSettings
             .Where(f => !string.IsNullOrWhiteSpace(f))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
+        RecentProjects = RecentProjectList.Normalize(RecentProjects);
         Outputs = (Outputs ?? []).Where(o => o is not null).ToList();
         if (SacnCid == Guid.Empty)
         {
