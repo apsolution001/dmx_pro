@@ -45,6 +45,14 @@ public sealed class DialogService : IDialogService
         return window.ShowDialog() == true;
     }
 
+    public bool ShowSaveFunction(SaveFunctionDialogViewModel viewModel)
+    {
+        var app = System.Windows.Application.Current;
+        var owner = app.Windows.OfType<System.Windows.Window>().FirstOrDefault(w => w.IsActive) ?? app.MainWindow;
+        var window = new SaveFunctionDialog(viewModel) { Owner = owner };
+        return window.ShowDialog() == true;
+    }
+
     public async Task<SaveChangesChoice> AskSaveChangesAsync(string projectName)
     {
         var box = new MessageBox

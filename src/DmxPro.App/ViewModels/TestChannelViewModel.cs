@@ -9,7 +9,7 @@ namespace DmxPro.App.ViewModels;
 /// <summary>
 /// One channel fader of a light on the Test &amp; Preview page. While not under test it follows the live output
 /// (polled, updated silently); moving it makes this channel a test override ("take over on touch") until released.
-/// The meaning comes from the profile; unknown channels and unverified profiles are flagged (safety rule 7).
+/// The meaning comes from the profile; channels of unknown meaning are marked (safety rule 7).
 /// </summary>
 public sealed class TestChannelViewModel : ObservableObject, IToolTipSource
 {
@@ -20,7 +20,6 @@ public sealed class TestChannelViewModel : ObservableObject, IToolTipSource
     private static readonly PropertyChangedEventArgs OutputValueChangedArgs = new(nameof(OutputValue));
 
     private readonly Func<TestChannelViewModel, byte, bool> _onUserSet;
-    private readonly bool _profileUnverified;
     private byte _value;
     private byte _outputValue;
     private bool _isOverridden;
@@ -39,7 +38,6 @@ public sealed class TestChannelViewModel : ObservableObject, IToolTipSource
         int number,
         int universe,
         int dmxAddress,
-        bool profileUnverified,
         bool isAvailable,
         bool isUndefined,
         Func<TestChannelViewModel, byte, bool> onUserSet,
@@ -50,7 +48,6 @@ public sealed class TestChannelViewModel : ObservableObject, IToolTipSource
         Number = number;
         Universe = universe;
         DmxAddress = dmxAddress;
-        _profileUnverified = profileUnverified;
         IsAvailable = isAvailable;
         IsUndefined = isUndefined;
         _onUserSet = onUserSet;
@@ -180,24 +177,24 @@ public sealed class TestChannelViewModel : ObservableObject, IToolTipSource
     public bool IsStrobeBlocked => _isStrobeBlocked;
 
     /// <summary>
-    /// What the profile says the value does; "⚠" marks an unverified profile. For a strobe channel under test while
-    /// strobe is blocked it describes what is really sent ("blocked — sends 0 (No strobe)"), never the requested value.
+    /// What the profile says the value does. For a strobe channel under test while strobe is blocked it describes what
+    /// is really sent ("blocked — sends 0 (No strobe)"), never the requested value. Owner decision 2026-10-22: no
+    /// unverified-profile mark on the Test page.
     /// </summary>
     public string? CapabilityLabel
     {
         get
         {
-            var prefix = _profileUnverified ? "⚠ " : string.Empty;
             if (_isStrobeBlocked && _isOverridden)
             {
                 var sent = Channel.FindCapability(_outputValue)?.Label;
                 return string.IsNullOrWhiteSpace(sent)
-                    ? $"{prefix}blocked — sends {_outputValue}"
-                    : $"{prefix}blocked — sends {_outputValue} ({sent})";
+                    ? $"blocked — sends {_outputValue}"
+                    : $"blocked — sends {_outputValue} ({sent})";
             }
 
             var label = Channel.FindCapability(_value)?.Label;
-            return string.IsNullOrWhiteSpace(label) ? null : prefix + label;
+            return string.IsNullOrWhiteSpace(label) ? null : label;
         }
     }
 
@@ -222,11 +219,6 @@ public sealed class TestChannelViewModel : ObservableObject, IToolTipSource
             else if (IsUnknown)
             {
                 text += " · meaning unknown (not confirmed by the profile)";
-            }
-
-            if (_profileUnverified)
-            {
-                text += " · profile not verified on a real fixture";
             }
 
             if (!IsAvailable)

@@ -25,4 +25,7 @@ public interface IDialogService
 
     /// <summary>Shows the channel layout editor; returns true when the layout was saved.</summary>
     bool ShowChannelLayout(ViewModels.ChannelLayoutViewModel viewModel);
+
+    /// <summary>Shows the "Save as function" name dialog; returns true when the user clicked Save (name is valid).</summary>
+    bool ShowSaveFunction(ViewModels.SaveFunctionDialogViewModel viewModel);
 }

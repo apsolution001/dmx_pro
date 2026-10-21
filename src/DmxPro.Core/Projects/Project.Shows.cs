@@ -42,6 +42,42 @@ public sealed partial class Project
         return track;
     }
 
+    /// <summary>
+    /// Inserts an empty track at <paramref name="index"/> (0 = top, the track count = after the last one). The other
+    /// tracks keep their items and their order. A blank <paramref name="name"/> gets the first free "Track N" of the show.
+    /// </summary>
+    /// <exception cref="ArgumentOutOfRangeException">The index is below 0 or above the track count.</exception>
+    public ShowTrack InsertTrack(Guid showId, int index, string? name = null)
+    {
+        var show = GetShow(showId);
+        ArgumentOutOfRangeException.ThrowIfNegative(index);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(index, show.Tracks.Count);
+
+        var track = new ShowTrack { Name = string.IsNullOrWhiteSpace(name) ? NextTrackName(show) : name.Trim() };
+        show.Tracks.Insert(index, track);
+        return track;
+    }
+
+    /// <summary>First free "Track N" (N from 1) among the show's track names, case-insensitive.</summary>
+    public static string NextTrackName(Show show)
+    {
+        ArgumentNullException.ThrowIfNull(show);
+        var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var track in show.Tracks)
+        {
+            names.Add(track.Name);
+        }
+
+        for (var n = 1; ; n++)
+        {
+            var candidate = string.Create(System.Globalization.CultureInfo.InvariantCulture, $"Track {n}");
+            if (!names.Contains(candidate))
+            {
+                return candidate;
+            }
+        }
+    }
+
     /// <summary>Removes a track and all its items (cleaning up their show-owned functions like <see cref="RemoveShowItem"/>).</summary>
     public bool RemoveTrack(Guid showId, Guid trackId)
     {

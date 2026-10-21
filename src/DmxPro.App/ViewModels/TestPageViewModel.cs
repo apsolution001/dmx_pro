@@ -1,9 +1,9 @@
 using System.Collections.ObjectModel;
 using System.Runtime.CompilerServices;
-using System.Text;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DmxPro.App.Services;
+using DmxPro.Core.Functions;
 using DmxPro.Core.Patching;
 using DmxPro.Core.Profiles;
 using DmxPro.Core.Projects;
@@ -46,9 +46,23 @@ public sealed partial class TestPageViewModel : PageViewModel
     private readonly LightClipboardService _clipboard;
     private readonly ILogger<TestPageViewModel> _logger;
     private readonly SynchronizationContext? _uiContext;
+    private readonly IDialogService _dialogs;
     private readonly bool[] _monitorOverridden = new bool[DmxAddress.UniverseSize];
+    private readonly List<TestWarningViewModel> _fixtureWarnings = [];
     private PatchHealth? _health;
-    private string? _signature;
+
+    /// <summary><see cref="ProjectService.Revision"/> the rows were last checked against (-1 = never built).</summary>
+    private long _checkedRevision = -1;
+
+    /// <summary><see cref="PatchFingerprint"/> of the project the rows were built from.</summary>
+    private int _fingerprint;
+
+    /// <summary>The rows must be rebuilt on the next visit (never built, or a project was opened).</summary>
+    private bool _rowsStale = true;
+
+    /// <summary>What the warnings strip was last built from; the strip is only rebuilt when this changes.</summary>
+    private WarningInputs _warningInputs;
+    private bool _hasWarningInputs;
     private bool _isVisible;
     private CancellationTokenSource? _poll;
     private int _pollCount;
@@ -72,6 +86,13 @@ public sealed partial class TestPageViewModel : PageViewModel
     [ObservableProperty]
     private bool _isMonitorVisible;
 
+    /// <summary>Page info bar text (e.g. "Saved scene 'Test look 1' to Functions."); shown while <see cref="IsNoticeOpen"/>.</summary>
+    [ObservableProperty]
+    private string _noticeMessage = string.Empty;
+
+    [ObservableProperty]
+    private bool _isNoticeOpen;
+
     public TestPageViewModel(
         ProjectService projects,
         DmxEngine engine,
@@ -80,9 +101,11 @@ public sealed partial class TestPageViewModel : PageViewModel
         EngineConsolePlayback playback,
         InputOutputViewModel inputOutput,
         LightClipboardService clipboard,
+        IDialogService dialogs,
         ILogger<TestPageViewModel> logger)
     {
         _projects = projects;
+        _dialogs = dialogs;
         _engine = engine;
         _session = session;
         _inputOutput = inputOutput;
@@ -97,6 +120,7 @@ public sealed partial class TestPageViewModel : PageViewModel
         }
 
         ReleaseAllTestsCommand = new RelayCommand(ReleaseAllTests, () => HasOverrides);
+        SaveAsFunctionCommand = new RelayCommand(SaveAsFunction, () => HasOverrides);
         ResetGrandMasterCommand = new RelayCommand(() => GrandMasterPercent = 100);
         CopyLightCommand = new RelayCommand<TestFixtureRowViewModel?>(CopyLight, row => (row ?? SelectedFixture) is { HasNoChannels: false });
         PasteLightCommand = new RelayCommand<TestFixtureRowViewModel?>(PasteLight, row => _clipboard.HasValues && (row ?? SelectedFixture) is not null);
@@ -189,6 +213,16 @@ public sealed partial class TestPageViewModel : PageViewModel
     /// <summary>Releases this page's test values only (not the engine Release All).</summary>
     public IRelayCommand ReleaseAllTestsCommand { get; }
 
+    /// <summary>
+    /// "Save as function…": saves the channels under test (their test values, before Grand Master and Blackout) as a
+    /// new scene in the Functions list. Disabled while nothing is under test.
+    /// </summary>
+    public IRelayCommand SaveAsFunctionCommand { get; }
+
+    public string SaveAsFunctionToolTip => HasOverrides
+        ? "Save as function…: save the channels under test as a new scene in the Functions list"
+        : "Set some channels first";
+
     /// <summary>Project universes plus any universe a light is patched to, ascending.</summary>
     public ObservableCollection<int> Universes { get; } = [];
 
@@ -199,9 +233,16 @@ public sealed partial class TestPageViewModel : PageViewModel
     {
         _isVisible = true;
         _session.Activate();
-        if (_signature is null || _signature != Signature(_projects.Current))
+
+        // Switching pages must be quick: nothing to check when the project did not change since the last visit, and
+        // only a change to what the rows show (patch, profiles, names) rebuilds them; a scene edit does not.
+        if (_rowsStale || _checkedRevision != _projects.Revision)
         {
-            Rebuild();
+            _checkedRevision = _projects.Revision;
+            if (_rowsStale || PatchFingerprint(_projects.Current) != _fingerprint)
+            {
+                Rebuild();
+            }
         }
 
         RefreshWarnings();
@@ -211,6 +252,7 @@ public sealed partial class TestPageViewModel : PageViewModel
     public override void OnNavigatedFrom()
     {
         _isVisible = false;
+        IsNoticeOpen = false;
         StopPolling();
 
         // Owner decision 2026-10-19: leaving the Test page releases every test value, and none can be set until it is
@@ -220,6 +262,54 @@ public sealed partial class TestPageViewModel : PageViewModel
     }
 
     partial void OnSearchTextChanged(string value) => ApplyFilter();
+
+    /// <summary>
+    /// Asks for a name (and optional fades), then saves every channel under test, in patch order, as a new library
+    /// scene. The values are the test values (what the lights are asked for), not the output after Grand Master or
+    /// Blackout. The test values stay as they are.
+    /// </summary>
+    private void SaveAsFunction()
+    {
+        var values = new List<SceneValue>();
+        foreach (var row in Fixtures)
+        {
+            foreach (var channel in row.Channels)
+            {
+                if (channel.IsOverridden)
+                {
+                    values.Add(new SceneValue { FixtureId = channel.FixtureId, ChannelKey = channel.Key, Value = channel.ByteValue });
+                }
+            }
+        }
+
+        if (values.Count == 0)
+        {
+            return;
+        }
+
+        var project = _projects.Current;
+        var lights = values.Select(v => v.FixtureId).Distinct().Count();
+        var dialog = new SaveFunctionDialogViewModel(
+            "Save as function",
+            $"Saves the {Plural(values.Count, "channel", "channels")} under test on {Plural(lights, "light", "lights")} as a new scene in the Functions list.",
+            project.NextFunctionName("Test look"),
+            showFades: true,
+            project.IsFunctionNameTaken);
+        if (!_dialogs.ShowSaveFunction(dialog) || !ReferenceEquals(project, _projects.Current))
+        {
+            return;
+        }
+
+        var scene = project.CreateSceneFromValues(dialog.TrimmedName, values, dialog.FadeIn, dialog.FadeOut);
+        _projects.MarkChanged();
+        NoticeMessage = $"Saved scene '{scene.Name}' to Functions.";
+
+        // Re-open even when a previous notice is still showing, so the info bar announces the new text.
+        IsNoticeOpen = false;
+        IsNoticeOpen = true;
+    }
+
+    private static string Plural(int count, string singular, string plural) => $"{count} {(count == 1 ? singular : plural)}";
 
     private void CopyLight(TestFixtureRowViewModel? row)
     {
@@ -333,7 +423,7 @@ public sealed partial class TestPageViewModel : PageViewModel
         // The load normally dropped every override already (the session sees that through the engine release
         // generation); ReleaseAll also clears anything still tracked, e.g. when the load failed.
         _session.ReleaseAll();
-        _signature = null;
+        _rowsStale = true;
         if (_isVisible)
         {
             Rebuild();
@@ -417,7 +507,10 @@ public sealed partial class TestPageViewModel : PageViewModel
         var project = _projects.Current;
         var health = PatchHealth.Analyze(project);
         _health = health;
-        _signature = Signature(project);
+        _fingerprint = PatchFingerprint(project);
+        _checkedRevision = _projects.Revision;
+        _rowsStale = false;
+        BuildFixtureWarnings(health);
         var selectedId = SelectedFixture?.FixtureId;
 
         var ordered = new List<FixtureHealth>(health.Fixtures);
@@ -483,7 +576,6 @@ public sealed partial class TestPageViewModel : PageViewModel
                 offset + 1,
                 fixture.Universe,
                 address,
-                health.IsUnverified,
                 available,
                 definition is null,
                 OnChannelSet,
@@ -519,30 +611,55 @@ public sealed partial class TestPageViewModel : PageViewModel
         return $"U{fixture.Universe} · {range} · {profile.DisplayName} · {mode.Name}";
     }
 
-    /// <summary>What the rows show about the patch; a change means the rows must be rebuilt.</summary>
-    private static string Signature(Project project)
+    /// <summary>
+    /// Hash of what the rows show about the patch (lights, addresses, profiles, modes, names, universes); a change means
+    /// the rows must be rebuilt. Computed without allocating (it used to build a string of every light on each visit).
+    /// </summary>
+    private static int PatchFingerprint(Project project)
     {
-        var text = new StringBuilder();
+        var hash = default(HashCode);
+        hash.Add(project.Fixtures.Count);
         foreach (var fixture in project.Fixtures)
         {
-            var profile = project.FindProfile(fixture.ProfileId);
-            text.Append(fixture.Id).Append('|').Append(fixture.Name).Append('|').Append(fixture.Universe).Append('|')
-                .Append(fixture.StartAddress).Append('|').Append(fixture.ProfileId).Append('|').Append(fixture.ModeName)
-                .Append('|').Append(fixture.Enabled);
-            if (profile is not null)
+            hash.Add(fixture.Id);
+            hash.Add(fixture.Name, StringComparer.Ordinal);
+            hash.Add(fixture.Universe);
+            hash.Add(fixture.StartAddress);
+            hash.Add(fixture.ProfileId, StringComparer.Ordinal);
+            hash.Add(fixture.ModeName, StringComparer.Ordinal);
+            hash.Add(fixture.Enabled);
+            if (FindProfile(project, fixture.ProfileId) is not { } profile)
             {
-                // Profile edits replace the profile object; identity + verified flag + mode keys catch them.
-                text.Append('|').Append(RuntimeHelpers.GetHashCode(profile)).Append('|').Append(profile.Verified);
-                if (profile.FindMode(fixture.ModeName) is { } mode)
-                {
-                    text.Append('|').AppendJoin(',', mode.Channels);
-                }
+                continue;
             }
 
-            text.Append(';');
+            // Profile edits replace the profile object: its identity and the mode's channel keys catch them.
+            hash.Add(RuntimeHelpers.GetHashCode(profile));
+            if (profile.FindMode(fixture.ModeName) is { } mode)
+            {
+                hash.Add(mode.Channels.Count);
+                foreach (var key in mode.Channels)
+                {
+                    hash.Add(key, StringComparer.Ordinal);
+                }
+            }
         }
 
-        return text.ToString();
+        return hash.ToHashCode();
+    }
+
+    /// <summary>Same match as <see cref="Project.FindProfile"/>, without a closure per call.</summary>
+    private static FixtureProfile? FindProfile(Project project, string profileId)
+    {
+        foreach (var profile in project.Profiles)
+        {
+            if (string.Equals(profile.Id, profileId, StringComparison.OrdinalIgnoreCase))
+            {
+                return profile;
+            }
+        }
+
+        return null;
     }
 
     private void ApplyFilter()
@@ -662,7 +779,9 @@ public sealed partial class TestPageViewModel : PageViewModel
         OnPropertyChanged(nameof(OverriddenCount));
         OnPropertyChanged(nameof(HasOverrides));
         OnPropertyChanged(nameof(OverrideSummary));
+        OnPropertyChanged(nameof(SaveAsFunctionToolTip));
         ReleaseAllTestsCommand.NotifyCanExecuteChanged();
+        SaveAsFunctionCommand.NotifyCanExecuteChanged();
     }
 
     // ───────────────────────────── Polling ─────────────────────────────
@@ -859,9 +978,29 @@ public sealed partial class TestPageViewModel : PageViewModel
 
     // ───────────────────────────── Warnings ─────────────────────────────
 
+    /// <summary>
+    /// Re-evaluates the warnings strip (~3 Hz while visible). Allocation-free when nothing it shows changed: the inputs
+    /// are compared first, and the light warnings are only rebuilt with the rows.
+    /// </summary>
     private void RefreshWarnings()
     {
-        var list = BuildWarnings();
+        var inputs = new WarningInputs(
+            _pollError,
+            _inputOutput.State,
+            _inputOutput.State == OutputState.Error ? _inputOutput.StatusMessage ?? _inputOutput.StatusText : null,
+            _engine.Blackout,
+            GrandMasterPercentOf(_engine.GrandMaster),
+            _engine.AllowStrobe,
+            _health);
+        if (_hasWarningInputs && inputs == _warningInputs)
+        {
+            return;
+        }
+
+        _warningInputs = inputs;
+        _hasWarningInputs = true;
+
+        var list = BuildWarnings(inputs);
         var same = list.Count == Warnings.Count;
         for (var i = 0; same && i < list.Count; i++)
         {
@@ -882,15 +1021,15 @@ public sealed partial class TestPageViewModel : PageViewModel
         OnPropertyChanged(nameof(HasWarnings));
     }
 
-    private List<TestWarningViewModel> BuildWarnings()
+    private List<TestWarningViewModel> BuildWarnings(WarningInputs inputs)
     {
         var list = new List<TestWarningViewModel>();
-        if (_pollError is { } pollError)
+        if (inputs.PollError is { } pollError)
         {
             list.Add(new($"Live values stopped updating: {pollError}", "The faders and the DMX monitor may not show what is sent.", isError: true));
         }
 
-        switch (_inputOutput.State)
+        switch (inputs.OutputState)
         {
             case OutputState.Disabled:
                 list.Add(new(
@@ -900,32 +1039,26 @@ public sealed partial class TestPageViewModel : PageViewModel
                 break;
             case OutputState.Error:
                 list.Add(new(
-                    $"Output error: {_inputOutput.StatusMessage ?? _inputOutput.StatusText}",
+                    $"Output error: {inputs.OutputError}",
                     "Open Input / Output (Ctrl+6) to fix the interface or network settings.",
                     isError: true));
                 break;
         }
 
-        if (_engine.Blackout)
+        if (inputs.Blackout)
         {
             list.Add(new("Blackout is on — colours and dimmers are sent as 0.", "Turn Blackout off to see test values on intensity channels.", isError: false));
         }
 
-        var grandMaster = _engine.GrandMaster;
-        if (grandMaster < 1)
+        if (inputs.GrandMasterPercent < 100)
         {
             list.Add(new(
-                $"Grand Master is at {Math.Round(grandMaster * 100)} % — colours and dimmers are sent lower than the faders show.",
+                $"Grand Master is at {inputs.GrandMasterPercent} % — colours and dimmers are sent lower than the faders show.",
                 "Grand Master scales intensity channels only.",
                 isError: false));
         }
 
-        if (_health is not { } health)
-        {
-            return list;
-        }
-
-        if (!_engine.AllowStrobe && health.AnyStrobeChannel)
+        if (inputs.Health is { AnyStrobeChannel: true } && !inputs.AllowStrobe)
         {
             list.Add(new(
                 "Strobe is blocked by the safety setting — strobe channels are sent at their safe value.",
@@ -933,13 +1066,39 @@ public sealed partial class TestPageViewModel : PageViewModel
                 isError: false));
         }
 
-        AddFixtureWarning(list, health, h => h.IsMissingProfile || h.IsMissingMode, "light has a missing profile or mode", "lights have a missing profile or mode", "They have no channels to test. Fix them in Fixtures.", isError: true);
-        AddFixtureWarning(list, health, h => h.ExceedsUniverse || h.HasInvalidUniverse, "light does not fit in its universe", "lights do not fit in their universe", "Channels past address 512 are not sent. Move them to a lower start address.", isError: true);
-        AddFixtureWarning(list, health, h => h.HasOverlap, "light shares addresses with another light", "lights share addresses with other lights", "Overlapping lights receive the same values on the shared channels.", isError: false);
-        AddFixtureWarning(list, health, h => h.IsUnverified, "light uses an unverified profile", "lights use an unverified profile", "Channel meanings are not confirmed. Test each channel at low intensity.", isError: false);
-        AddFixtureWarning(list, health, h => h.IsDisabled, "light is disabled", "lights are disabled", "Disabled lights send nothing.", isError: false);
+        list.AddRange(_fixtureWarnings);
         return list;
     }
+
+    /// <summary>
+    /// Light warnings (missing profile, past 512, overlap, disabled) for the rows just built. Owner decision 2026-10-22:
+    /// the Test page no longer warns about unverified profiles.
+    /// </summary>
+    private void BuildFixtureWarnings(PatchHealth health)
+    {
+        _fixtureWarnings.Clear();
+        AddFixtureWarning(_fixtureWarnings, health, static h => h.IsMissingProfile || h.IsMissingMode, "light has a missing profile or mode", "lights have a missing profile or mode", "They have no channels to test. Fix them in Fixtures.", isError: true);
+        AddFixtureWarning(_fixtureWarnings, health, static h => h.ExceedsUniverse || h.HasInvalidUniverse, "light does not fit in its universe", "lights do not fit in their universe", "Channels past address 512 are not sent. Move them to a lower start address.", isError: true);
+        AddFixtureWarning(_fixtureWarnings, health, static h => h.HasOverlap, "light shares addresses with another light", "lights share addresses with other lights", "Overlapping lights receive the same values on the shared channels.", isError: false);
+        AddFixtureWarning(_fixtureWarnings, health, static h => h.IsDisabled, "light is disabled", "lights are disabled", "Disabled lights send nothing.", isError: false);
+
+        // The strip compares its inputs by health reference; force one re-evaluation for the new rows.
+        _hasWarningInputs = false;
+    }
+
+    /// <summary>Whole percent for the warning; anything below full stays below 100 so the warning still shows.</summary>
+    private static int GrandMasterPercentOf(double grandMaster) =>
+        grandMaster >= 1 ? 100 : (int)Math.Min(99, Math.Round(Math.Max(0, grandMaster) * 100));
+
+    /// <summary>Everything the warnings strip is built from (compared by value to skip needless rebuilds).</summary>
+    private readonly record struct WarningInputs(
+        string? PollError,
+        OutputState OutputState,
+        string? OutputError,
+        bool Blackout,
+        int GrandMasterPercent,
+        bool AllowStrobe,
+        PatchHealth? Health);
 
     private static void AddFixtureWarning(
         List<TestWarningViewModel> list,
