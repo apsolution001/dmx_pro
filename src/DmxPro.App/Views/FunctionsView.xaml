@@ -307,9 +307,12 @@
                     <Button
                         AutomationProperties.Name="Edit selected function"
                         Command="{Binding EditCommand}"
-                        Style="{StaticResource ToolbarButton}"
+                        Style="{StaticResource ToolbarEditButton}"
                         ToolTip="Edit the selected function (Enter or double-click)">
-                        <c:DmxIcon Kind="Edit" Size="{StaticResource Dmx.ToolbarIconSize}" />
+                        <StackPanel Orientation="Horizontal">
+                            <c:DmxIcon Kind="Edit" Size="16" />
+                            <TextBlock Style="{StaticResource ButtonLabel}" Text="Edit" />
+                        </StackPanel>
                     </Button>
                     <Button
                         AutomationProperties.Name="Duplicate selected function"
@@ -560,9 +563,12 @@
                                     AutomationProperties.Name="Edit function"
                                     Command="{Binding EditCommand}"
                                     DockPanel.Dock="Right"
-                                    Style="{StaticResource PanelHeaderButton}"
-                                    ToolTip="Edit (Enter)">
-                                    <c:DmxIcon Kind="Edit" Size="{StaticResource Dmx.DenseIconSize}" />
+                                    Style="{StaticResource ToolbarEditButton}"
+                                    ToolTip="Edit this function (Enter or double-click)">
+                                    <StackPanel Orientation="Horizontal">
+                                        <c:DmxIcon Kind="Edit" Size="16" />
+                                        <TextBlock Style="{StaticResource ButtonLabel}" Text="Edit" />
+                                    </StackPanel>
                                 </Button>
                                 <c:DmxIcon
                                     Margin="0,0,6,0"

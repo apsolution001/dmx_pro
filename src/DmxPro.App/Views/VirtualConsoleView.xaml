@@ -424,11 +424,11 @@
                         AutomationProperties.Name="Edit layout"
                         IsChecked="{Binding IsEditMode, Mode=TwoWay}"
                         IsEnabled="{Binding HasSelectedPage}"
-                        Style="{StaticResource ConsoleToolbarToggle}"
+                        Style="{StaticResource ToolbarEditToggleButton}"
                         ToolTip="Edit layout: add, move, resize and set up widgets"
                         Visibility="{Binding ShowEditChrome, Converter={StaticResource BoolToVisibility}}">
                         <StackPanel Orientation="Horizontal">
-                            <c:DmxIcon Kind="Edit" Size="{StaticResource Dmx.ButtonIconSize}" />
+                            <c:DmxIcon Kind="Edit" Size="16" />
                             <TextBlock Style="{StaticResource ButtonLabel}" Text="Edit layout" />
                         </StackPanel>
                     </ToggleButton>

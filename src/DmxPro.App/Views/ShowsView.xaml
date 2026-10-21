@@ -1147,12 +1147,16 @@
                                             Style="{StaticResource HintText}"
                                             Text="{Binding SelectedItem.TimingText}" />
                                         <Button
+                                            Margin="0,0,4,0"
                                             AutomationProperties.Name="Edit function"
                                             Command="{Binding EditSelectedItemCommand}"
-                                            Style="{StaticResource PanelHeaderButton}"
+                                            Style="{StaticResource ToolbarEditButton}"
                                             ToolTip="Edit this show's own copy of the function (Enter or double-click the block). The library original never changes."
                                             ToolTipService.ShowOnDisabled="True">
-                                            <c:DmxIcon Kind="Edit" Size="{StaticResource Dmx.SmallIconSize}" />
+                                            <StackPanel Orientation="Horizontal">
+                                                <c:DmxIcon Kind="Edit" Size="16" />
+                                                <TextBlock Style="{StaticResource ButtonLabel}" Text="Edit" />
+                                            </StackPanel>
                                         </Button>
                                         <Button
                                             AutomationProperties.Name="Save as function"

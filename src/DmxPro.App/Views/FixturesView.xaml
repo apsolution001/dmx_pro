@@ -95,9 +95,12 @@
                     <Button
                         AutomationProperties.Name="Edit channel layout"
                         Command="{Binding EditChannelLayoutCommand}"
-                        Style="{StaticResource ToolbarButton}"
+                        Style="{StaticResource ToolbarEditButton}"
                         ToolTip="Edit channel layout: set what each DMX channel of the selected light does, in its own order (Ctrl+L)">
-                        <c:DmxIcon Kind="Channel" Size="{StaticResource Dmx.ToolbarIconSize}" />
+                        <StackPanel Orientation="Horizontal">
+                            <c:DmxIcon Kind="Channel" Size="16" />
+                            <TextBlock Style="{StaticResource ButtonLabel}" Text="Edit layout" />
+                        </StackPanel>
                     </Button>
 
                     <Rectangle Style="{StaticResource ToolbarSeparator}" />
@@ -635,9 +638,12 @@
                                             AutomationProperties.Name="Edit channel layout"
                                             Command="{Binding DataContext.EditChannelLayoutCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                             DockPanel.Dock="Right"
-                                            Style="{StaticResource PanelHeaderButton}"
+                                            Style="{StaticResource ToolbarEditButton}"
                                             ToolTip="Edit channel layout: what each DMX channel of this light does (Ctrl+L)">
-                                            <c:DmxIcon Kind="Edit" Size="{StaticResource Dmx.DenseIconSize}" />
+                                            <StackPanel Orientation="Horizontal">
+                                                <c:DmxIcon Kind="Edit" Size="16" />
+                                                <TextBlock Style="{StaticResource ButtonLabel}" Text="Edit" />
+                                            </StackPanel>
                                         </Button>
                                         <TextBlock
                                             VerticalAlignment="Center"

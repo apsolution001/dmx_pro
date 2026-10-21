@@ -22,6 +22,12 @@
       ToolbarPrimaryButton  Button     Labelled accent button, height 24, padding 8,0. Content = StackPanel
                                        (DmxIcon Size 14 + TextBlock Style=ButtonLabel) or plain text.
       ToolbarLabelButton    Button     Labelled transparent button, same metrics/content pattern as primary.
+      ToolbarEditButton     Button     The main "Edit" action of a page or panel (owner request 2026-10-22: Edit must be
+                                       easy to find). Labelled, 28 px tall, min width 64, padding 10,0, 1 px control stroke
+                                       on a control fill so it reads as a button at rest; icon capped at 16. Content =
+                                       StackPanel (DmxIcon Kind=Edit Size 16 + TextBlock Style=ButtonLabel "Edit").
+                                       Also fine in a PanelHeader (the header grows to fit). ToolTip names the shortcut.
+      ToolbarEditToggleButton ToggleButton  Same look as ToolbarEditButton for an edit-mode toggle; IsChecked = accent fill.
       ButtonLabel           TextBlock  Text next to an icon inside a labelled button (4 px icon-text gap).
       ToolbarSeparator      Rectangle  1x14 vertical divider between button groups (margin 4,0).
     Panels
@@ -350,6 +356,38 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+    </Style>
+
+    <!-- Main "Edit" action: labelled, taller and outlined so it is easy to spot and hit (see the index above). -->
+    <Style
+        x:Key="ToolbarEditButton"
+        BasedOn="{StaticResource Dmx.SubtleButtonBase}"
+        TargetType="Button">
+        <Setter Property="Height" Value="28" />
+        <Setter Property="MinWidth" Value="64" />
+        <Setter Property="Padding" Value="10,0" />
+        <Setter Property="Margin" Value="2,0" />
+        <Setter Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="c:DmxIcon.MaxSize" Value="16" />
+    </Style>
+
+    <Style
+        x:Key="ToolbarEditToggleButton"
+        BasedOn="{StaticResource ToolbarToggleButton}"
+        TargetType="ToggleButton">
+        <Setter Property="Width" Value="NaN" />
+        <Setter Property="Height" Value="28" />
+        <Setter Property="MinWidth" Value="64" />
+        <Setter Property="Padding" Value="10,0" />
+        <Setter Property="Margin" Value="2,0" />
+        <Setter Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="c:DmxIcon.MaxSize" Value="16" />
     </Style>
 
     <!-- Text next to an icon inside ToolbarPrimaryButton / ToolbarLabelButton. -->
