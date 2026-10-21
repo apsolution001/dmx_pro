@@ -149,7 +149,7 @@ src/DmxPro.App/
   layer, keyed by fixture + channel key. It handles shared addresses of overlapping lights, `Reapply` after a patch refresh
   (overrides follow re-addressed lights) and `Reset` after an external Release All.
 - `DmxPro.Core/Testing/PatchHealth` + `FixtureHealth`: per-light patch problems (missing profile/mode, overlap, footprint
-  past 512, disabled, unverified) used by the warnings strip and row state.
+  past 512, disabled) used by the warnings strip and row state.
 - Events: `EngineRuntimeService.ProjectLoaded` / `PatchRefreshed`, `EngineConsolePlayback.AllReleased`;
   `PageViewModel.OnNavigatedFrom` lets a page clean up (the Test page releases its test values there).
 - Layer order is unchanged: show → console → preview → manual overrides → Grand Master → Blackout (+ strobe safety).

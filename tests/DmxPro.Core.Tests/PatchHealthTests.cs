@@ -14,29 +14,18 @@ public class PatchHealthTests
     }
 
     [Fact]
-    public void Analyze_CleanUnverifiedFixture_OnlyUnverified()
+    public void Analyze_CleanFixture_NoProblems()
     {
         var (project, fixture) = Create();
 
         var health = PatchHealth.Analyze(project);
         var entry = health.Find(fixture.Id)!;
 
-        Assert.True(entry.IsUnverified);
         Assert.False(entry.HasOverlap);
         Assert.False(entry.ExceedsUniverse);
         Assert.Null(entry.ProblemText);
         Assert.True(entry.HasStrobeChannel);
         Assert.True(health.AnyStrobeChannel);
-        Assert.Equal(1, health.UnverifiedCount);
-    }
-
-    [Fact]
-    public void Analyze_VerifiedProfile_NotUnverified()
-    {
-        var (project, fixture) = Create();
-        project.FindProfile(fixture.ProfileId)!.Verified = true;
-
-        Assert.Equal(0, PatchHealth.Analyze(project).UnverifiedCount);
     }
 
     [Fact]
