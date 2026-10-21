@@ -29,7 +29,6 @@ public sealed class SceneEditorViewModel : FunctionEditorViewModel
 
     private readonly Project _project;
     private readonly Dictionary<Guid, SceneFixtureTabViewModel> _banks = [];
-    private readonly Dictionary<Guid, SceneFixtureChoice> _fixtureChoices = [];
     private readonly Dictionary<Guid, int> _patchIndex = [];
     private string _bankSignature = string.Empty;
     private SceneFunction _draft = new();
@@ -47,7 +46,7 @@ public sealed class SceneEditorViewModel : FunctionEditorViewModel
         Tabs = [General, Channels];
         SelectedTab = General;
 
-        BuildChoices();
+        BuildPatchIndex();
         LoadFromOriginal();
 
         // A scene with lights opens on its channels (every channel of every light); an empty one on General,
@@ -96,17 +95,8 @@ public sealed class SceneEditorViewModel : FunctionEditorViewModel
 
     public override void RefreshPatch()
     {
-        BuildChoices();
+        BuildPatchIndex();
         RefreshBanks();
-        foreach (var (fixtureId, choice) in _fixtureChoices)
-        {
-            choice.SetInSceneSilently(_banks.ContainsKey(fixtureId));
-        }
-
-        foreach (var group in General.AvailableGroups)
-        {
-            group.SetInSceneSilently(group.FixtureIds.Count > 0 && group.FixtureIds.All(_banks.ContainsKey));
-        }
     }
 
     /// <summary>
@@ -132,10 +122,6 @@ public sealed class SceneEditorViewModel : FunctionEditorViewModel
         {
             _draft.RemoveFixture(missing);
             _banks.Remove(missing);
-            if (_fixtureChoices.TryGetValue(missing, out var choice))
-            {
-                choice.SetInSceneSilently(false);
-            }
         }
 
         var values = _draft.IndexValues();
@@ -158,33 +144,14 @@ public sealed class SceneEditorViewModel : FunctionEditorViewModel
             ? "missing"
             : $"{f.Id}:{f.Name}:{f.Universe}:{f.StartAddress}:{f.ProfileId}:{f.ModeName}"));
 
-    /// <summary>(Re)builds the Add list: every patched fixture in patch order, then every group.</summary>
-    private void BuildChoices()
+    /// <summary>(Re)builds the patch-order index of every fixture (keeps the banks in patch order).</summary>
+    private void BuildPatchIndex()
     {
         _patchIndex.Clear();
-        _fixtureChoices.Clear();
-        General.AvailableFixtures.Clear();
-        General.AvailableGroups.Clear();
         for (var i = 0; i < _project.Fixtures.Count; i++)
         {
-            var fixture = _project.Fixtures[i];
-            _patchIndex[fixture.Id] = i;
-            var profile = _project.FindProfile(fixture.ProfileId);
-            var profileName = profile is null ? "missing profile" : profile.DisplayName;
-            var detail = $"{AddressRange(fixture)} · {profileName}";
-            var choice = new SceneFixtureChoice(fixture.Id, fixture.Name, detail, false, [fixture.Id], OnChoiceToggled);
-            _fixtureChoices[fixture.Id] = choice;
-            General.AvailableFixtures.Add(choice);
+            _patchIndex[_project.Fixtures[i].Id] = i;
         }
-
-        foreach (var group in _project.Groups)
-        {
-            var members = group.FixtureIds.Where(_patchIndex.ContainsKey).ToList();
-            var count = members.Count == 1 ? "1 fixture" : $"{members.Count} fixtures";
-            General.AvailableGroups.Add(new SceneFixtureChoice(group.Id, group.Name, count, true, members, OnChoiceToggled));
-        }
-
-        General.ApplyAddSearch();
     }
 
     // ───────────────────────────── Called by the tabs ─────────────────────────────
@@ -222,11 +189,6 @@ public sealed class SceneEditorViewModel : FunctionEditorViewModel
                 _draft.RemoveFixture(fixtureId);
                 Channels.Remove(bank);
                 changed = true;
-            }
-
-            if (_fixtureChoices.TryGetValue(fixtureId, out var choice))
-            {
-                choice.SetInSceneSilently(include);
             }
         }
 
@@ -309,11 +271,6 @@ public sealed class SceneEditorViewModel : FunctionEditorViewModel
         foreach (var fixture in _project.Fixtures)
         {
             var inScene = targets.Contains(fixture.Id);
-            if (_fixtureChoices.TryGetValue(fixture.Id, out var choice))
-            {
-                choice.SetInSceneSilently(inScene);
-            }
-
             if (inScene)
             {
                 var bank = CreateBank(fixture, values);
@@ -392,8 +349,6 @@ public sealed class SceneEditorViewModel : FunctionEditorViewModel
         return bank;
     }
 
-    private void OnChoiceToggled(SceneFixtureChoice choice, bool isInScene) => SetFixturesInScene(choice.FixtureIds, isInScene);
-
     private void OnFaderChanged(SceneChannelFaderViewModel fader)
     {
         _draft.SetChannelIncluded(fader.FixtureId, fader.Channel, fader.IsIncluded, fader.IsIncluded ? fader.ByteValue : null);
@@ -421,25 +376,10 @@ public sealed class SceneEditorViewModel : FunctionEditorViewModel
         return position;
     }
 
-    /// <summary>The General tab's light list and group ticks after the fixture set changed.</summary>
+    /// <summary>The General tab's light list after the fixture set changed.</summary>
     private void RefreshDerived()
     {
         General.SetLights(Channels.Fixtures.Select(CreateLightRow).ToList());
-
-        foreach (var group in General.AvailableGroups)
-        {
-            var all = group.FixtureIds.Count > 0;
-            foreach (var id in group.FixtureIds)
-            {
-                if (!_banks.ContainsKey(id))
-                {
-                    all = false;
-                    break;
-                }
-            }
-
-            group.SetInSceneSilently(all);
-        }
     }
 
     private SceneLightRow CreateLightRow(SceneFixtureTabViewModel bank)

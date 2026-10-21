@@ -24,9 +24,6 @@ public sealed class PatchHealth
     /// <summary>One entry per fixture, in project (patch list) order.</summary>
     public IReadOnlyList<FixtureHealth> Fixtures { get; }
 
-    /// <summary>Fixtures whose profile is not verified.</summary>
-    public int UnverifiedCount => Count(h => h.IsUnverified);
-
     /// <summary>Fixtures whose profile or mode is missing.</summary>
     public int MissingProfileOrModeCount => Count(h => h.IsMissingProfile || h.IsMissingMode);
 

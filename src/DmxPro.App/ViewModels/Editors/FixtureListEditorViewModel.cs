@@ -50,12 +50,6 @@ public sealed partial class FixtureListEditorViewModel : ObservableObject
     /// <summary>"3 fixtures".</summary>
     public string CountText => Items.Count == 1 ? "1 fixture" : $"{Items.Count} fixtures";
 
-    /// <summary>
-    /// Always null: the owner decided (2026-10) to show no "unverified profile" warnings. Kept because the effect and
-    /// sequence editors still copy it into <see cref="FunctionEditorViewModel.UnverifiedWarning"/>.
-    /// </summary>
-    public string? UnverifiedWarning => null;
-
     /// <summary>Replaces the list without reporting a change (editor open / revert).</summary>
     public void Load(IEnumerable<Guid> fixtureIds)
     {
@@ -151,11 +145,11 @@ public sealed partial class FixtureListEditorViewModel : ObservableObject
             var id = _ids[i];
             if (fixtures.TryGetValue(id, out var fixture))
             {
-                Items.Add(new FixtureListItem(id, i + 1, fixture.Name, Detail(fixture), false, false));
+                Items.Add(new FixtureListItem(id, i + 1, fixture.Name, Detail(fixture), false));
             }
             else
             {
-                Items.Add(new FixtureListItem(id, i + 1, "(missing fixture)", "Deleted from the patch — remove it here", false, true));
+                Items.Add(new FixtureListItem(id, i + 1, "(missing fixture)", "Deleted from the patch — remove it here", true));
             }
         }
 

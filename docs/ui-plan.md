@@ -61,7 +61,7 @@ Earlier web-style sketch (superseded look, same content):
 - **Info bar** (above the page): success messages ("Saved show.dmxpro.", "Opened …") hide themselves after about 3 s;
   warnings and errors stay until closed (safety rule 10). Closing the bar clears the message, so the same message (a
   second save) shows again; a newer message replaces the old one and restarts the timer. Import results stay until
-  closed (they carry the "unverified profile" caution).
+  closed.
 
 ## 2. Top menu bar
 
@@ -212,13 +212,20 @@ Types: Scene, Chaser, Sequence, Color cycle, Fade, Pulse, Flash, Strobe. Copy/pa
 ```
 [General] [Channels]            Fade in [0.5s]  Fade out [0.5s]      (editor toolbar, scenes only)
 ┌ General: lights in the scene ──────────────────────────────────────────────────────────────────┐
-│ [Add ▾ (flyout + search)] [Remove]                                  Find light [__________]   │
+│ [Add / choose lights…] [Remove]                                     Find light [__________]   │
 │ Name          Profile        Mode     Universe·Address                                        │
 │ Stage L PAR   Generic RGBW   4-ch     1·1                                                     │
 │ Back bar      Generic RGB    3-ch     1·5                                                     │
 └────────────────────────────────────────────────────────────────────────────────────────────────┘
 Channels tab: searchable multi-select light list + fader banks (all channel levels are set here).
 ```
+
+**Choose lights dialog (2026-10-22):** a modal dialog replaces the old Add flyout in the scene, effect and sequence
+editors. Opened by the **Add / choose lights…** button or **Ctrl+L** in the editor's Fixtures panel. The **Lights** tab
+lists every patched light: click selects one, **Shift+click** selects a range, **Ctrl+click** toggles, **Ctrl+A** selects
+all; a search box filters the list; **Select all** / **Clear** buttons act on the visible lights. The **Groups** tab
+shows one checkbox per group, tri-state (all / some / none of its lights selected). A footer note reads "Unselected
+lights are removed, new ones go to the end." — OK applies the selection, Cancel leaves the editor unchanged.
 
 **Copy / paste (2026-10-21, scene and sequence editors):** the Channels tab toolbar, at the left of the fader strip, has
 **Copy** (the first selected light) and **Paste to selected** (every selected light); there are no per-light buttons. Copy
@@ -228,7 +235,7 @@ page; matching rules (same profile by channel key, otherwise by channel type and
 
 Implemented as `SceneEditorPanel` (shared by the Functions page and the Shows page), with two tabs:
 
-- **General** — lights only: **Add ▾** flyout with search, **Remove**, **Find light** search, and a list (name, profile,
+- **General** — lights only: **Add / choose lights…** (opens the Choose lights dialog, below), **Remove**, **Find light** search, and a list (name, profile,
   mode, universe·address). Colour presets and quick colour/dimmer sliders were removed
   (owner decision 2026-10-18); **all channel levels are set on the Channels tab**. Scene **fade in / fade out** are in
   the editor toolbar (scenes only). New lights copy Red/Green/Blue/White/Amber/UV/Dimmer from the first light in the

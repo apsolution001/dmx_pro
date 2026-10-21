@@ -41,12 +41,6 @@ public sealed partial class SceneGeneralTabViewModel : SceneEditorTab
     /// </summary>
     public Func<FixturePickerViewModel, bool>? ShowPicker { get; set; }
 
-    /// <summary>Every patched fixture; ticking <see cref="SceneFixtureChoice.IsInScene"/> adds/removes it.</summary>
-    public ObservableCollection<SceneFixtureChoice> AvailableFixtures { get; } = [];
-
-    /// <summary>Every group; ticking adds/removes all its members. Ticked when all members are in the scene.</summary>
-    public ObservableCollection<SceneFixtureChoice> AvailableGroups { get; } = [];
-
     public int LightCount => _allLights.Count;
 
     /// <summary>True when the scene has no lights at all (shows the "add lights" empty state).</summary>
@@ -71,14 +65,6 @@ public sealed partial class SceneGeneralTabViewModel : SceneEditorTab
         OnPropertyChanged(nameof(LightCount));
         OnPropertyChanged(nameof(LightCountText));
         OnPropertyChanged(nameof(HasNoLights));
-    }
-
-    /// <summary>
-    /// Called by the owner after it rebuilt <see cref="AvailableFixtures"/> and <see cref="AvailableGroups"/>. Nothing
-    /// to filter any more: lights are picked in the Choose lights dialog, which reads the patch when it opens.
-    /// </summary>
-    internal void ApplyAddSearch()
-    {
     }
 
     partial void OnSearchTextChanged(string value) => ApplySearch();

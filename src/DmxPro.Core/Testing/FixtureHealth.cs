@@ -28,9 +28,6 @@ public sealed class FixtureHealth
     /// <summary>The profile exists but has no mode with the fixture's mode name.</summary>
     public bool IsMissingMode => Profile is not null && Mode is null;
 
-    /// <summary>The profile has not been verified on a real fixture (safety rule 7).</summary>
-    public bool IsUnverified => Profile is { Verified: false };
-
     /// <summary>The fixture is disabled in the patch and sends nothing.</summary>
     public bool IsDisabled => !Fixture.Enabled;
 

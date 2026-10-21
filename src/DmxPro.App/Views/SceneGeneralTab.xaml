@@ -15,11 +15,11 @@
         Scene editor, General tab: only which lights the scene uses. Channel levels are set on the Channels tab; the
         fade times sit in the editor toolbar (FunctionEditorPanel).
 
-        [+ Add ▾] [−] │ [⌕ Find light        ]                                    3 lights
-        ┌───┬──────────────┬──────────────────────┬──────────┬──────────────┐
-        │ ⚠ │ Name         │ Profile              │ Mode     │ Address      │
-        │   │ PAR 1        │ Generic RGBW         │ 4ch      │ U1 · 1–4     │
-        └───┴──────────────┴──────────────────────┴──────────┴──────────────┘
+        [Add / choose lights…] [−] │ [⌕ Find light        ]                        3 lights
+        ┌──────────────┬──────────────────────┬──────────┬──────────────┐
+        │ Name         │ Profile              │ Mode     │ Address      │
+        │ PAR 1        │ Generic RGBW         │ 4ch      │ U1 · 1–4     │
+        └──────────────┴──────────────────────┴──────────┴──────────────┘
     -->
     <UserControl.Resources>
         <!-- Labelled "Add / choose lights…" button, as high as the panel-header buttons. -->
