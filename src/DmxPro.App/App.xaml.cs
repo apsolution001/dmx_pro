@@ -39,6 +39,12 @@ public partial class App : Application
             services.AddSingleton<IConsolePlayback>(sp => sp.GetRequiredService<EngineConsolePlayback>());
             services.AddSingleton<EngineRuntimeService>();
 
+            // ---- Go live (operate mode: only the Virtual Console drives the lights; always off at start, never saved)
+            // and the automatic light preview of the open function editor's draft while not live.
+            services.AddSingleton<LiveModeService>();
+            services.AddSingleton<ILiveModeService>(sp => sp.GetRequiredService<LiveModeService>());
+            services.AddSingleton<FunctionPreviewService>();
+
             // ---- Settings + Input/Output. ----
             services.AddSingleton(sp => new AppSettingsService(sp.GetRequiredService<ILogger<AppSettingsService>>()));
             services.AddSingleton<SettingsEngineBridge>();

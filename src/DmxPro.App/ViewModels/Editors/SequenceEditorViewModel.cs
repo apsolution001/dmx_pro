@@ -71,7 +71,7 @@ public sealed partial class SequenceEditorViewModel : FunctionEditorViewModel
 
     public string StepCountText => Steps.Count == 1 ? "1 step" : $"{Steps.Count} steps";
 
-    private SequenceFunction Sequence => (SequenceFunction)Original;
+    private SequenceFunction Sequence => (SequenceFunction)Target;
 
     protected override void LoadDraft()
     {

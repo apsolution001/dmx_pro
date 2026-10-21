@@ -74,7 +74,7 @@ public sealed partial class PulseEditorViewModel : EffectEditorViewModel
         }
     }
 
-    private PulseFunction Pulse => (PulseFunction)Original;
+    private PulseFunction Pulse => (PulseFunction)Target;
 
     protected override void LoadEffect()
     {

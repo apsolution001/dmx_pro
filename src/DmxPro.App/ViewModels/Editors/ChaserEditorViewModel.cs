@@ -56,7 +56,7 @@ public sealed partial class ChaserEditorViewModel : FunctionEditorViewModel
     /// <summary>"4 steps".</summary>
     public string StepCountText => Steps.Count == 1 ? "1 step" : $"{Steps.Count} steps";
 
-    private ChaserFunction Chaser => (ChaserFunction)Original;
+    private ChaserFunction Chaser => (ChaserFunction)Target;
 
     protected override void LoadDraft()
     {

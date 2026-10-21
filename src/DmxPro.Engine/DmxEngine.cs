@@ -1,3 +1,4 @@
+using DmxPro.Core.Functions;
 using DmxPro.Core.Patching;
 using DmxPro.Core.Projects;
 using DmxPro.Engine.Runtime;
@@ -18,6 +19,10 @@ namespace DmxPro.Engine;
 /// of the next <see cref="Tick"/>. <see cref="Tick"/> itself must be called from one thread at a time (normally the
 /// <see cref="EngineHost"/> thread); it allocates nothing and holds no lock except for swapping the command queue and
 /// the snapshot buffers.
+/// </para>
+/// <para>
+/// <b>Live mode.</b> <see cref="SetLiveMode"/> gates everything that is not the Virtual Console: while on, the preview
+/// layer, manual overrides and <see cref="ShowOrigin.Editor"/> shows are dropped and refused.
 /// </para>
 /// <para>
 /// <b>Safety.</b> The engine has no notion of "output enabled": it only computes frames. Enabling transmission is the
@@ -56,6 +61,7 @@ public sealed partial class DmxEngine
     private double _snapshotIntervalSeconds = DefaultSnapshotInterval.TotalSeconds;
     private volatile int _showOverrideMode = (int)ShowOverrideMode.MuteWholeShow;
     private long _releaseGeneration;
+    private volatile bool _liveRequested;
 
     /// <summary>Creates an engine with an empty project (universe 1, nothing patched).</summary>
     public DmxEngine(ILogger<DmxEngine>? logger = null)
@@ -230,7 +236,7 @@ public sealed partial class DmxEngine
 
     /// <summary>
     /// Previews a function on top of everything that runs (it wins on the channels it touches and stops nothing).
-    /// Only one preview exists: a running preview is removed immediately and replaced.
+    /// Only one preview exists: a running preview is removed immediately and replaced. Ignored while live mode is on.
     /// </summary>
     public void StartPreview(Guid functionId) => StartFunction(functionId, EngineLayer.Preview);
 
@@ -238,8 +244,70 @@ public sealed partial class DmxEngine
     public void StopPreview() => _queue.Enqueue(new EngineCommand(EngineCommandKind.StopPreview));
 
     /// <summary>
+    /// Shows an unsaved editor draft in the <see cref="EngineLayer.Preview"/> layer (live edit preview). The draft is
+    /// compiled here, on the calling thread, against the patch of the most recently loaded project (functions it
+    /// references are taken from <paramref name="project"/> as saved); the tick only swaps the compiled program in, so
+    /// call this on every (debounced) draft change. While a draft with the same id is previewed, its program is replaced
+    /// in place: elapsed time and level are kept, so effects keep running smoothly while the user edits. Anything else
+    /// in the preview layer is replaced. Draft previews start and stop without fades. A timed flash previews as held.
+    /// Ignored (and false returned when known here) while live mode is on, or when the type cannot be played. Call with
+    /// the project not being edited concurrently (normally the UI thread).
+    /// </summary>
+    /// <param name="project">The open project (fixtures, profiles, referenced functions).</param>
+    /// <param name="draft">The editor's draft; may be a copy that is not in the project.</param>
+    /// <returns>True when the preview was queued.</returns>
+    public bool SetPreviewFunction(Project project, LightFunction draft)
+    {
+        ArgumentNullException.ThrowIfNull(project);
+        ArgumentNullException.ThrowIfNull(draft);
+        if (_liveRequested)
+        {
+            return false;
+        }
+
+        var model = _latestModel;
+        var program = EngineModelBuilder.CompileDraft(project, draft, model, _logger);
+        if (program is null)
+        {
+            return false;
+        }
+
+        _queue.Enqueue(new EngineCommand(EngineCommandKind.SetPreviewDraft, draft.Id, EngineLayer.Preview, 1f, Model: model, Program: program));
+        return true;
+    }
+
+    /// <summary>
+    /// Removes the preview at the next tick immediately, without fade (editor closed, page left, live mode on); the
+    /// lights return to what runs underneath. Deterministic counterpart of <see cref="StopPreview"/>.
+    /// </summary>
+    public void ClearPreview() => _queue.Enqueue(new EngineCommand(EngineCommandKind.ClearPreview));
+
+    /// <summary>
+    /// Live mode (owner decision 2026-10-22, like QLC+ Operate mode): only the Virtual Console drives the lights. When
+    /// switched on (at the next tick, in queue order), the preview layer is removed without fade, every manual override
+    /// is cleared (counts as a release for <see cref="ReleaseGeneration"/>) and every <see cref="ShowOrigin.Editor"/>
+    /// show stops. While on, previews, manual overrides and editor show starts are ignored. Console functions,
+    /// console shows, Grand Master, Blackout and Release All are not affected, and switching off changes nothing that
+    /// runs (the lights do not jump); other sources are simply allowed again. This is not output enable/disable
+    /// (safety rules 1–3). Starts off and is never persisted.
+    /// </summary>
+    public void SetLiveMode(bool live)
+    {
+        if (live)
+        {
+            Interlocked.Increment(ref _releaseGeneration);
+        }
+
+        _liveRequested = live;
+        _queue.Enqueue(new EngineCommand(EngineCommandKind.SetLiveMode, Value: live ? 1f : 0f));
+    }
+
+    /// <summary>The live mode last requested with <see cref="SetLiveMode"/> (applies at the next tick).</summary>
+    public bool IsLiveMode => _liveRequested;
+
+    /// <summary>
     /// Manual override of one channel (Test tab / simple desk). Wins over all function layers, but Grand Master,
-    /// Blackout and strobe safety still apply. Ignored for universes the project does not use.
+    /// Blackout and strobe safety still apply. Ignored for universes the project does not use, and while live mode is on.
     /// </summary>
     /// <param name="universe">Project universe, from 1.</param>
     /// <param name="address">DMX address 1–512.</param>
@@ -280,8 +348,18 @@ public sealed partial class DmxEngine
     /// function in the <see cref="EngineLayer.Show"/> layer between its start and end, with the item's fade wedges.
     /// The show stops by itself at its end.
     /// </summary>
-    public void StartShow(Guid showId, TimeSpan startPosition = default) =>
-        _queue.Enqueue(new EngineCommand(EngineCommandKind.StartShow, showId, Seconds: Math.Max(0, startPosition.TotalSeconds)));
+    /// <param name="showId">Show to play.</param>
+    /// <param name="startPosition">Where to start.</param>
+    /// <param name="origin">
+    /// Where it was started from; an <see cref="ShowOrigin.Editor"/> start is ignored while live mode is on (see
+    /// <see cref="SetLiveMode"/>).
+    /// </param>
+    public void StartShow(Guid showId, TimeSpan startPosition = default, ShowOrigin origin = ShowOrigin.Console) =>
+        _queue.Enqueue(new EngineCommand(
+            EngineCommandKind.StartShow,
+            showId,
+            Seconds: Math.Max(0, startPosition.TotalSeconds),
+            Origin: origin == ShowOrigin.Editor ? ShowOrigin.Editor : ShowOrigin.Console));
 
     /// <summary>Stops a show immediately (playing or paused); its items release.</summary>
     public void StopShow(Guid showId) => _queue.Enqueue(new EngineCommand(EngineCommandKind.StopShow, showId));

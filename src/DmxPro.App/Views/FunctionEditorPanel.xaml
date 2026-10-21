@@ -163,31 +163,28 @@
 
                     <Rectangle Style="{StaticResource ToolbarSeparator}" />
 
-                    <!-- Wrapper carries the tooltip so it shows while the controls are disabled. -->
+                    <!--
+                        Live edit preview hint (owner decision 2026-10-22): the open editor's draft shows on the lights
+                        automatically while not live, so there is no Preview button / "Live on lights" switch. Neutral
+                        info style, not a warning.
+                    -->
                     <StackPanel
+                        VerticalAlignment="Center"
                         Background="Transparent"
                         Orientation="Horizontal"
-                        ToolTip="Works when the engine and DMX output are connected"
-                        ToolTipService.ShowOnDisabled="True">
-                        <Button
-                            AutomationProperties.Name="Preview on the lights"
-                            IsEnabled="False"
-                            Style="{StaticResource ToolbarLabelButton}"
-                            ToolTip="Preview on the lights — works when the engine and DMX output are connected"
-                            ToolTipService.ShowOnDisabled="True">
-                            <StackPanel Orientation="Horizontal">
-                                <c:DmxIcon Kind="Play" Size="{StaticResource Dmx.ButtonIconSize}" />
-                                <TextBlock Style="{StaticResource ButtonLabel}" Text="Preview" />
-                            </StackPanel>
-                        </Button>
-                        <ui:ToggleSwitch
-                            Margin="8,0,0,0"
+                        ToolTip="While this editor is open, your unsaved changes show on the lights. Not in live mode (Ctrl+F5), and only while DMX output is enabled."
+                        Visibility="{Binding HasPreviewStatus, Converter={StaticResource BoolToVisibility}}">
+                        <c:DmxIcon
                             VerticalAlignment="Center"
-                            AutomationProperties.Name="Live on lights"
-                            Content="Live on lights"
-                            IsEnabled="False"
-                            ToolTip="Live on lights — works when the engine and DMX output are connected"
-                            ToolTipService.ShowOnDisabled="True" />
+                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                            Kind="Preview"
+                            Size="{StaticResource Dmx.ButtonIconSize}" />
+                        <TextBlock
+                            Margin="4,0,0,0"
+                            VerticalAlignment="Center"
+                            AutomationProperties.LiveSetting="Polite"
+                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                            Text="{Binding PreviewStatus}" />
                     </StackPanel>
 
                     <StackPanel Orientation="Horizontal" Visibility="{Binding IsShowCopy, Converter={StaticResource BoolToVisibility}}">

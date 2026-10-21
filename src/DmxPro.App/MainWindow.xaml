@@ -50,6 +50,8 @@
         <KeyBinding Command="{Binding ToggleBlackoutCommand}" Gesture="Ctrl+B" />
         <KeyBinding Command="{Binding ReleaseAllCommand}" Gesture="Shift+Escape" />
         <KeyBinding Command="{Binding ToggleOperatorModeCommand}" Gesture="F12" />
+        <!-- Go live (operate mode). Not F5: the Input / Output page refreshes devices on F5 and console keys may use it. -->
+        <KeyBinding Command="{Binding ToggleLiveModeCommand}" Gesture="Ctrl+F5" />
     </Window.InputBindings>
 
     <!-- Desktop layout modelled on QLC+: title bar, menu, main toolbar, section rail + page area, status bar. -->
@@ -761,13 +763,31 @@
                     </Button>
                 </StackPanel>
                 <!--
-                    Right side: live actions. The "Go Live" button (later task) goes in this panel too, left of the Stage
-                    window button; the Blackout / Output buttons (phases 4 and 7) follow.
+                    Right side: live actions. Go live (operate mode, Ctrl+F5) left of the Stage window button; the
+                    Blackout / Output buttons (phases 4 and 7) follow.
                 -->
                 <StackPanel
                     x:Name="ToolbarRightPanel"
                     DockPanel.Dock="Right"
                     Orientation="Horizontal">
+                    <!--
+                        Go live: a mode switch, NOT output enable. On = accent fill + pause icon + "Live" (not colour only).
+                        Labelled, so the fixed 24 px width of ToolbarToggleButton is lifted here.
+                    -->
+                    <ToggleButton
+                        Width="Auto"
+                        Height="{StaticResource Dmx.ControlHeight}"
+                        Padding="{StaticResource Dmx.LabelledButtonPadding}"
+                        AutomationProperties.Name="{Binding LiveAutomationName}"
+                        IsChecked="{Binding IsLive, Mode=TwoWay}"
+                        Style="{StaticResource ToolbarToggleButton}"
+                        ToolTip="{Binding LiveToolTip}">
+                        <StackPanel Orientation="Horizontal">
+                            <c:DmxIcon Kind="{Binding LiveIconKind}" Size="{StaticResource Dmx.ButtonIconSize}" />
+                            <TextBlock Style="{StaticResource ButtonLabel}" Text="{Binding LiveButtonText}" />
+                        </StackPanel>
+                    </ToggleButton>
+                    <Rectangle Style="{StaticResource ToolbarSeparator}" />
                     <Button
                         AutomationProperties.Name="Open the live stage window"
                         Command="{Binding OpenStageWindowCommand}"

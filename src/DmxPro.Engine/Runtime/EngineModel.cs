@@ -21,8 +21,10 @@ internal sealed class EngineModel
         byte[] strobeSafe,
         Dictionary<(Guid FixtureId, string ChannelKey), PatchedChannel> patch,
         Dictionary<Guid, FunctionProgram> functions,
-        Dictionary<Guid, ShowProgram> shows)
+        Dictionary<Guid, ShowProgram> shows,
+        PatchIndex? patchIndex = null)
     {
+        PatchIndex = patchIndex ?? new PatchIndex();
         Universes = universes;
         Defaults = defaults;
         IsIntensity = isIntensity;
@@ -68,6 +70,12 @@ internal sealed class EngineModel
 
     public Dictionary<Guid, FunctionProgram> Functions { get; }
 
+    /// <summary>
+    /// Compile-time patch lookup this model was built with, so a preview draft compiled later resolves to exactly the
+    /// same flat channels. Immutable after build; never used by the tick.
+    /// </summary>
+    public PatchIndex PatchIndex { get; }
+
     public Dictionary<Guid, ShowProgram> Shows { get; }
 
     /// <summary>One accumulator per <see cref="EngineLayer"/> (engine thread only).</summary>
@@ -97,6 +105,33 @@ internal sealed class EngineModel
         }
 
         return -1;
+    }
+
+    /// <summary>
+    /// True when <paramref name="other"/> has the same universes in the same order, so flat channel indexes compiled
+    /// against one are valid in the other. Allocation-free (engine thread).
+    /// </summary>
+    public bool HasSameLayout(EngineModel other)
+    {
+        if (ReferenceEquals(this, other))
+        {
+            return true;
+        }
+
+        if (Universes.Length != other.Universes.Length)
+        {
+            return false;
+        }
+
+        for (var i = 0; i < Universes.Length; i++)
+        {
+            if (Universes[i] != other.Universes[i])
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /// <summary>Flat channel index of a universe/address, or -1 when the universe is not part of the project.</summary>

@@ -59,7 +59,8 @@ public sealed class ChannelTestSession
     }
 
     /// <summary>
-    /// Sets a test value on one fixture channel. Returns false (and changes nothing) when the session is inactive or the
+    /// Sets a test value on one fixture channel. Returns false (and changes nothing) when the session is inactive, the
+    /// engine is in live mode (<see cref="DmxEngine.SetLiveMode"/>; switching it on released every override) or the
     /// channel is not patched: unknown fixture/key, disabled fixture, missing profile/mode or past address 512.
     /// </summary>
     /// <param name="fixtureId">Fixture id.</param>
@@ -68,7 +69,8 @@ public sealed class ChannelTestSession
     public bool Set(Guid fixtureId, string channelKey, byte value)
     {
         ArgumentNullException.ThrowIfNull(channelKey);
-        if (!IsActive || !_engine.TryResolveChannel(fixtureId, channelKey, out var channel))
+        // Live mode: only the Virtual Console drives the lights; the engine would refuse the override anyway.
+        if (!IsActive || _engine.IsLiveMode || !_engine.TryResolveChannel(fixtureId, channelKey, out var channel))
         {
             return false;
         }

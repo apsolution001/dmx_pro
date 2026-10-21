@@ -68,7 +68,7 @@ public sealed partial class FadeEditorViewModel : FunctionEditorViewModel
     public string SummaryText =>
         $"{NameOf(FromOptions, FromSceneId)} → {NameOf(ToOptions, ToSceneId)} over {EditorTiming.FormatDuration(_durationSeconds)}, then holds the target";
 
-    private FadeFunction Fade => (FadeFunction)Original;
+    private FadeFunction Fade => (FadeFunction)Target;
 
     protected override void LoadDraft()
     {

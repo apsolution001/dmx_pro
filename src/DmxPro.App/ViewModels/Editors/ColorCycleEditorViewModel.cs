@@ -70,7 +70,7 @@ public sealed partial class ColorCycleEditorViewModel : EffectEditorViewModel
         ? "Add at least one colour."
         : $"One round: {EditorTiming.FormatDuration(Colors.Count * (_holdSeconds + _fadeSeconds))}";
 
-    private ColorCycleFunction Cycle => (ColorCycleFunction)Original;
+    private ColorCycleFunction Cycle => (ColorCycleFunction)Target;
 
     protected override void LoadEffect()
     {

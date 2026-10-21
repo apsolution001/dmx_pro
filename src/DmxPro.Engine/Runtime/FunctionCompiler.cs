@@ -29,15 +29,46 @@ internal sealed class FunctionCompiler
     private int[] _scratchChannels = [];
     private byte[] _scratchLevels = [];
 
-    public FunctionCompiler(Project project, PatchIndex patch, ILogger logger)
+    private readonly LightFunction? _draft;
+
+    /// <param name="project">Project whose functions (and fixtures/profiles) are compiled.</param>
+    /// <param name="patch">Resolved patch.</param>
+    /// <param name="logger">Logger for skipped references.</param>
+    /// <param name="draft">
+    /// Optional unsaved function that replaces the project's function with the same id (preview of an editor draft).
+    /// </param>
+    public FunctionCompiler(Project project, PatchIndex patch, ILogger logger, LightFunction? draft = null)
     {
         _project = project;
         _patch = patch;
         _logger = logger;
+        _draft = draft;
         foreach (var function in project.Functions)
         {
             _byId.TryAdd(function.Id, function);
         }
+
+        if (draft is not null)
+        {
+            _byId[draft.Id] = draft;
+        }
+    }
+
+    /// <summary>Compiles only the draft passed to the constructor (preview). Null when it cannot be played.</summary>
+    public FunctionProgram? CompileDraft()
+    {
+        if (_draft is null)
+        {
+            return null;
+        }
+
+        // Preview of a flash = the button is held while the editor is open, whatever its duration.
+        if (_draft is FlashFunction flash)
+        {
+            return new FlashProgram(flash.Id, Fixtures(flash, colorOnly: false), flash.Color, 0, flash.UseWhiteChannel);
+        }
+
+        return Compile(_draft.Id);
     }
 
     /// <summary>Compiles every function; types the engine cannot play are left out.</summary>

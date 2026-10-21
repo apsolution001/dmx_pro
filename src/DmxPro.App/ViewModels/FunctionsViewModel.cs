@@ -12,8 +12,8 @@ namespace DmxPro.App.ViewModels;
 /// <summary>
 /// Functions page (QLC+ Function Manager layout): function tree grouped by type on top, summary or editor below.
 /// Select ≠ edit ≠ preview (ui-plan §3.3): a click only selects and shows an on-screen summary; double-click / Enter /
-/// Edit opens the editor of the function's type; nothing here changes the lights: there is no function preview, only the
-/// Virtual Console drives lights in live mode (owner decision 2026-10-22).
+/// Edit opens the editor of the function's type. While the editor is open on this page (and live mode is off) its
+/// unsaved draft is shown on the lights automatically (<see cref="FunctionPreviewService"/>); selecting never changes them.
 /// </summary>
 public sealed partial class FunctionsViewModel : PageViewModel
 {
@@ -27,6 +27,11 @@ public sealed partial class FunctionsViewModel : PageViewModel
 
     /// <summary>Edit ▸ Cut / Copy / Paste of whole functions (in-app, cleared when another project is opened).</summary>
     private readonly FunctionClipboard _functionClipboard = new();
+
+    private readonly FunctionPreviewService _preview;
+
+    /// <summary>True while the page is shown: only then does the open editor preview on the lights.</summary>
+    private bool _isPageVisible;
 
     /// <summary>True while the list rebuilds or a selection is put back, so selection changes don't prompt.</summary>
     private bool _suppressSelection;
@@ -82,7 +87,8 @@ public sealed partial class FunctionsViewModel : PageViewModel
         IDialogService dialogs,
         AppSettingsService settings,
         LightClipboardService clipboard,
-        VirtualConsoleViewModel virtualConsole)
+        VirtualConsoleViewModel virtualConsole,
+        FunctionPreviewService preview)
     {
         _projects = projects;
         _dialogs = dialogs;
@@ -90,6 +96,7 @@ public sealed partial class FunctionsViewModel : PageViewModel
         _clipboard = clipboard;
         _virtualConsole = virtualConsole;
         _functionClipboard.Changed += (_, _) => PasteCommand.NotifyCanExecuteChanged();
+        _preview = preview;
         TypeOptions = [AllTypes, .. Enum.GetValues<FunctionType>().Select(t => new FunctionTypeOption(t, FunctionRowViewModel.TypeDisplayName(t)))];
 
         // A different project replaces everything; the shell has already asked about saving the project.
@@ -170,6 +177,8 @@ public sealed partial class FunctionsViewModel : PageViewModel
 
     public override void OnNavigatedTo()
     {
+        _isPageVisible = true;
+
         // Rebuilding the tree on every visit made switching to this page slow; only rebuild when the project changed.
         if (_loadedRevision != _projects.Revision)
         {
@@ -177,6 +186,20 @@ public sealed partial class FunctionsViewModel : PageViewModel
         }
 
         Editor?.RefreshPatch();
+        if (Editor is { } editor)
+        {
+            _preview.Attach(editor);
+        }
+    }
+
+    /// <summary>Leaving the page stops the editor's light preview; it comes back when the page is shown again.</summary>
+    public override void OnNavigatedFrom()
+    {
+        _isPageVisible = false;
+        if (Editor is { } editor)
+        {
+            _preview.Detach(editor);
+        }
     }
 
     /// <summary>
@@ -232,6 +255,7 @@ public sealed partial class FunctionsViewModel : PageViewModel
         {
             oldValue.Saved -= OnEditorSaved;
             oldValue.CloseRequested -= OnEditorCloseRequested;
+            _preview.Detach(oldValue);
             oldValue.Detach();
         }
 
@@ -239,6 +263,10 @@ public sealed partial class FunctionsViewModel : PageViewModel
         {
             newValue.Saved += OnEditorSaved;
             newValue.CloseRequested += OnEditorCloseRequested;
+            if (_isPageVisible)
+            {
+                _preview.Attach(newValue);
+            }
         }
 
         OnPropertyChanged(nameof(IsNothingSelected));

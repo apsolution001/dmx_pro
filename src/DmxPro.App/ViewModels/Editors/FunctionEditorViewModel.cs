@@ -9,11 +9,21 @@ namespace DmxPro.App.ViewModels.Editors;
 /// <summary>
 /// Base of every function editor shown below the Functions tree (and over the Shows timeline for a show's own copy):
 /// the shared toolbar state (name, Save / Revert / Close, unsaved changes, "Show in function list" for show copies).
-/// Editors work on a draft; nothing reaches the project, or the lights, until <see cref="Save"/>.
+/// Editors work on a draft; nothing reaches the project until <see cref="Save"/>. While live mode is off the open
+/// editor's draft is shown on the lights automatically (<see cref="Services.FunctionPreviewService"/> listens to
+/// <see cref="DraftChanged"/> and sends <see cref="BuildPreviewFunction"/> to the engine preview layer).
 /// </summary>
 public abstract partial class FunctionEditorViewModel : ObservableObject
 {
     private bool _loading;
+
+    // Set only while BuildPreviewFunction runs: ApplyDraft then writes into this copy instead of Original.
+    private LightFunction? _previewTarget;
+
+    /// <summary>Where the editor's draft is shown ("Showing on lights", "Output off — not on lights", …); null hides it.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasPreviewStatus))]
+    private string? _previewStatus;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SaveChangesCommand), nameof(RevertCommand))]
@@ -57,6 +67,8 @@ public abstract partial class FunctionEditorViewModel : ObservableObject
     /// <summary>"Own copy in show Wedding: changes never touch the original." Null for a library function.</summary>
     public string? ShowCopyText => ShowName is null ? null : $"Own copy in show \"{ShowName}\": changes never touch the original.";
 
+    public bool HasPreviewStatus => PreviewStatus is not null;
+
     /// <summary>Same command as <see cref="SaveChangesCommand"/>.</summary>
     public IRelayCommand SaveCommand => SaveChangesCommand;
 
@@ -65,8 +77,21 @@ public abstract partial class FunctionEditorViewModel : ObservableObject
 
     protected Project Project { get; }
 
+    /// <summary>
+    /// The function the draft settings are written to by <see cref="ApplyDraft"/>: <see cref="Original"/> on save, the
+    /// preview copy while <see cref="BuildPreviewFunction"/> runs. Editors read the saved function through
+    /// <see cref="Original"/> in <see cref="LoadDraft"/> and write through this in <see cref="ApplyDraft"/>.
+    /// </summary>
+    protected LightFunction Target => _previewTarget ?? Original;
+
     /// <summary>Raised after a successful save, so the page can mark the project changed and refresh its lists.</summary>
     public event EventHandler? Saved;
+
+    /// <summary>
+    /// Raised after every change to the draft (each edit, even when it is already unsaved) and after a revert, so the
+    /// live preview can follow it. Not raised while the draft is (re)loaded.
+    /// </summary>
+    public event EventHandler? DraftChanged;
 
     /// <summary>Raised by <see cref="CloseCommand"/>. The page decides (unsaved-changes prompt) and closes the editor.</summary>
     public event EventHandler? CloseRequested;
@@ -101,6 +126,29 @@ public abstract partial class FunctionEditorViewModel : ObservableObject
         OnPropertyChanged(nameof(Title));
         Saved?.Invoke(this, EventArgs.Empty);
         return true;
+    }
+
+    /// <summary>
+    /// The draft as a stand-alone function for the live preview: a deep copy of <see cref="Original"/> with the same id
+    /// and the draft applied. Neither the project nor <see cref="Original"/> is changed.
+    /// </summary>
+    public LightFunction BuildPreviewFunction()
+    {
+        var copy = Original.CloneAsNew();
+        copy.Id = Original.Id;
+        copy.CopiedFromId = Original.CopiedFromId;
+        copy.Name = Name;
+        _previewTarget = copy;
+        try
+        {
+            ApplyDraft();
+        }
+        finally
+        {
+            _previewTarget = null;
+        }
+
+        return copy;
     }
 
     /// <summary>Called when the editor goes away: unsubscribe from long-lived services here.</summary>
@@ -138,6 +186,7 @@ public abstract partial class FunctionEditorViewModel : ObservableObject
         }
 
         IsDirty = false;
+        DraftChanged?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>
@@ -161,6 +210,7 @@ public abstract partial class FunctionEditorViewModel : ObservableObject
         if (!_loading)
         {
             IsDirty = true;
+            DraftChanged?.Invoke(this, EventArgs.Empty);
         }
     }
 

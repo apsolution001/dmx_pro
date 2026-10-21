@@ -91,7 +91,7 @@ public sealed class SceneEditorViewModel : FunctionEditorViewModel
         set => SetSeconds(ref _fadeOutSeconds, value);
     }
 
-    private SceneFunction Scene => (SceneFunction)Original;
+    private SceneFunction Scene => (SceneFunction)Target;
 
     public override void RefreshPatch()
     {

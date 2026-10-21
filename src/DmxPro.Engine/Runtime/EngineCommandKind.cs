@@ -30,4 +30,13 @@ internal enum EngineCommandKind
 
     /// <summary>Release everything, then swap in a new model (project open).</summary>
     LoadModel,
+
+    /// <summary>Show (or update) an unsaved function draft in the preview layer (<see cref="EngineCommand.Program"/>).</summary>
+    SetPreviewDraft,
+
+    /// <summary>Remove the preview at once, without fade.</summary>
+    ClearPreview,
+
+    /// <summary>Live mode on (<see cref="EngineCommand.Value"/> &gt; 0) or off.</summary>
+    SetLiveMode,
 }
