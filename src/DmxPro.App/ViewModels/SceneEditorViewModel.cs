@@ -72,6 +72,9 @@ public sealed class SceneEditorViewModel : FunctionEditorViewModel
 
     public SceneChannelsTabViewModel Channels { get; }
 
+    /// <summary>The project, for the General tab's Choose lights dialog.</summary>
+    internal Project PatchProject => _project;
+
     /// <summary>
     /// Fade-in time typed in the editor toolbar ("0.5"). Numbers are rounded to milliseconds and clamped to
     /// 0–<see cref="FunctionEditing.MaxSeconds"/>; anything else reverts to the stored value.

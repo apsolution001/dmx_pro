@@ -1,0 +1,435 @@
+<ui:FluentWindow
+    x:Class="DmxPro.App.Views.FixturePickerWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:c="clr-namespace:DmxPro.App.Controls"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    xmlns:vm="clr-namespace:DmxPro.App.ViewModels"
+    Title="{Binding Title}"
+    Width="760"
+    Height="540"
+    MinWidth="560"
+    MinHeight="360"
+    d:DataContext="{d:DesignInstance Type=vm:FixturePickerViewModel}"
+    Background="{DynamicResource ApplicationBackgroundBrush}"
+    ExtendsContentIntoTitleBar="True"
+    Icon="pack://application:,,,/Assets/Logo/dmxpro.ico"
+    PreviewKeyDown="OnWindowPreviewKeyDown"
+    ResizeMode="CanResize"
+    ShowInTaskbar="False"
+    WindowBackdropType="None"
+    WindowStartupLocation="CenterOwner"
+    mc:Ignorable="d">
+    <!--
+        Modal "Choose lights" dialog of the function editors (DataContext: FixturePickerViewModel). One picked set of
+        lights, edited on two tabs:
+
+        ┌ Choose lights · Rainbow chase ─────────────────────────────────────── ✕ ┐
+        │ Lights (24)  Groups (3)                                                  │
+        │ [⌕ Search lights   ] [☑ Select all] [✕ Clear]   Click, Shift+click range… │
+        │ ┌──┬──────────┬────────────┬───────────────┬──────┬────────┐            │
+        │ │# │ Name     │ Address    │ Profile       │ Mode │ Change │            │
+        │ │1 │ PAR 1    │ U1 · 1–8   │ Generic RGBW  │ 8ch  │        │ (selected) │
+        │ │2 │ PAR 2    │ U1 · 9–16  │ Generic RGBW  │ 8ch  │ Add    │ (selected) │
+        │ └──┴──────────┴────────────┴───────────────┴──────┴────────┘            │
+        ├──────────────────────────────────────────────────────────────────────────┤
+        │ ⓘ Lights not selected are removed…  5 of 24 selected · 1 to add  [Cancel] [OK] │
+        └──────────────────────────────────────────────────────────────────────────┘
+
+        Keys: Ctrl+F search, Alt+L / Alt+G tabs, Ctrl+A select all (in the list), Enter OK, Esc Cancel.
+    -->
+    <ui:FluentWindow.Resources>
+        <!-- Flat tab strip with an accent underline (same look as the function editor tabs). -->
+        <Style x:Key="PickerTabItem" TargetType="TabItem">
+            <Setter Property="OverridesDefaultStyle" Value="True" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+            <Setter Property="FontSize" Value="{StaticResource Dmx.FontSize.Body}" />
+            <Setter Property="MinHeight" Value="{StaticResource Dmx.TabHeight}" />
+            <Setter Property="Padding" Value="8,0" />
+            <Setter Property="Margin" Value="0,0,2,0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border
+                            x:Name="Bd"
+                            Padding="{TemplateBinding Padding}"
+                            Background="Transparent"
+                            CornerRadius="4,4,0,0"
+                            SnapsToDevicePixels="True">
+                            <Grid>
+                                <ContentPresenter
+                                    Margin="0,0,0,2"
+                                    VerticalAlignment="Center"
+                                    ContentSource="Header"
+                                    RecognizesAccessKey="True" />
+                                <Border
+                                    x:Name="Underline"
+                                    Height="2"
+                                    Margin="-4,0"
+                                    VerticalAlignment="Bottom"
+                                    Background="{DynamicResource AccentFillColorDefaultBrush}"
+                                    CornerRadius="1"
+                                    Visibility="Hidden" />
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+                                <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Underline" Property="Visibility" Value="Visible" />
+                                <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PickerTabControl" TargetType="TabControl">
+            <Setter Property="OverridesDefaultStyle" Value="True" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="ItemContainerStyle" Value="{StaticResource PickerTabItem}" />
+            <Setter Property="KeyboardNavigation.TabNavigation" Value="Local" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabControl">
+                        <DockPanel Background="{TemplateBinding Background}">
+                            <Border
+                                Padding="4,0"
+                                BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
+                                BorderThickness="0,0,0,1"
+                                DockPanel.Dock="Top"
+                                SnapsToDevicePixels="True">
+                                <StackPanel
+                                    IsItemsHost="True"
+                                    KeyboardNavigation.TabIndex="1"
+                                    Orientation="Horizontal" />
+                            </Border>
+                            <ContentPresenter
+                                x:Name="PART_SelectedContentHost"
+                                Margin="{TemplateBinding Padding}"
+                                ContentSource="SelectedContent"
+                                KeyboardNavigation.TabIndex="2" />
+                        </DockPanel>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </ui:FluentWindow.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar
+            Title="{Binding Title}"
+            Grid.Row="0"
+            ShowMaximize="False"
+            ShowMinimize="False">
+            <ui:TitleBar.Icon>
+                <ui:ImageIcon
+                    Width="16"
+                    Height="16"
+                    AutomationProperties.Name="DMX Pro"
+                    Source="{StaticResource Dmx.Logo.Small.Image}" />
+            </ui:TitleBar.Icon>
+        </ui:TitleBar>
+
+        <Border
+            Grid.Row="1"
+            Margin="8,2,8,4"
+            Style="{StaticResource PanelBorder}">
+            <TabControl
+                x:Name="Tabs"
+                AutomationProperties.Name="Choose lights by"
+                Style="{StaticResource PickerTabControl}">
+
+                <!-- ═══════════ Lights: Extended selection (click, Shift+click, Ctrl+click, Ctrl+A) ═══════════ -->
+                <TabItem
+                    x:Name="LightsTab"
+                    AutomationProperties.Name="Lights"
+                    Header="{Binding LightsHeader}"
+                    ToolTip="Pick single lights (Alt+L)">
+                    <DockPanel>
+                        <Border DockPanel.Dock="Top" Style="{StaticResource ToolbarStrip}">
+                            <DockPanel>
+                                <ui:TextBox
+                                    x:Name="SearchBox"
+                                    Width="200"
+                                    Margin="0"
+                                    VerticalAlignment="Center"
+                                    AutomationProperties.Name="Search lights"
+                                    DockPanel.Dock="Left"
+                                    Icon="{ui:SymbolIcon Search24}"
+                                    PlaceholderText="Search lights (Ctrl+F)"
+                                    Style="{StaticResource FormTextBox}"
+                                    Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                    ToolTip="Filter by number, name, address, profile or mode" />
+                                <Button
+                                    Margin="4,0,0,0"
+                                    AutomationProperties.Name="Select all lights shown"
+                                    Command="{Binding SelectAllCommand}"
+                                    DockPanel.Dock="Left"
+                                    Style="{StaticResource ToolbarLabelButton}"
+                                    ToolTip="Select every light in the list (Ctrl+A in the list). With a search, only the lights shown.">
+                                    <StackPanel Orientation="Horizontal">
+                                        <c:DmxIcon Kind="SelectAll" Size="{StaticResource Dmx.DenseIconSize}" />
+                                        <TextBlock
+                                            Margin="4,0,0,0"
+                                            VerticalAlignment="Center"
+                                            Text="Select all" />
+                                    </StackPanel>
+                                </Button>
+                                <Button
+                                    AutomationProperties.Name="Clear the selection of the lights shown"
+                                    Command="{Binding ClearCommand}"
+                                    DockPanel.Dock="Left"
+                                    Style="{StaticResource ToolbarLabelButton}"
+                                    ToolTip="Deselect every light in the list. With a search, only the lights shown.">
+                                    <StackPanel Orientation="Horizontal">
+                                        <c:DmxIcon Kind="Close" Size="{StaticResource Dmx.DenseIconSize}" />
+                                        <TextBlock
+                                            Margin="4,0,0,0"
+                                            VerticalAlignment="Center"
+                                            Text="Clear" />
+                                    </StackPanel>
+                                </Button>
+                                <TextBlock
+                                    Margin="8,0,4,0"
+                                    VerticalAlignment="Center"
+                                    Style="{StaticResource HintText}"
+                                    Text="Click a light, Shift+click another to select the range between, Ctrl+click to add or remove one."
+                                    TextTrimming="CharacterEllipsis"
+                                    TextWrapping="NoWrap"
+                                    ToolTip="Click a light, Shift+click another to select the range between, Ctrl+click to add or remove one, Ctrl+A for all. Shift+arrow keys extend the selection." />
+                            </DockPanel>
+                        </Border>
+
+                        <Grid>
+                            <c:BulkSelectDataGrid
+                                x:Name="LightsGrid"
+                                AutomationProperties.Name="Lights; selected lights are used by the function"
+                                CanUserReorderColumns="False"
+                                CanUserSortColumns="False"
+                                EnableRowVirtualization="True"
+                                IsReadOnly="True"
+                                ItemsSource="{Binding VisibleLights}"
+                                KeyboardNavigation.TabNavigation="Once"
+                                Loaded="OnLightsGridLoaded"
+                                PreviewKeyDown="OnLightsGridPreviewKeyDown"
+                                SelectionChanged="OnLightsGridSelectionChanged"
+                                SelectionMode="Extended"
+                                Style="{StaticResource DataTable}"
+                                VirtualizingPanel.IsVirtualizing="True"
+                                VirtualizingPanel.VirtualizationMode="Recycling">
+                                <DataGrid.RowStyle>
+                                    <Style BasedOn="{StaticResource DataTableRow}" TargetType="DataGridRow">
+                                        <Setter Property="AutomationProperties.Name" Value="{Binding AutomationName}" />
+                                    </Style>
+                                </DataGrid.RowStyle>
+                                <DataGrid.Columns>
+                                    <!-- Selected = check mark too, so the state never relies on the row tint alone. -->
+                                    <DataGridTemplateColumn Width="24" CanUserResize="False">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate DataType="{x:Type vm:FixturePickerLight}">
+                                                <c:DmxIcon
+                                                    HorizontalAlignment="Center"
+                                                    VerticalAlignment="Center"
+                                                    AutomationProperties.Name="Selected"
+                                                    Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                                                    Kind="Check"
+                                                    Size="{StaticResource Dmx.DenseIconSize}"
+                                                    Visibility="{Binding IsPicked, Converter={StaticResource BoolToVisibility}}" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTextColumn
+                                        Width="40"
+                                        Binding="{Binding Number}"
+                                        Header="#" />
+                                    <DataGridTextColumn
+                                        Width="2*"
+                                        MinWidth="100"
+                                        Binding="{Binding Name}"
+                                        Header="Name" />
+                                    <DataGridTextColumn
+                                        Width="100"
+                                        Binding="{Binding Address}"
+                                        Header="Address" />
+                                    <DataGridTextColumn
+                                        Width="2*"
+                                        MinWidth="100"
+                                        Binding="{Binding Profile}"
+                                        Header="Profile" />
+                                    <DataGridTextColumn
+                                        Width="*"
+                                        MinWidth="60"
+                                        Binding="{Binding Mode}"
+                                        Header="Mode" />
+                                    <DataGridTextColumn
+                                        Width="64"
+                                        Binding="{Binding ChangeText}"
+                                        Header="Change" />
+                                </DataGrid.Columns>
+                            </c:BulkSelectDataGrid>
+
+                            <StackPanel Style="{StaticResource EmptyStatePanel}" Visibility="{Binding HasNoLights, Converter={StaticResource BoolToVisibility}}">
+                                <c:DmxIcon
+                                    Kind="Fixtures"
+                                    Size="{StaticResource Dmx.EmptyStateIconSize}"
+                                    Style="{StaticResource EmptyStateIcon}" />
+                                <TextBlock Style="{StaticResource EmptyStateTitle}" Text="No lights patched" />
+                                <TextBlock Style="{StaticResource EmptyStateText}" Text="Add lights on the Fixtures page first." />
+                            </StackPanel>
+
+                            <TextBlock
+                                Margin="8,32,8,0"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Top"
+                                Style="{StaticResource HintText}"
+                                Text="No light matches the search."
+                                Visibility="{Binding HasNoMatches, Converter={StaticResource BoolToVisibility}}" />
+                        </Grid>
+                    </DockPanel>
+                </TabItem>
+
+                <!-- ═══════════ Groups: ticking a group selects all its lights ═══════════ -->
+                <TabItem
+                    x:Name="GroupsTab"
+                    AutomationProperties.Name="Groups"
+                    Header="{Binding GroupsHeader}"
+                    ToolTip="Pick whole fixture groups (Alt+G)">
+                    <DockPanel>
+                        <Border DockPanel.Dock="Top" Style="{StaticResource ToolbarStrip}">
+                            <TextBlock
+                                Margin="4,0"
+                                VerticalAlignment="Center"
+                                Style="{StaticResource HintText}"
+                                Text="Tick a group to select all its lights, untick to deselect them. Fine-tune single lights on the Lights tab."
+                                TextTrimming="CharacterEllipsis"
+                                TextWrapping="NoWrap" />
+                        </Border>
+                        <Grid>
+                            <ScrollViewer Padding="6,2" VerticalScrollBarVisibility="Auto">
+                                <ItemsControl
+                                    x:Name="GroupsList"
+                                    AutomationProperties.Name="Fixture groups"
+                                    IsTabStop="False"
+                                    ItemsSource="{Binding Groups}"
+                                    KeyboardNavigation.DirectionalNavigation="Contained">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type vm:FixturePickerGroup}">
+                                            <CheckBox
+                                                MinHeight="{StaticResource Dmx.CheckRowHeight}"
+                                                Margin="0"
+                                                VerticalContentAlignment="Center"
+                                                AutomationProperties.Name="{Binding AutomationName}"
+                                                IsChecked="{Binding IsChecked, Mode=TwoWay}"
+                                                IsEnabled="{Binding HasMembers}"
+                                                IsThreeState="False"
+                                                ToolTip="Ticked: all its lights are selected. Filled box: only some are.">
+                                                <DockPanel>
+                                                    <c:DmxIcon
+                                                        Margin="0,0,4,0"
+                                                        VerticalAlignment="Center"
+                                                        DockPanel.Dock="Left"
+                                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                        Kind="Group"
+                                                        Size="{StaticResource Dmx.DenseIconSize}" />
+                                                    <TextBlock VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
+                                                        <Run Text="{Binding Name, Mode=OneWay}" />
+                                                        <Run
+                                                            FontSize="{StaticResource Dmx.FontSize.Small}"
+                                                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                            Text="{Binding CountText, Mode=OneWay}" />
+                                                    </TextBlock>
+                                                </DockPanel>
+                                            </CheckBox>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+
+                            <StackPanel Style="{StaticResource EmptyStatePanel}" Visibility="{Binding HasNoGroups, Converter={StaticResource BoolToVisibility}}">
+                                <c:DmxIcon
+                                    Kind="Group"
+                                    Size="{StaticResource Dmx.EmptyStateIconSize}"
+                                    Style="{StaticResource EmptyStateIcon}" />
+                                <TextBlock Style="{StaticResource EmptyStateTitle}" Text="No groups yet" />
+                                <TextBlock Style="{StaticResource EmptyStateText}" Text="Create groups on the Fixtures page, or pick single lights on the Lights tab." />
+                            </StackPanel>
+                        </Grid>
+                    </DockPanel>
+                </TabItem>
+            </TabControl>
+        </Border>
+
+        <!-- Footer: what OK does, the count, [Cancel] [OK] -->
+        <Border
+            Grid.Row="2"
+            Padding="8,4"
+            Background="{DynamicResource SolidBackgroundFillColorBaseBrush}"
+            BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
+            BorderThickness="0,1,0,0">
+            <DockPanel>
+                <StackPanel
+                    Margin="8,0,0,0"
+                    DockPanel.Dock="Right"
+                    Orientation="Horizontal">
+                    <ui:Button
+                        MinWidth="80"
+                        Padding="{StaticResource Dmx.ButtonPadding}"
+                        AutomationProperties.Name="Cancel: keep the function's lights unchanged"
+                        Content="Cancel"
+                        IsCancel="True" />
+                    <ui:Button
+                        x:Name="OkButton"
+                        MinWidth="80"
+                        Margin="8,0,0,0"
+                        Padding="{StaticResource Dmx.ButtonPadding}"
+                        Appearance="Primary"
+                        AutomationProperties.Name="OK: use the selected lights"
+                        Click="OnOkClick"
+                        Content="OK"
+                        IsDefault="True" />
+                </StackPanel>
+                <TextBlock
+                    Margin="12,0,0,0"
+                    VerticalAlignment="Center"
+                    AutomationProperties.LiveSetting="Polite"
+                    DockPanel.Dock="Right"
+                    TextTrimming="CharacterEllipsis">
+                    <Run FontWeight="SemiBold" Text="{Binding PickedText, Mode=OneWay}" />
+                    <Run Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="·" />
+                    <Run Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="{Binding ChangeSummary, Mode=OneWay}" />
+                </TextBlock>
+                <DockPanel VerticalAlignment="Center">
+                    <c:DmxIcon
+                        Margin="0,0,4,0"
+                        VerticalAlignment="Center"
+                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                        Kind="Info"
+                        Size="{StaticResource Dmx.SmallIconSize}" />
+                    <TextBlock
+                        VerticalAlignment="Center"
+                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                        Text="{Binding RemovalNote}"
+                        TextTrimming="CharacterEllipsis"
+                        ToolTip="{Binding RemovalNote}" />
+                </DockPanel>
+            </DockPanel>
+        </Border>
+    </Grid>
+</ui:FluentWindow>

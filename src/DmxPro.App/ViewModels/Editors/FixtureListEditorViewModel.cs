@@ -9,23 +9,19 @@ namespace DmxPro.App.ViewModels.Editors;
 
 /// <summary>
 /// The "Fixtures" panel of the effect and sequence editors: the fixtures the function drives, in order (order matters
-/// for per-fixture offsets), plus an "Add" flyout with a search box, the groups and every patched fixture (ticked = in
-/// the function). Remove and move up/down work on the selected fixture. Every change is reported through the callback
-/// with the fixture ids that were added and removed (both empty for a reorder).
+/// for per-fixture offsets). "Add / choose lights…" opens the modal <see cref="FixturePickerViewModel"/> dialog (single
+/// lights with Shift/Ctrl multi-select, or whole groups); remove and move up/down work on the selected fixture. Every
+/// change is reported through the callback with the fixture ids that were added and removed (both empty for a reorder).
 /// </summary>
 public sealed partial class FixtureListEditorViewModel : ObservableObject
 {
     private readonly Project _project;
     private readonly Action<IReadOnlyList<Guid>, IReadOnlyList<Guid>> _onChanged;
-    private readonly Dictionary<Guid, SceneFixtureChoice> _choices = [];
     private readonly List<Guid> _ids = [];
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(RemoveSelectedCommand), nameof(MoveUpCommand), nameof(MoveDownCommand))]
     private FixtureListItem? _selectedItem;
-
-    [ObservableProperty]
-    private string _searchText = string.Empty;
 
     public FixtureListEditorViewModel(Project project, Action<IReadOnlyList<Guid>, IReadOnlyList<Guid>> onChanged)
     {
@@ -34,53 +30,19 @@ public sealed partial class FixtureListEditorViewModel : ObservableObject
         RefreshPatch();
     }
 
-    /// <summary>(Re)builds the Add lists from the project's fixtures and groups; ticks follow the current selection.</summary>
-    public void RefreshPatch()
-    {
-        _choices.Clear();
-        AvailableFixtures.Clear();
-        AvailableGroups.Clear();
-        var inList = _ids.ToHashSet();
-        foreach (var fixture in _project.Fixtures)
-        {
-            var choice = new SceneFixtureChoice(fixture.Id, fixture.Name, Detail(fixture), false, [fixture.Id], OnChoiceToggled);
-            choice.SetInSceneSilently(inList.Contains(fixture.Id));
-            _choices[fixture.Id] = choice;
-            AvailableFixtures.Add(choice);
-        }
+    /// <summary>
+    /// Opens the "Choose lights" dialog modally; returns true on OK. Set by the view (the editors are created without
+    /// DI), or by tests. While null, <see cref="ChooseLightsCommand"/> does nothing.
+    /// </summary>
+    public Func<FixturePickerViewModel, bool>? ShowPicker { get; set; }
 
-        foreach (var group in _project.Groups)
-        {
-            var members = group.FixtureIds.Where(_choices.ContainsKey).ToList();
-            var count = members.Count == 1 ? "1 fixture" : $"{members.Count} fixtures";
-            var choice = new SceneFixtureChoice(group.Id, group.Name, count, true, members, OnChoiceToggled);
-            choice.SetInSceneSilently(members.Count > 0 && members.All(inList.Contains));
-            AvailableGroups.Add(choice);
-        }
-
-        ApplyFilter();
-        Rebuild(SelectedItem?.Id);
-        OnPropertyChanged(nameof(HasNoPatchedFixtures));
-        OnPropertyChanged(nameof(HasNoGroups));
-    }
+    /// <summary>Rebuilds the rows after the patch changed (renamed, moved or deleted fixtures).</summary>
+    public void RefreshPatch() => Rebuild(SelectedItem?.Id);
 
     /// <summary>The fixtures in the function, in order.</summary>
     public ObservableCollection<FixtureListItem> Items { get; } = [];
 
-    /// <summary>Every patched fixture (Add flyout); ticked = in the function.</summary>
-    public ObservableCollection<SceneFixtureChoice> AvailableFixtures { get; } = [];
-
-    /// <summary><see cref="AvailableFixtures"/> matching <see cref="SearchText"/>.</summary>
-    public ObservableCollection<SceneFixtureChoice> FilteredFixtures { get; } = [];
-
-    /// <summary>Every group; ticked when all its members are in the function.</summary>
-    public ObservableCollection<SceneFixtureChoice> AvailableGroups { get; } = [];
-
     public bool HasNoItems => Items.Count == 0;
-
-    public bool HasNoPatchedFixtures => AvailableFixtures.Count == 0;
-
-    public bool HasNoGroups => AvailableGroups.Count == 0;
 
     /// <summary>The fixture ids in order.</summary>
     public IReadOnlyList<Guid> FixtureIds => _ids;
@@ -88,25 +50,11 @@ public sealed partial class FixtureListEditorViewModel : ObservableObject
     /// <summary>"3 fixtures".</summary>
     public string CountText => Items.Count == 1 ? "1 fixture" : $"{Items.Count} fixtures";
 
-    /// <summary>Warning about fixtures with unverified profiles in the list; null when all are verified.</summary>
-    public string? UnverifiedWarning
-    {
-        get
-        {
-            var fixtures = FixturesById();
-            var names = _ids
-                .Select(id => fixtures.GetValueOrDefault(id))
-                .Where(f => f is not null)
-                .Select(f => _project.FindProfile(f!.ProfileId))
-                .Where(p => p is { Verified: false })
-                .Select(p => p!.DisplayName)
-                .Distinct()
-                .ToList();
-            return names.Count == 0
-                ? null
-                : $"Not verified on a real fixture: {string.Join(", ", names)}. Check the channel meanings before using this in a show.";
-        }
-    }
+    /// <summary>
+    /// Always null: the owner decided (2026-10) to show no "unverified profile" warnings. Kept because the effect and
+    /// sequence editors still copy it into <see cref="FunctionEditorViewModel.UnverifiedWarning"/>.
+    /// </summary>
+    public string? UnverifiedWarning => null;
 
     /// <summary>Replaces the list without reporting a change (editor open / revert).</summary>
     public void Load(IEnumerable<Guid> fixtureIds)
@@ -124,7 +72,37 @@ public sealed partial class FixtureListEditorViewModel : ObservableObject
         Rebuild(null);
     }
 
-    partial void OnSearchTextChanged(string value) => ApplyFilter();
+    /// <summary>
+    /// Opens the "Choose lights" dialog with the function's lights picked; on OK the list becomes the picked lights:
+    /// existing order kept, unpicked ones removed, new ones appended in patch order.
+    /// </summary>
+    [RelayCommand]
+    private void ChooseLights()
+    {
+        if (ShowPicker is not { } show)
+        {
+            return;
+        }
+
+        var picker = FixturePickerViewModel.FromProject(_project, _ids, "Choose lights", ordered: true);
+        if (!show(picker))
+        {
+            return;
+        }
+
+        var result = picker.Result;
+        var added = FixtureSelection.Added(_ids, result);
+        var removed = FixtureSelection.Added(result, _ids);
+        if (added.Count == 0 && removed.Count == 0)
+        {
+            return;
+        }
+
+        _ids.Clear();
+        _ids.AddRange(result);
+        Rebuild(SelectedItem?.Id);
+        _onChanged(added, removed);
+    }
 
     [RelayCommand(CanExecute = nameof(HasSelectedItem))]
     private void RemoveSelected()
@@ -164,31 +142,6 @@ public sealed partial class FixtureListEditorViewModel : ObservableObject
         _onChanged([], []);
     }
 
-    private void OnChoiceToggled(SceneFixtureChoice choice, bool include)
-    {
-        var added = new List<Guid>();
-        var removed = new List<Guid>();
-        var inList = _ids.ToHashSet();
-        foreach (var id in choice.FixtureIds)
-        {
-            if (include && inList.Add(id))
-            {
-                _ids.Add(id);
-                added.Add(id);
-            }
-            else if (!include && _ids.Remove(id))
-            {
-                removed.Add(id);
-            }
-        }
-
-        Rebuild(SelectedItem?.Id);
-        if (added.Count > 0 || removed.Count > 0)
-        {
-            _onChanged(added, removed);
-        }
-    }
-
     private void Rebuild(Guid? select)
     {
         Items.Clear();
@@ -198,8 +151,7 @@ public sealed partial class FixtureListEditorViewModel : ObservableObject
             var id = _ids[i];
             if (fixtures.TryGetValue(id, out var fixture))
             {
-                var unverified = _project.FindProfile(fixture.ProfileId) is { Verified: false };
-                Items.Add(new FixtureListItem(id, i + 1, fixture.Name, Detail(fixture), unverified, false));
+                Items.Add(new FixtureListItem(id, i + 1, fixture.Name, Detail(fixture), false, false));
             }
             else
             {
@@ -207,38 +159,11 @@ public sealed partial class FixtureListEditorViewModel : ObservableObject
             }
         }
 
-        var inList = _ids.ToHashSet();
-        foreach (var (id, choice) in _choices)
-        {
-            choice.SetInSceneSilently(inList.Contains(id));
-        }
-
-        foreach (var group in AvailableGroups)
-        {
-            group.SetInSceneSilently(group.FixtureIds.Count > 0 && group.FixtureIds.All(inList.Contains));
-        }
-
         SelectedItem = select is { } keep ? Items.FirstOrDefault(i => i.Id == keep) : null;
         MoveUpCommand.NotifyCanExecuteChanged();
         MoveDownCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(HasNoItems));
         OnPropertyChanged(nameof(CountText));
-        OnPropertyChanged(nameof(UnverifiedWarning));
-    }
-
-    private void ApplyFilter()
-    {
-        var text = SearchText?.Trim() ?? string.Empty;
-        FilteredFixtures.Clear();
-        foreach (var choice in AvailableFixtures)
-        {
-            if (text.Length == 0
-                || choice.Name.Contains(text, StringComparison.OrdinalIgnoreCase)
-                || choice.Detail.Contains(text, StringComparison.OrdinalIgnoreCase))
-            {
-                FilteredFixtures.Add(choice);
-            }
-        }
     }
 
     private string Detail(Fixture fixture)
