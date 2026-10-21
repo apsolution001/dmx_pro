@@ -15,6 +15,8 @@ public sealed partial class Project : IProfileResolver
     public const int CurrentSchemaVersion = 1;
     public const string FileExtension = ".dmxpro";
 
+    private readonly ListLookup<string, FixtureProfile> _profileLookup = new(p => p.Id, StringComparer.OrdinalIgnoreCase);
+    private readonly ListLookup<Guid, Fixture> _fixtureLookup = new(f => f.Id);
     private StageLayout _stage = new();
 
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
@@ -43,10 +45,14 @@ public sealed partial class Project : IProfileResolver
     [JsonIgnore]
     public IEnumerable<int> Universes => Fixtures.Select(f => f.Universe).Append(1).Distinct().Order();
 
-    public FixtureProfile? FindProfile(string profileId) =>
-        Profiles.FirstOrDefault(p => string.Equals(p.Id, profileId, StringComparison.OrdinalIgnoreCase));
+    /// <summary>
+    /// The embedded profile with this id (case-insensitive), or null. O(1) on repeated lookups: pages and validation call
+    /// this once per fixture, so a linear scan made large rigs quadratic.
+    /// </summary>
+    public FixtureProfile? FindProfile(string profileId) => _profileLookup.Find(Profiles, profileId);
 
-    public Fixture? FindFixture(Guid id) => Fixtures.FirstOrDefault(f => f.Id == id);
+    /// <summary>The fixture with this id, or null. O(1) on repeated lookups (see <see cref="FindProfile"/>).</summary>
+    public Fixture? FindFixture(Guid id) => _fixtureLookup.Find(Fixtures, id);
 
     /// <summary>Embeds a copy of <paramref name="profile"/> (replacing an older copy with the same id).</summary>
     public FixtureProfile EmbedProfile(FixtureProfile profile)
@@ -98,7 +104,7 @@ public sealed partial class Project : IProfileResolver
         var affectedSet = affected.ToHashSet();
         var ordered = Fixtures.Where(f => !affectedSet.Contains(f.Id)).Concat(Fixtures.Where(f => affectedSet.Contains(f.Id))).ToList();
         var patchIssues = PatchValidator.Validate(ordered, this)
-            .Where(i => i.EntityId is { } id && affectedSet.Contains(id) && i.Code != "PROFILE_UNVERIFIED")
+            .Where(i => i.EntityId is { } id && affectedSet.Contains(id))
             .ToList();
 
         var functionIssues = ValidateFunctionsAndShows()

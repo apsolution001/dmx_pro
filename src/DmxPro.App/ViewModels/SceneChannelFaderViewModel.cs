@@ -7,13 +7,11 @@ namespace DmxPro.App.ViewModels;
 /// <summary>
 /// One vertical channel fader of a fixture in the scene editor. The channel meaning comes from the profile; an
 /// unchecked <see cref="IsIncluded"/> means the scene does not control the channel at all. Unknown
-/// (<see cref="ChannelType.Generic"/>) channels and channels of unverified profiles are flagged, never presented as
-/// confirmed.
+/// (<see cref="ChannelType.Generic"/>) channels are shown as raw channels, never with a confirmed meaning.
 /// </summary>
 public sealed partial class SceneChannelFaderViewModel : ObservableObject
 {
     private readonly Action<SceneChannelFaderViewModel> _onChanged;
-    private readonly bool _profileUnverified;
     private byte _value;
     private bool _isIncluded;
     private bool _silent;
@@ -23,7 +21,6 @@ public sealed partial class SceneChannelFaderViewModel : ObservableObject
         ChannelDefinition channel,
         int number,
         int dmxAddress,
-        bool profileUnverified,
         byte value,
         bool isIncluded,
         Action<SceneChannelFaderViewModel> onChanged)
@@ -32,7 +29,6 @@ public sealed partial class SceneChannelFaderViewModel : ObservableObject
         Channel = channel;
         Number = number;
         DmxAddress = dmxAddress;
-        _profileUnverified = profileUnverified;
         _value = value;
         _isIncluded = isIncluded;
         _onChanged = onChanged;
@@ -132,7 +128,7 @@ public sealed partial class SceneChannelFaderViewModel : ObservableObject
 
     public byte ByteValue => _value;
 
-    /// <summary>What the profile says the current value does ("No strobe", …); "⚠" marks an unverified profile.</summary>
+    /// <summary>What the profile says the current value does ("No strobe", …).</summary>
     public string? CapabilityLabel
     {
         get
@@ -143,7 +139,7 @@ public sealed partial class SceneChannelFaderViewModel : ObservableObject
                 return null;
             }
 
-            return _profileUnverified ? $"⚠ {label}" : label;
+            return label;
         }
     }
 
@@ -159,12 +155,7 @@ public sealed partial class SceneChannelFaderViewModel : ObservableObject
 
             if (IsUnknown)
             {
-                text += " · meaning unknown (not confirmed by the profile)";
-            }
-
-            if (_profileUnverified)
-            {
-                text += " · profile not verified on a real fixture";
+                text += " · meaning unknown: raw channel";
             }
 
             return text + Environment.NewLine + "Type 0–255 in the box · ↑/↓ ±1 · PageUp/PageDown ±10 · tick = included in the scene";

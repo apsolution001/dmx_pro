@@ -18,14 +18,13 @@
     <!--
         The function editor host (DataContext: a FunctionEditorViewModel), shared by the Functions page (below the
         function tree) and the Shows page (a show's own copy). Toolbar row (save, revert, preview / live, show-in-list,
-        name, close), the show-copy and unverified-profile banners, then the editor of the function's type, picked by
+        name, close), the show-copy banner, then the editor of the function's type, picked by
         the DataTemplates below: Scene = General / Channels tabs; Chaser, Sequence, Color cycle, Fade, Pulse, Flash and
         Strobe = their own views in Views/Editors. Esc anywhere in the editor = Close (asks when there are unsaved
         changes); controls that use Esc themselves (value boxes, lists, flyouts) handle it first.
 
         [✓][✕] | [▶ Preview] (Live on lights) | [ ] Show in function list | (icon) [name......] | Fade in [0] s  Fade out [0] s  Unsaved changes [Close]
         (the fade boxes only for scenes; the other types set their timing in their own editors)
-        ⚠ Not verified on a real fixture: ...
         (editor of the type)
     -->
     <UserControl.InputBindings>
@@ -307,25 +306,6 @@
                     Kind="Timeline"
                     Size="{StaticResource Dmx.SmallIconSize}" />
                 <TextBlock Text="{Binding ShowCopyText}" TextWrapping="Wrap" />
-            </DockPanel>
-        </Border>
-
-        <!-- Unverified profile warning -->
-        <Border
-            Padding="8,2"
-            Background="{DynamicResource ControlFillColorDefaultBrush}"
-            BorderBrush="{DynamicResource SystemFillColorCautionBrush}"
-            BorderThickness="3,0,0,1"
-            DockPanel.Dock="Top"
-            Visibility="{Binding UnverifiedWarning, Converter={StaticResource NullToVisibility}}">
-            <DockPanel>
-                <c:DmxIcon
-                    Margin="0,0,6,0"
-                    VerticalAlignment="Top"
-                    Foreground="{DynamicResource SystemFillColorCautionBrush}"
-                    Kind="Unverified"
-                    Size="{StaticResource Dmx.SmallIconSize}" />
-                <TextBlock Text="{Binding UnverifiedWarning}" TextWrapping="Wrap" />
             </DockPanel>
         </Border>
 

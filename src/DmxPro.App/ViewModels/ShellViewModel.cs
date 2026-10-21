@@ -199,8 +199,7 @@ public sealed partial class ShellViewModel : ObservableObject
         }
 
         InfoSeverity = errors.Count > 0 ? InfoBarSeverity.Warning : InfoBarSeverity.Success;
-        InfoMessage = $"Imported {Count(imported.Count, "profile", "profiles")}. " +
-                      "Imported profiles are unverified — test each channel on the real light." +
+        InfoMessage = $"Imported {Count(imported.Count, "profile", "profiles")}." +
                       (errors.Count > 0 ? $" {Count(errors.Count, "file", "files")} failed: {failures}" : string.Empty);
     }
 

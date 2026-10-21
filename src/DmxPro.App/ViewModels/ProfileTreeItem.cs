@@ -18,9 +18,5 @@ public sealed class ProfileTreeItem : ProfileTreeNode
     /// <summary>DmxIcon kind: "Color" for colour fixtures, "Dimmer" for intensity-only ones.</summary>
     public string IconKind { get; }
 
-    public bool IsUnverified => !Profile.Verified;
-
-    public string ToolTip => Profile.Verified
-        ? $"{Profile.DisplayName} · {Profile.Type}"
-        : $"{Profile.DisplayName} · {Profile.Type}\nUnverified profile: check each channel on the real fixture.";
+    public string ToolTip => $"{Profile.DisplayName} · {Profile.Type}";
 }

@@ -71,7 +71,8 @@ The owner wants a **proper Windows application**, not a web-page look. Structure
 ## Safety in the UI
 
 - Output state pill colors: Disabled = gray, Connected/idle = blue, Sending = green (with fps), Error = red.
-- Unverified profile channels show ⚠️ badge.
+- Channels with an unknown meaning (`Generic`) show a neutral info mark ("Meaning unknown: raw channel only"), never a
+  confirmed meaning. No "unverified profile" warnings (decision 2026-10-22).
 - Strobe controls show a photosensitivity warning the first time.
 
 ## Accessibility

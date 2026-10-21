@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.Input;
 using DmxPro.App.Services;
 using DmxPro.Core.Patching;
 using DmxPro.Core.Profiles;
+using DmxPro.Core.Projects;
 using DmxPro.Core.Validation;
 
 namespace DmxPro.App.ViewModels;
@@ -18,7 +19,6 @@ public sealed partial class FixturesViewModel : PageViewModel
     /// <summary>Patch problems shown under a specific Properties field instead of in the general issue list.</summary>
     private static readonly HashSet<string> AddressCodes = ["ADDRESS_OUT_OF_RANGE", "FOOTPRINT_EXCEEDS_UNIVERSE", "ADDRESS_OVERLAP"];
     private const string UniverseCode = "UNIVERSE_INVALID";
-    private const string UnverifiedCode = "PROFILE_UNVERIFIED";
     private const int MapColumns = 32;
 
     private static readonly UniverseFilterOption AllUniverses = new(null, "All universes");
@@ -29,10 +29,13 @@ public sealed partial class FixturesViewModel : PageViewModel
     private readonly IFileDialogService _fileDialogs;
 
     /// <summary>
-    /// Rows built since the last full rebuild, by fixture (also those hidden by the filter), so a filter change reuses
-    /// them. Cleared whenever the project or library changed.
+    /// Rows by fixture (also those hidden by the filter), so a filter change or an edit reuses them. Rows of removed
+    /// fixtures are dropped after each content change; the whole cache is dropped when another project is opened.
     /// </summary>
     private readonly Dictionary<Fixture, FixtureRowViewModel> _rowCache = new(ReferenceEqualityComparer.Instance);
+
+    /// <summary>The project the cached rows belong to.</summary>
+    private Project? _rowCacheProject;
 
     private IReadOnlyList<FixtureProfile> _profileOptions = [];
 
@@ -402,56 +405,6 @@ public sealed partial class FixturesViewModel : PageViewModel
         }
     }
 
-    /// <summary>
-    /// Marks the selected light's profile as verified (the owner tested every channel on the real light) or back to
-    /// unverified. Verified profiles show no "unverified" cautions (safety rule 7 only forbids presenting an
-    /// <i>unchecked</i> layout as confirmed). Every light using the profile follows; a user layout is also updated in the
-    /// profile library. Editing the layout again makes it unverified again.
-    /// </summary>
-    [RelayCommand(CanExecute = nameof(HasSelection))]
-    private async Task ToggleProfileVerifiedAsync()
-    {
-        var project = _projects.Current;
-        if (SelectedFixture is not { } focused || project.FindProfile(focused.Fixture.ProfileId) is not { } profile)
-        {
-            return;
-        }
-
-        var users = project.Fixtures.Count(f => string.Equals(f.ProfileId, profile.Id, StringComparison.OrdinalIgnoreCase));
-        var verify = !profile.Verified;
-        var confirmed = verify
-            ? await _dialogs.ConfirmAsync(
-                "Mark profile as verified",
-                $"Mark \"{profile.DisplayName}\" as verified? Do this only after you tested every channel on the real light." +
-                $"{Environment.NewLine}{Environment.NewLine}The \"unverified\" warnings disappear for all {users} light(s) using it.",
-                "Mark as verified")
-            : await _dialogs.ConfirmAsync(
-                "Mark profile as unverified",
-                $"Mark \"{profile.DisplayName}\" as not verified? The {users} light(s) using it show the \"unverified\" caution again.",
-                "Mark as unverified");
-        if (!confirmed)
-        {
-            return;
-        }
-
-        var updated = profile.Clone();
-        updated.Verified = verify;
-        project.UpdateProfile(updated);
-        _projects.MarkChanged();
-
-        // Keep the library copy in step so newly added lights of this layout are verified too.
-        if (ChannelLayout.IsCustom(updated) && _library.Library.FindProfile(updated.Id) is not null)
-        {
-            var issues = await _library.SaveUserProfileAsync(updated);
-            if (issues.FirstOrDefault(i => i.Severity == ValidationSeverity.Error) is { } error)
-            {
-                await _dialogs.ShowErrorAsync("Mark profile as verified", $"The project was updated, but the profile library was not: {error.Message}");
-            }
-        }
-
-        Reload();
-    }
-
     /// <summary>"Use it for" choices: the selected lights of this profile, all of them, or none.</summary>
     private List<ChannelLayoutApplyTarget> BuildApplyTargets(FixtureProfile profile)
     {
@@ -696,13 +649,7 @@ public sealed partial class FixturesViewModel : PageViewModel
             _profileOptions = BuildProfileOptions();
             OnPropertyChanged(nameof(ProfileOptions));
             RebuildUniverseLists();
-            foreach (var row in _rowCache.Values)
-            {
-                row.PropertyChanged -= OnRowPropertyChanged;
-            }
-
-            _rowCache.Clear();
-            Fixtures.Clear();
+            PruneRowCache(project);
         }
 
         var query = Search.Trim();
@@ -747,6 +694,50 @@ public sealed partial class FixturesViewModel : PageViewModel
         }
 
         NotifySelectionCommands();
+    }
+
+    /// <summary>
+    /// After the project content changed: keeps the rows of fixtures that are still patched (re-reading their values,
+    /// which all come live from the model) and drops the rest. Adding 50 lights to a 500-light rig then inserts 50 rows
+    /// instead of regenerating all 550 DataGrid rows. A different project (New/Open) starts from scratch.
+    /// </summary>
+    private void PruneRowCache(Project project)
+    {
+        if (!ReferenceEquals(_rowCacheProject, project))
+        {
+            foreach (var row in _rowCache.Values)
+            {
+                row.PropertyChanged -= OnRowPropertyChanged;
+            }
+
+            _rowCache.Clear();
+            Fixtures.Clear();
+            _rowCacheProject = project;
+            return;
+        }
+
+        var patched = new HashSet<Fixture>(project.Fixtures, ReferenceEqualityComparer.Instance);
+        List<Fixture>? gone = null;
+        foreach (var (fixture, row) in _rowCache)
+        {
+            if (patched.Contains(fixture))
+            {
+                row.RefreshAll();
+            }
+            else
+            {
+                row.PropertyChanged -= OnRowPropertyChanged;
+                (gone ??= []).Add(fixture);
+            }
+        }
+
+        if (gone is not null)
+        {
+            foreach (var fixture in gone)
+            {
+                _rowCache.Remove(fixture);
+            }
+        }
     }
 
     /// <summary>
@@ -843,8 +834,19 @@ public sealed partial class FixturesViewModel : PageViewModel
         AddToGroupCommand.NotifyCanExecuteChanged();
     }
 
-    private void OnFixtureEdited(FixtureRowViewModel row)
+    /// <summary>
+    /// One Properties field of a fixture changed. Only what that field affects is refreshed: notes touch nothing else
+    /// (and never the engine); the other fields re-validate the patch and update this fixture's entries in the Groups
+    /// tree in place instead of rebuilding the tree.
+    /// </summary>
+    private void OnFixtureEdited(FixtureRowViewModel row, string property)
     {
+        if (property == nameof(FixtureRowViewModel.Notes))
+        {
+            _projects.MarkChanged(affectsPlayback: false);
+            return;
+        }
+
         _projects.MarkChanged();
         if (!Universes.Contains(row.Universe))
         {
@@ -860,7 +862,34 @@ public sealed partial class FixturesViewModel : PageViewModel
         }
 
         Revalidate();
-        RefreshGroups();
+        RefreshGroupMembers(row.Fixture);
+    }
+
+    /// <summary>Updates the name and address of <paramref name="fixture"/> wherever it appears in the Groups tree.</summary>
+    private void RefreshGroupMembers(Fixture fixture)
+    {
+        string? addressText = null;
+        foreach (var group in Groups)
+        {
+            foreach (var member in group.Members)
+            {
+                if (ReferenceEquals(member.Fixture, fixture))
+                {
+                    addressText ??= MemberAddressText(_projects.Current, fixture);
+                    member.Refresh(addressText);
+                }
+            }
+        }
+    }
+
+    /// <summary>"U1 · 1–8" for a group member (just the start address when the footprint is unknown or one channel).</summary>
+    private static string MemberAddressText(Project project, Fixture fixture)
+    {
+        var channels = project.FindProfile(fixture.ProfileId)?.FindMode(fixture.ModeName)?.ChannelCount ?? 0;
+        var range = channels <= 1
+            ? fixture.StartAddress.ToString()
+            : $"{fixture.StartAddress}–{DmxAddress.EndAddress(fixture.StartAddress, channels)}";
+        return $"U{fixture.Universe} · {range}";
     }
 
     /// <summary>Re-runs patch validation and pushes results to rows, field messages, the issue list and the map.</summary>
@@ -908,7 +937,7 @@ public sealed partial class FixturesViewModel : PageViewModel
         }
 
         foreach (var issue in issues
-                     .Where(i => i.EntityId == SelectedFixture.Fixture.Id && !AddressCodes.Contains(i.Code) && i.Code is not (UniverseCode or UnverifiedCode))
+                     .Where(i => i.EntityId == SelectedFixture.Fixture.Id && !AddressCodes.Contains(i.Code) && i.Code != UniverseCode)
                      .OrderByDescending(i => i.Severity))
         {
             SelectedIssues.Add(issue);
@@ -970,11 +999,7 @@ public sealed partial class FixturesViewModel : PageViewModel
                 var position = 1;
                 foreach (var fixture in group.FixtureIds.Select(fixturesById.GetValueOrDefault).OfType<Fixture>())
                 {
-                    var channels = project.FindProfile(fixture.ProfileId)?.FindMode(fixture.ModeName)?.ChannelCount ?? 0;
-                    var range = channels <= 1
-                        ? fixture.StartAddress.ToString()
-                        : $"{fixture.StartAddress}–{DmxAddress.EndAddress(fixture.StartAddress, channels)}";
-                    var member = new GroupMemberViewModel(node, fixture, position++, $"U{fixture.Universe} · {range}", OnGroupNodeSelected);
+                    var member = new GroupMemberViewModel(node, fixture, position++, MemberAddressText(project, fixture), OnGroupNodeSelected);
                     node.Members.Add(member);
                     if (group.Id == selectedGroupId && fixture.Id == selectedMemberId)
                     {

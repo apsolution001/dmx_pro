@@ -30,7 +30,21 @@ public sealed partial class GroupMemberViewModel : ObservableObject
     public string Name => Fixture.Name;
 
     /// <summary>e.g. "U1 · 1–8".</summary>
-    public string AddressText { get; }
+    public string AddressText { get; private set; }
+
+    /// <summary>
+    /// Re-reads the name and sets a new address text after the fixture was edited, so a single-field edit doesn't
+    /// rebuild the whole Groups tree.
+    /// </summary>
+    public void Refresh(string addressText)
+    {
+        OnPropertyChanged(nameof(Name));
+        if (addressText != AddressText)
+        {
+            AddressText = addressText;
+            OnPropertyChanged(nameof(AddressText));
+        }
+    }
 
     partial void OnIsSelectedChanged(bool value)
     {

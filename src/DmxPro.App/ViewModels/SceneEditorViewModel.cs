@@ -367,10 +367,9 @@ public sealed class SceneEditorViewModel : FunctionEditorViewModel
     private SceneFixtureTabViewModel CreateBank(Fixture fixture, IReadOnlyDictionary<(Guid FixtureId, string ChannelKey), byte>? values = null)
     {
         var profile = _project.FindProfile(fixture.ProfileId);
-        var unverified = profile is { Verified: false };
         var channels = _project.ResolveFixtureChannels(fixture);
         var mode = profile is null ? "missing profile" : fixture.ModeName;
-        var bank = new SceneFixtureTabViewModel(fixture, $"{AddressRange(fixture, channels.Count)} · {mode}", unverified, SetAllChannelsIncluded);
+        var bank = new SceneFixtureTabViewModel(fixture, $"{AddressRange(fixture, channels.Count)} · {mode}", SetAllChannelsIncluded);
         for (var i = 0; i < channels.Count; i++)
         {
             var channel = channels[i];
@@ -382,7 +381,6 @@ public sealed class SceneEditorViewModel : FunctionEditorViewModel
                 channel,
                 number: i + 1,
                 dmxAddress: fixture.StartAddress + i,
-                unverified,
                 stored ?? channel.Default,
                 stored is not null,
                 OnFaderChanged));
@@ -420,7 +418,7 @@ public sealed class SceneEditorViewModel : FunctionEditorViewModel
         return position;
     }
 
-    /// <summary>The General tab's light list, group ticks and the unverified-profile warning after the fixture set changed.</summary>
+    /// <summary>The General tab's light list and group ticks after the fixture set changed.</summary>
     private void RefreshDerived()
     {
         General.SetLights(Channels.Fixtures.Select(CreateLightRow).ToList());
@@ -439,15 +437,6 @@ public sealed class SceneEditorViewModel : FunctionEditorViewModel
 
             group.SetInSceneSilently(all);
         }
-
-        var unverified = Channels.Fixtures
-            .Where(b => b.ProfileUnverified)
-            .Select(b => _project.FindProfile(b.Fixture.ProfileId)?.DisplayName ?? b.Fixture.ProfileId)
-            .Distinct()
-            .ToList();
-        UnverifiedWarning = unverified.Count == 0
-            ? null
-            : $"Not verified on a real fixture: {string.Join(", ", unverified)}. Check the channel meanings before using this scene in a show.";
     }
 
     private SceneLightRow CreateLightRow(SceneFixtureTabViewModel bank)
@@ -459,8 +448,7 @@ public sealed class SceneEditorViewModel : FunctionEditorViewModel
             fixture.Name,
             profile?.DisplayName ?? $"Missing profile \"{fixture.ProfileId}\"",
             profile is null ? "–" : fixture.ModeName,
-            AddressRange(fixture, bank.Channels.Count),
-            bank.ProfileUnverified);
+            AddressRange(fixture, bank.Channels.Count));
     }
 
     private string AddressRange(Fixture fixture) => AddressRange(fixture, _project.ResolveFixtureChannels(fixture).Count);

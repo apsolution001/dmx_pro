@@ -88,12 +88,63 @@ public class PatchValidatorTests
     }
 
     [Fact]
-    public void Validate_UnverifiedProfile_Warns()
+    public void Validate_UnverifiedProfile_NoIssues()
     {
+        // Owner decision 2026-10-22: fixtures are checked in QLC+ first, so an unverified profile is not a patch problem.
         var project = ProjectWith(Par("A", 1));
         project.Profiles[0].Verified = false;
 
-        Assert.Contains(PatchValidator.Validate(project.Fixtures, project), i => i.Code == "PROFILE_UNVERIFIED");
+        Assert.Empty(PatchValidator.Validate(project.Fixtures, project));
+    }
+
+    [Fact]
+    public void Validate_FixtureOverlapsSeveralEarlier_ReportsEachOnceInPatchOrder()
+    {
+        // C (3–10) shares several channels with both A (1–8) and B (5–12): one warning per earlier fixture, A first.
+        var project = ProjectWith(Par("A", 1), Par("B", 5), Par("C", 3));
+
+        var messages = PatchValidator.Validate(project.Fixtures, project).Select(i => i.Message).ToList();
+
+        Assert.Equal(3, messages.Count);
+        Assert.StartsWith("'B' (U1 5–12) overlaps 'A' (U1 1–8)", messages[0]);
+        Assert.StartsWith("'C' (U1 3–10) overlaps 'A' (U1 1–8)", messages[1]);
+        Assert.StartsWith("'C' (U1 3–10) overlaps 'B' (U1 5–12)", messages[2]);
+    }
+
+    [Fact]
+    public void Validate_ManyFixturesOnSameAddress_ReportsEveryPair()
+    {
+        var project = ProjectWith(Par("A", 1), Par("B", 1), Par("C", 1), Par("D", 1));
+
+        var issues = PatchValidator.Validate(project.Fixtures, project);
+
+        Assert.Equal(6, issues.Count(i => i.Code == "ADDRESS_OVERLAP")); // B:1, C:2, D:3
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    public void Validate_RandomRig_MatchesAllPairsReference(int seed)
+    {
+        var random = new Random(seed);
+        var project = ProjectWith();
+        for (var i = 0; i < 300; i++)
+        {
+            var fixture = Par($"F{i}", random.Next(-2, 516), random.Next(2) == 0 ? "4ch" : "8ch", random.Next(0, 4));
+            fixture.Enabled = random.Next(6) != 0;
+            if (random.Next(25) == 0)
+            {
+                fixture.ProfileId = "missing";
+            }
+
+            project.Fixtures.Add(fixture);
+        }
+
+        var actual = PatchValidator.Validate(project.Fixtures, project);
+
+        Assert.Equal(ReferenceIssues(project), actual.Select(i => (i.Code, i.Message, i.EntityId)));
     }
 
     [Fact]
@@ -120,6 +171,51 @@ public class PatchValidatorTests
         Assert.Equal(0, DmxAddress.ToIndex(1));
         Assert.Equal(511, DmxAddress.ToIndex(512));
         Assert.Throws<ArgumentOutOfRangeException>(() => DmxAddress.ToIndex(0));
+    }
+
+    /// <summary>The previous all-pairs overlap check, kept as the reference the faster validator must match exactly.</summary>
+    private static List<(string Code, string Message, Guid? EntityId)> ReferenceIssues(Project project)
+    {
+        var result = new List<(string, string, Guid?)>();
+        var placed = new List<(Fixture Fixture, FixtureFootprint Footprint)>();
+        foreach (var fixture in project.Fixtures)
+        {
+            var profile = project.FindProfile(fixture.ProfileId);
+            var mode = profile?.FindMode(fixture.ModeName);
+            if (profile is null || mode is null || !DmxAddress.IsValidUniverse(fixture.Universe))
+            {
+                // Same codes as the validator; the message text of these errors is covered elsewhere.
+                var code = profile is null ? "PROFILE_MISSING" : mode is null ? "MODE_MISSING" : "UNIVERSE_INVALID";
+                result.Add((code, PatchValidator.Validate([fixture], project)[0].Message, fixture.Id));
+                continue;
+            }
+
+            var footprint = new FixtureFootprint(fixture.Universe, fixture.StartAddress, mode.ChannelCount);
+            if (!DmxAddress.IsValid(fixture.StartAddress) || !footprint.FitsInUniverse)
+            {
+                var single = PatchValidator.Validate([fixture], project)[0];
+                result.Add((single.Code, single.Message, fixture.Id));
+                continue;
+            }
+
+            if (!fixture.Enabled)
+            {
+                continue;
+            }
+
+            foreach (var other in placed.Where(o => o.Footprint.Overlaps(footprint)))
+            {
+                result.Add((
+                    "ADDRESS_OVERLAP",
+                    $"'{fixture.Name}' ({footprint}) overlaps '{other.Fixture.Name}' ({other.Footprint}). " +
+                    "Both will receive the same values on the shared channels.",
+                    fixture.Id));
+            }
+
+            placed.Add((fixture, footprint));
+        }
+
+        return result;
     }
 
     [Fact]

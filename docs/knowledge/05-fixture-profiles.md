@@ -25,7 +25,8 @@ UI generation rules:
 - Show **dimmer** only if a Dimmer channel exists; otherwise "software dimming" scales RGB(W).
 - Show **strobe/macro/speed** controls only if declared, using the **capability ranges** as labeled presets.
 - Always offer a **raw channel view** (0–255 per channel with names) for diagnostics.
-- `Generic` / unverified channels show a ⚠️ "unverified" badge.
+- `Generic` channels show a neutral "Meaning unknown: raw channel only" mark. The `verified` flag is kept in the data,
+  but the app shows no "unverified profile" warnings (the owner checks lights in QLC+ first; decision 2026-10-22).
 
 ## 3. Proposed JSON profile format (`*.dmxprofile.json`)
 

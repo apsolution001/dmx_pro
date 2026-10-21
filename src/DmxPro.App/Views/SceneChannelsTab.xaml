@@ -129,7 +129,7 @@
                     </ListBox.ItemContainerStyle>
                     <ListBox.ItemTemplate>
                         <DataTemplate DataType="{x:Type vm:SceneFixtureTabViewModel}">
-                            <!--  One line per light: icon, name, detail (trims first), caution mark.  -->
+                            <!--  One line per light: icon, name, detail (trims first).  -->
                             <DockPanel ToolTip="{Binding Detail}">
                                 <c:DmxIcon
                                     Margin="0,0,4,0"
@@ -138,15 +138,6 @@
                                     Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                     Kind="{Binding IconKind}"
                                     Size="{StaticResource Dmx.DenseIconSize}" />
-                                <c:DmxIcon
-                                    Margin="4,0,0,0"
-                                    VerticalAlignment="Center"
-                                    DockPanel.Dock="Right"
-                                    Foreground="{DynamicResource SystemFillColorCautionBrush}"
-                                    Kind="Unverified"
-                                    Size="{StaticResource Dmx.DenseIconSize}"
-                                    ToolTip="Unverified profile: channel meanings are not confirmed"
-                                    Visibility="{Binding ProfileUnverified, Converter={StaticResource BoolToVisibility}}" />
                                 <TextBlock
                                     VerticalAlignment="Center"
                                     TextTrimming="CharacterEllipsis"

@@ -10,7 +10,7 @@ public sealed class ProfileUpdateResult
 
     /// <summary>
     /// Patch problems of the affected fixtures after the update: footprints that now overlap another fixture or run past
-    /// address 512, missing modes. The "profile unverified" warning is left out (user layouts are always unverified).
+    /// address 512, missing modes.
     /// </summary>
     public IReadOnlyList<ValidationIssue> PatchIssues { get; init; } = [];
 

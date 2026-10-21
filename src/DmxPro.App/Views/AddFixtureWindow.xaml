@@ -223,28 +223,6 @@
                                                 Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                                 Text="Custom" />
                                         </Border>
-                                        <Border
-                                            Margin="4,0,0,0"
-                                            Padding="4,0"
-                                            VerticalAlignment="Center"
-                                            Background="{DynamicResource SystemFillColorCautionBackgroundBrush}"
-                                            CornerRadius="{StaticResource Dmx.CornerRadius}"
-                                            ToolTip="Unverified profile: check each channel on the real fixture"
-                                            Visibility="{Binding IsUnverified, Converter={StaticResource BoolToVisibility}}">
-                                            <StackPanel Orientation="Horizontal">
-                                                <c:DmxIcon
-                                                    Margin="0,0,2,0"
-                                                    VerticalAlignment="Center"
-                                                    Foreground="{DynamicResource SystemFillColorCautionBrush}"
-                                                    Kind="Warning"
-                                                    Size="{StaticResource Dmx.DenseIconSize}" />
-                                                <TextBlock
-                                                    VerticalAlignment="Center"
-                                                    FontSize="{StaticResource Dmx.FontSize.Caption}"
-                                                    Foreground="{DynamicResource SystemFillColorCautionBrush}"
-                                                    Text="Unverified" />
-                                            </StackPanel>
-                                        </Border>
                                     </StackPanel>
                                 </DataTemplate>
                             </TreeView.Resources>
@@ -481,13 +459,15 @@
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate DataType="{x:Type vm:ModeChannelRow}">
                                             <StackPanel VerticalAlignment="Center" Orientation="Horizontal">
+                                                <!-- Neutral info, not a warning: the meaning is simply not known (safety rule 7). -->
                                                 <c:DmxIcon
                                                     Margin="0,0,4,0"
                                                     VerticalAlignment="Center"
-                                                    Foreground="{DynamicResource SystemFillColorCautionBrush}"
-                                                    Kind="Warning"
+                                                    AutomationProperties.Name="Meaning unknown: raw channel only"
+                                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                    Kind="Info"
                                                     Size="{StaticResource Dmx.DenseIconSize}"
-                                                    ToolTip="Meaning unknown: raw channel only. Test it before using."
+                                                    ToolTip="Meaning unknown: raw channel only."
                                                     Visibility="{Binding IsGeneric, Converter={StaticResource BoolToVisibility}}" />
                                                 <TextBlock VerticalAlignment="Center" Text="{Binding Type}" />
                                             </StackPanel>
@@ -535,20 +515,6 @@
                                     </Style>
                                 </TextBlock.Style>
                             </TextBlock>
-                        </DockPanel>
-                        <!-- Safety rule 7: an unverified profile is always flagged, never presented as confirmed. -->
-                        <DockPanel Margin="0,2,0,0" Visibility="{Binding IsUnverified, Converter={StaticResource BoolToVisibility}}">
-                            <c:DmxIcon
-                                Margin="0,0,4,0"
-                                VerticalAlignment="Center"
-                                Foreground="{DynamicResource SystemFillColorCautionBrush}"
-                                Kind="Unverified"
-                                Size="{StaticResource Dmx.SmallIconSize}" />
-                            <TextBlock
-                                VerticalAlignment="Center"
-                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                Text="Unverified profile: test each channel at low intensity first."
-                                TextWrapping="Wrap" />
                         </DockPanel>
                     </StackPanel>
                 </Border>
