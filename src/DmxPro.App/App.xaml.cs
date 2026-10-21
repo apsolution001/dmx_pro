@@ -58,6 +58,7 @@ public partial class App : Application
             services.AddSingleton(sp => new DmxPro.Engine.Testing.ChannelTestSession(sp.GetRequiredService<DmxEngine>()));
             services.AddSingleton<TestPageViewModel>();
             services.AddSingleton<StagePageViewModel>();
+            services.AddSingleton<IStageWindowService, StageWindowService>();
             services.AddSingleton<ShellViewModel>();
             services.AddSingleton<MainWindow>();
         })

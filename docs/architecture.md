@@ -170,8 +170,11 @@ Bottom status bar: **Output pill** (Disabled / Connected / Sending 44 fps / Erro
   strobe flashing from profile capabilities, else a default-based fallback of 1-20 Hz capped at 25).
 - **Project file:** `"stage": { width, depth, placements: [{ fixtureId, x, y, rotation }] }`, no schema bump (missing = empty).
   `RemoveFixture` drops its placements; duplicated lights are unplaced.
-- **App:** `StagePageViewModel` polls the engine **output** snapshot at 30 Hz only while the page is visible (so GM, Blackout
-  and strobe safety are included); `StageCanvas` / `StageLightVisual` draw all lights in one control.
+- **App:** `StagePageViewModel` polls the engine **output** snapshot at 30 Hz (so GM, Blackout and strobe safety are
+  included) only while it has a **viewer**: `AddViewer()` / `RemoveViewer()` count them; the Stage page (navigation) is one
+  viewer, the live stage window (`StageWindowService`, one shared `StageWindow`) another. Polling and rebuilds stop when the
+  last viewer goes (a pending drag is committed). `StageCanvas` / `StageLightVisual` draw all lights in one control; every
+  attached canvas follows the same ViewModel events.
 
 ## 9. Performance architecture (2026-10-21)
 

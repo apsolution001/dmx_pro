@@ -23,11 +23,13 @@ public sealed partial class ShellViewModel : ObservableObject
     private readonly InputOutputViewModel _inputOutput;
     private readonly SettingsViewModel _settings;
     private readonly AppSettingsService _appSettings;
+    private readonly IStageWindowService _stageWindow;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CurrentPage))]
     private NavigationItem _selectedItem;
 
+    /// <summary>Message of the shell info bar; null hides it. Set through <see cref="ShowInfo"/>.</summary>
     [ObservableProperty]
     private string? _infoMessage;
 
@@ -54,8 +56,10 @@ public sealed partial class ShellViewModel : ObservableObject
         StagePageViewModel stage,
         InputOutputViewModel inputOutput,
         SettingsViewModel settings,
-        AppSettingsService appSettings)
+        AppSettingsService appSettings,
+        IStageWindowService stageWindow)
     {
+        _stageWindow = stageWindow;
         _inputOutput = inputOutput;
         _settings = settings;
         _appSettings = appSettings;
@@ -193,15 +197,17 @@ public sealed partial class ShellViewModel : ObservableObject
         var failures = string.Join(" ", errors.Select(e => e.Message));
         if (imported.Count == 0)
         {
-            InfoSeverity = InfoBarSeverity.Error;
-            InfoMessage = errors.Count > 0 ? $"Nothing imported. {failures}" : "Nothing imported.";
+            ShowInfo(InfoBarSeverity.Error, errors.Count > 0 ? $"Nothing imported. {failures}" : "Nothing imported.");
             return;
         }
 
-        InfoSeverity = errors.Count > 0 ? InfoBarSeverity.Warning : InfoBarSeverity.Success;
-        InfoMessage = $"Imported {Count(imported.Count, "profile", "profiles")}. " +
-                      "Imported profiles are unverified — test each channel on the real light." +
-                      (errors.Count > 0 ? $" {Count(errors.Count, "file", "files")} failed: {failures}" : string.Empty);
+        // Stays until closed even on success: it carries the "unverified profile" caution (safety rule 7).
+        ShowInfo(
+            errors.Count > 0 ? InfoBarSeverity.Warning : InfoBarSeverity.Success,
+            $"Imported {Count(imported.Count, "profile", "profiles")}. " +
+            "Imported profiles are unverified — test each channel on the real light." +
+            (errors.Count > 0 ? $" {Count(errors.Count, "file", "files")} failed: {failures}" : string.Empty),
+            autoHide: false);
     }
 
     [RelayCommand]
@@ -231,6 +237,7 @@ public sealed partial class ShellViewModel : ObservableObject
         "Ctrl+Shift+S   Save as\n" +
         "Ctrl+1 … Ctrl+7   Go to page (Fixtures … Settings)\n" +
         "Ctrl+8   Stage\n" +
+        "Ctrl+Shift+8   Live stage window\n" +
         "F11   Full screen\n\n" +
         "Coming with later phases: Ctrl+Z/Y undo/redo, Ctrl+C/V/D copy/paste/duplicate, Ctrl+K search, " +
         "B blackout, Esc release all, Space play/pause, F12 operator mode.");
@@ -249,7 +256,7 @@ public sealed partial class ShellViewModel : ObservableObject
         if (await ConfirmDiscardChangesAsync())
         {
             _projects.New();
-            InfoMessage = null;
+            ShowInfo(InfoBarSeverity.Informational, null);
         }
     }
 
@@ -345,13 +352,88 @@ public sealed partial class ShellViewModel : ObservableObject
     {
         if (issues.Count == 0)
         {
-            InfoSeverity = InfoBarSeverity.Success;
-            InfoMessage = successMessage;
+            // Success fades after a few seconds; warnings and errors below stay until closed (safety rule 10).
+            ShowInfo(InfoBarSeverity.Success, successMessage);
             return;
         }
 
-        InfoSeverity = issues.Any(i => i.Severity == ValidationSeverity.Error) ? InfoBarSeverity.Error : InfoBarSeverity.Warning;
-        InfoMessage = $"{successMessage} {issues.Count} issue(s): " + string.Join(" • ", issues.Take(5).Select(i => i.Message)) +
-                      (issues.Count > 5 ? " …" : string.Empty);
+        ShowInfo(
+            issues.Any(i => i.Severity == ValidationSeverity.Error) ? InfoBarSeverity.Error : InfoBarSeverity.Warning,
+            $"{successMessage} {issues.Count} issue(s): " + string.Join(" • ", issues.Take(5).Select(i => i.Message)) +
+            (issues.Count > 5 ? " …" : string.Empty));
+    }
+
+    // ───────────────────────────── Live stage window + info bar auto-hide ─────────────────────────────
+
+    /// <summary>How long a success message (Saved / Opened …) stays in the info bar.</summary>
+    public static readonly TimeSpan SuccessMessageDuration = TimeSpan.FromSeconds(3);
+
+    /// <summary>Pending auto-hide of the current success message; a newer message or closing the bar cancels it.</summary>
+    private CancellationTokenSource? _infoAutoHide;
+
+    /// <summary>
+    /// Whether the info bar is open. Bound two-way to the bar: its close button sets this to false, which clears the
+    /// message, so the same message shown again (a second save) opens the bar again.
+    /// </summary>
+    [ObservableProperty]
+    private bool _isInfoOpen;
+
+    /// <summary>Opens the live stage in its own window, or brings the open one to the front (Ctrl+Shift+8).</summary>
+    [RelayCommand]
+    private void OpenStageWindow() => _stageWindow.Show();
+
+    /// <summary>
+    /// Shows a message in the info bar (null hides it). The bar always reopens, also for a message identical to the
+    /// current one. Success messages hide themselves after <see cref="SuccessMessageDuration"/> unless
+    /// <paramref name="autoHide"/> is false; warnings and errors stay until the user closes them (safety rule 10).
+    /// </summary>
+    private void ShowInfo(InfoBarSeverity severity, string? message, bool autoHide = true)
+    {
+        CancelInfoAutoHide();
+
+        // An identical message would not raise a change: clear first so the bar shows (and restarts its timer) again.
+        if (message is not null && message == InfoMessage)
+        {
+            InfoMessage = null;
+        }
+
+        InfoSeverity = severity;
+        InfoMessage = message;
+        if (message is not null && autoHide && severity == InfoBarSeverity.Success)
+        {
+            _infoAutoHide = new CancellationTokenSource();
+            _ = HideInfoLaterAsync(_infoAutoHide.Token);
+        }
+    }
+
+    private async Task HideInfoLaterAsync(CancellationToken token)
+    {
+        // Resumes on the UI thread (captured context); a cancelled delay completes quietly instead of throwing.
+        await Task.Delay(SuccessMessageDuration, token)
+            .ConfigureAwait(ConfigureAwaitOptions.ContinueOnCapturedContext | ConfigureAwaitOptions.SuppressThrowing);
+        if (!token.IsCancellationRequested)
+        {
+            CancelInfoAutoHide();
+            InfoMessage = null;
+        }
+    }
+
+    private void CancelInfoAutoHide()
+    {
+        _infoAutoHide?.Cancel();
+        _infoAutoHide?.Dispose();
+        _infoAutoHide = null;
+    }
+
+    partial void OnInfoMessageChanged(string? value) => IsInfoOpen = value is not null;
+
+    partial void OnIsInfoOpenChanged(bool value)
+    {
+        // Closed with the bar's close button: forget the message (and its timer).
+        if (!value && InfoMessage is not null)
+        {
+            CancelInfoAutoHide();
+            InfoMessage = null;
+        }
     }
 }

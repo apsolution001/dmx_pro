@@ -203,15 +203,22 @@
         </Border>
 
         <!-- ═════════════ Body: lights list | stage ═════════════ -->
+        <!-- The live stage window hides the lights list (ShowLightList="False", StageView.xaml.cs). -->
         <Grid Margin="{StaticResource Dmx.PageBodyMargin}">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="240" MinWidth="160" />
-                <ColumnDefinition Width="4" />
+                <ColumnDefinition
+                    x:Name="LightListColumn"
+                    Width="240"
+                    MinWidth="160" />
+                <ColumnDefinition x:Name="LightListSplitterColumn" Width="4" />
                 <ColumnDefinition Width="*" MinWidth="240" />
             </Grid.ColumnDefinitions>
 
             <!-- ═════════════ Lights list (drag source) ═════════════ -->
-            <Border Grid.Column="0" Style="{StaticResource PanelBorder}">
+            <Border
+                x:Name="LightListPanel"
+                Grid.Column="0"
+                Style="{StaticResource PanelBorder}">
                 <DockPanel>
                     <Border DockPanel.Dock="Top" Style="{StaticResource PanelHeader}">
                         <DockPanel>
@@ -342,7 +349,10 @@
                 </DockPanel>
             </Border>
 
-            <GridSplitter Grid.Column="1" Style="{StaticResource VerticalSplitter}" />
+            <GridSplitter
+                x:Name="LightListSplitter"
+                Grid.Column="1"
+                Style="{StaticResource VerticalSplitter}" />
 
             <!-- ═════════════ The stage (floor stays dark in both themes, like a real stage) ═════════════ -->
             <Border Grid.Column="2" Style="{StaticResource PanelBorder}">

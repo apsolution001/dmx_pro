@@ -12,6 +12,7 @@ public partial class MainWindow : FluentWindow
 {
     private readonly ShellViewModel _viewModel;
     private readonly EngineRuntimeService _runtime;
+    private readonly IStageWindowService _stageWindow;
     private bool _closeConfirmed;
     private bool _shuttingDown;
 
@@ -20,10 +21,11 @@ public partial class MainWindow : FluentWindow
     private WindowState _stateBeforeFullScreen = WindowState.Normal;
     private ResizeMode _resizeModeBeforeFullScreen = ResizeMode.CanResize;
 
-    public MainWindow(ShellViewModel viewModel, EngineRuntimeService runtime)
+    public MainWindow(ShellViewModel viewModel, EngineRuntimeService runtime, IStageWindowService stageWindow)
     {
         _viewModel = viewModel;
         _runtime = runtime;
+        _stageWindow = stageWindow;
         DataContext = viewModel;
         InitializeComponent();
         FitToWorkArea();
@@ -50,6 +52,10 @@ public partial class MainWindow : FluentWindow
 
         if (await _viewModel.ConfirmDiscardChangesAsync())
         {
+            // The live stage window has no Owner (it must not float over this window), so close it here: it stops its
+            // preview and commits a pending drag before the shutdown, and the app does not linger with it open.
+            _stageWindow.Close();
+
             // Safety rule 6: stop functions → safe frame → stop output → stop engine, without blocking the UI thread.
             _shuttingDown = true;
             await _runtime.ShutdownAsync();

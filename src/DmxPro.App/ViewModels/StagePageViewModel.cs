@@ -20,10 +20,14 @@ namespace DmxPro.App.ViewModels;
 /// the engine sends (after Grand Master, Blackout and strobe safety), also while DMX output is disabled.
 /// </summary>
 /// <remarks>
-/// <para><b>Live preview.</b> While the page is visible a ~30 Hz loop on the UI thread reads the latest
+/// <para><b>Live preview.</b> While at least one viewer is open a ~30 Hz loop on the UI thread reads the latest
 /// <see cref="EngineSnapshot"/>, evaluates each drawable light's <see cref="StageColorModel"/> into
 /// <see cref="StageLightViewModel.Current"/> (a preallocated array, no allocations per frame) and raises
-/// <see cref="FrameUpdated"/>; the stage canvas then updates its brushes. Polling stops when the page is left.</para>
+/// <see cref="FrameUpdated"/>; every attached stage canvas then updates its brushes.</para>
+/// <para><b>Viewers.</b> The Stage page and the separate live stage window share this one instance. Each registers as a
+/// viewer (<see cref="AddViewer"/> / <see cref="RemoveViewer"/>; page navigation counts as one viewer, the window as
+/// another), so the preview keeps running while the window is open on another page, and polling and rebuilds stop
+/// only when the last viewer is gone.</para>
 /// <para><b>Layout edits.</b> Placements live in <see cref="Project.Stage"/> and are saved with the project. They are not
 /// read by the engine, so edits mark the project changed with <c>affectsPlayback: false</c>. A mouse drag moves the
 /// light live (<see cref="MoveLight"/>) and marks the project changed once on drop (<see cref="CommitMove"/>).</para>
@@ -62,7 +66,11 @@ public sealed partial class StagePageViewModel : PageViewModel
     /// <summary>Project instance whose empty stage was already auto-filled (once per opened project).</summary>
     private Project? _autoPlacedFor;
 
-    private bool _isVisible;
+    /// <summary>Open viewers (Stage page shown, live stage window open). Polling and rebuilds run while above zero.</summary>
+    private int _viewers;
+
+    /// <summary>The Stage page is shown and holds one viewer (guards against unpaired navigation calls).</summary>
+    private bool _pageIsViewer;
     private bool _isMarking;
     private bool _hasPendingMove;
     private CancellationTokenSource? _poll;
@@ -210,19 +218,66 @@ public sealed partial class StagePageViewModel : PageViewModel
 
     public IRelayCommand FitCommand { get; }
 
+    /// <summary>True while at least one viewer (page or window) shows the stage, i.e. the live preview runs.</summary>
+    public bool HasViewers => _viewers > 0;
+
     public override void OnNavigatedTo()
     {
-        _isVisible = true;
+        if (!_pageIsViewer)
+        {
+            _pageIsViewer = true;
+            AddViewer();
+        }
+    }
+
+    public override void OnNavigatedFrom()
+    {
+        // A drag can only be pending in the page being left; the window, if open, keeps its own viewer.
+        CommitMove();
+        if (_pageIsViewer)
+        {
+            _pageIsViewer = false;
+            RemoveViewer();
+        }
+    }
+
+    /// <summary>
+    /// Registers a view that shows the stage (the Stage page or the live stage window). The first viewer brings the
+    /// lights up to date and starts the live preview; later viewers share it. Pair every call with
+    /// <see cref="RemoveViewer"/>.
+    /// </summary>
+    public void AddViewer()
+    {
+        _viewers++;
+        if (_viewers == 1)
+        {
+            OnPropertyChanged(nameof(HasViewers));
+        }
+
+        // Also for later viewers: harmless when nothing changed, and a new view sees the current patch at once.
         RefreshIfChanged();
         TryAutoPlace();
         StartPolling();
     }
 
-    public override void OnNavigatedFrom()
+    /// <summary>
+    /// Unregisters a view added with <see cref="AddViewer"/>. When the last viewer goes, a pending drag is committed and
+    /// the live preview stops. Extra calls are ignored.
+    /// </summary>
+    public void RemoveViewer()
     {
-        _isVisible = false;
-        StopPolling();
-        CommitMove();
+        if (_viewers == 0)
+        {
+            return;
+        }
+
+        _viewers--;
+        if (_viewers == 0)
+        {
+            StopPolling();
+            CommitMove();
+            OnPropertyChanged(nameof(HasViewers));
+        }
     }
 
     // ───────────────────────────── Canvas API (view-driven edits) ─────────────────────────────
@@ -502,7 +557,7 @@ public sealed partial class StagePageViewModel : PageViewModel
             return;
         }
 
-        if (_isVisible)
+        if (HasViewers)
         {
             RefreshIfChanged();
             TryAutoPlace();
@@ -511,7 +566,7 @@ public sealed partial class StagePageViewModel : PageViewModel
 
     private void OnProjectEvent()
     {
-        if (_isVisible)
+        if (HasViewers)
         {
             RefreshIfChanged();
             TryAutoPlace();
@@ -827,7 +882,7 @@ public sealed partial class StagePageViewModel : PageViewModel
         }
         catch (OperationCanceledException)
         {
-            // Page left.
+            // Last viewer closed.
         }
     }
 

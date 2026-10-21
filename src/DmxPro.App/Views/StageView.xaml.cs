@@ -10,16 +10,55 @@ namespace DmxPro.App.Views;
 
 /// <summary>
 /// Stage page: the lights list and the stage plan (<see cref="StageCanvas"/>). Code-behind only does view behaviour:
-/// opening the Arrange menu and starting a drag from the lights list onto the stage.
+/// opening the Arrange menu, starting a drag from the lights list onto the stage and hiding the lights list.
 /// </summary>
+/// <remarks>Also hosted by the live stage window (<see cref="StageWindow"/>), there without the lights list.</remarks>
 public partial class StageView : UserControl
 {
+    /// <summary>Identifies the <see cref="ShowLightList"/> dependency property.</summary>
+    public static readonly DependencyProperty ShowLightListProperty = DependencyProperty.Register(
+        nameof(ShowLightList),
+        typeof(bool),
+        typeof(StageView),
+        new PropertyMetadata(true, OnShowLightListChanged));
+
+    private GridLength _lightListWidth = new(240);
     private Point _dragStart;
     private StageLightViewModel? _dragLight;
 
     public StageView()
     {
         InitializeComponent();
+    }
+
+    /// <summary>Gets or sets whether the lights list (left panel) is shown. The live stage window turns it off.</summary>
+    public bool ShowLightList
+    {
+        get => (bool)GetValue(ShowLightListProperty);
+        set => SetValue(ShowLightListProperty, value);
+    }
+
+    private static void OnShowLightListChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var view = (StageView)d;
+        var show = (bool)e.NewValue;
+        var visibility = show ? Visibility.Visible : Visibility.Collapsed;
+        view.LightListPanel.Visibility = visibility;
+        view.LightListSplitter.Visibility = visibility;
+        if (show)
+        {
+            view.LightListColumn.MinWidth = 160;
+            view.LightListColumn.Width = view._lightListWidth;
+            view.LightListSplitterColumn.Width = new GridLength(4);
+        }
+        else
+        {
+            // Keep a width the user dragged with the splitter, for when the list comes back.
+            view._lightListWidth = view.LightListColumn.Width;
+            view.LightListColumn.MinWidth = 0;
+            view.LightListColumn.Width = new GridLength(0);
+            view.LightListSplitterColumn.Width = new GridLength(0);
+        }
     }
 
     /// <summary>The toolbar "Arrange" button opens its menu below itself on a normal click.</summary>

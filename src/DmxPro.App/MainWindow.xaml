@@ -42,6 +42,7 @@
         <KeyBinding Command="{Binding NavigateToCommand}" CommandParameter="7" Gesture="Ctrl+OemComma" />
         <!-- Stage sits before Settings in the rail (index 6) but got Ctrl+8, so Ctrl+1 … Ctrl+7 did not move. -->
         <KeyBinding Command="{Binding NavigateToCommand}" CommandParameter="6" Gesture="Ctrl+8" />
+        <KeyBinding Command="{Binding OpenStageWindowCommand}" Gesture="Ctrl+Shift+8" />
     </Window.InputBindings>
 
     <!-- Desktop layout modelled on QLC+: title bar, menu, main toolbar, section rail + page area, status bar. -->
@@ -725,7 +726,25 @@
                         <c:DmxIcon Kind="FullScreen" Size="{StaticResource Dmx.ToolbarIconSize}" />
                     </Button>
                 </StackPanel>
-                <!-- Right side reserved for the Blackout / Output buttons (phases 4 and 7). -->
+                <!--
+                    Right side: live actions. The "Go Live" button (later task) goes in this panel too, left of the Stage
+                    window button; the Blackout / Output buttons (phases 4 and 7) follow.
+                -->
+                <StackPanel
+                    x:Name="ToolbarRightPanel"
+                    DockPanel.Dock="Right"
+                    Orientation="Horizontal">
+                    <Button
+                        AutomationProperties.Name="Open the live stage window"
+                        Command="{Binding OpenStageWindowCommand}"
+                        Style="{StaticResource ToolbarLabelButton}"
+                        ToolTip="Open the live stage in its own window (Ctrl+Shift+8)">
+                        <StackPanel Orientation="Horizontal">
+                            <c:DmxIcon Kind="Stage" Size="{StaticResource Dmx.ButtonIconSize}" />
+                            <TextBlock Style="{StaticResource ButtonLabel}" Text="Stage window" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
             </DockPanel>
         </Border>
 
@@ -768,13 +787,17 @@
                 </ListBox>
             </Border>
 
-            <!-- Page area: shell messages (open/save/import results) above the current page. -->
+            <!--
+                Page area: shell messages (open/save/import results) above the current page. Success messages hide after
+                ~3 s; warnings/errors stay until closed. IsOpen is two-way so the close button clears the message
+                (ShellViewModel.ShowInfo).
+            -->
             <DockPanel Grid.Column="1">
                 <ui:InfoBar
                     Margin="2,2,2,0"
                     DockPanel.Dock="Top"
                     IsClosable="True"
-                    IsOpen="{Binding InfoMessage, Mode=OneWay, Converter={StaticResource NullToVisibility}, ConverterParameter=Bool}"
+                    IsOpen="{Binding IsInfoOpen, Mode=TwoWay}"
                     Message="{Binding InfoMessage}"
                     Severity="{Binding InfoSeverity}"
                     Visibility="{Binding InfoMessage, Converter={StaticResource NullToVisibility}}" />

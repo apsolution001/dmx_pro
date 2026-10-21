@@ -56,6 +56,12 @@ Earlier web-style sketch (superseded look, same content):
 - **Left navigation rail** (Ctrl+1 … Ctrl+8): the main workspaces in workflow order.
 - **Status bar** is always visible, on every page: output state, Grand Master, Blackout, Release All, BPM.
 - **Full screen** (F11) hides the title bar for shows; **Operator mode** (F12) locks editing.
+- **Main toolbar, right side:** **Stage window** (Ctrl+Shift+8) opens the live stage window (section 3.10). The future
+  **Go Live** button goes in the same right-hand panel, left of it.
+- **Info bar** (above the page): success messages ("Saved show.dmxpro.", "Opened …") hide themselves after about 3 s;
+  warnings and errors stay until closed (safety rule 10). Closing the bar clears the message, so the same message (a
+  second save) shows again; a newer message replaces the old one and restarts the timer. Import results stay until
+  closed (they carry the "unverified profile" caution).
 
 ## 2. Top menu bar
 
@@ -375,10 +381,15 @@ as a coloured disc (`StageCanvas` / `StageLightVisual`, drawn in one control, no
 - **Interaction:** click selects; drag moves with a 0.25 m snap (Shift = free); arrow keys nudge; Delete removes from the
   stage; mouse wheel zooms; middle or right drag pans. Lights are auto-placed (rows, back first, in patch order) the first
   time a project is opened on this page.
-- **Colours:** the page polls the engine output snapshot at 30 Hz only while it is visible, so it shows what is actually
-  sent (Grand Master, Blackout and strobe safety included). It works with output disabled and says so in a note. Colour is
+- **Colours:** the page polls the engine output snapshot at 30 Hz while the page or the live stage window is open, so it
+  shows what is actually sent (Grand Master, Blackout and strobe safety included). It works with output disabled and says so in a note. Colour is
   derived from the profile (`StageColorModel`); a dimmer-only light is warm white; strobing lights flash.
 - The floor is always dark (#17191D) in both themes. Positions are saved in the project (`"stage"`).
+- **Live stage window** (2026-10-22, `Views/StageWindow.xaml`): main toolbar **Stage window** or **Ctrl+Shift+8** opens the
+  same stage (toolbar, plan, status line; no lights list) in its own resizable, non-modal window, so it stays in view while
+  working on Functions, Virtual Console, Shows or Test & Preview, or on a second monitor. Only one: the button again
+  restores and activates it. It has no owner window (it never floats over the main window) and shows in the taskbar;
+  closing the main window closes it. Edits in it act on the same layout as the page. Size/position are not remembered.
 - Not built: rotation editing, strobe marker, undo (`open-questions.md` 29-31).
 
 ## 4. Build order for the menu/shell
