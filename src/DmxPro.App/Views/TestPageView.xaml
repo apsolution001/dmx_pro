@@ -226,6 +226,7 @@
                         Margin="1,0,0,0"
                         AutomationProperties.Name="{Binding Name, StringFormat={}{0} channel faders}"
                         Focusable="False"
+                        IsEnabled="{Binding DataContext.IsDeskEnabled, RelativeSource={RelativeSource AncestorType=ListBox}}"
                         ItemTemplate="{StaticResource DeskChannelTemplate}"
                         ItemsSource="{Binding Channels}"
                         KeyboardNavigation.TabNavigation="Continue">
@@ -432,6 +433,33 @@
             Message="{Binding NoticeMessage}"
             Severity="Success"
             Visibility="{Binding IsNoticeOpen, Converter={StaticResource BoolToVisibility}}" />
+
+        <!--
+            Live mode (Ctrl+F5): only the Virtual Console drives the lights. The faders are disabled and show the output;
+            the Grand Master stays usable. Neutral info style, not a warning.
+        -->
+        <Border
+            Padding="6,3"
+            Background="{DynamicResource SubtleFillColorSecondaryBrush}"
+            BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
+            BorderThickness="0,0,0,1"
+            DockPanel.Dock="Top"
+            Visibility="{Binding IsLive, Converter={StaticResource BoolToVisibility}}">
+            <StackPanel Orientation="Horizontal">
+                <c:DmxIcon
+                    Margin="0,0,6,0"
+                    VerticalAlignment="Center"
+                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                    Kind="Info"
+                    Size="{StaticResource Dmx.DenseIconSize}" />
+                <TextBlock
+                    VerticalAlignment="Center"
+                    AutomationProperties.LiveSetting="Polite"
+                    Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                    Text="{x:Static vm:TestPageViewModel.LiveModeBanner}"
+                    TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+        </Border>
 
         <!-- ═════════════ Warnings strip (only when there are warnings) ═════════════ -->
         <Border

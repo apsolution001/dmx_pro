@@ -194,7 +194,8 @@
                         AutomationProperties.Name="Play or pause"
                         Command="{Binding PlayPauseCommand}"
                         Style="{StaticResource ToolbarButton}"
-                        ToolTip="{Binding PlayPauseToolTip}">
+                        ToolTip="{Binding PlayPauseToolTip}"
+                        ToolTipService.ShowOnDisabled="True">
                         <c:DmxIcon Kind="{Binding PlayPauseIcon}" Size="{StaticResource Dmx.ToolbarIconSize}" />
                     </Button>
                     <Button
@@ -242,6 +243,26 @@
                         ToolTip="Follow the playhead: scroll the timeline while the show plays">
                         <c:DmxIcon Data="{StaticResource ShowsFollowGeometry}" Size="{StaticResource Dmx.ToolbarIconSize}" />
                     </ToggleButton>
+                    <!-- Live mode (Ctrl+F5): Play / Resume are disabled here. Neutral info style, not a warning. -->
+                    <StackPanel
+                        Margin="6,0,0,0"
+                        VerticalAlignment="Center"
+                        Background="Transparent"
+                        Orientation="Horizontal"
+                        ToolTip="Live mode is on: only the Virtual Console drives the lights. Leave live mode (Ctrl+F5) to play shows from here."
+                        Visibility="{Binding IsLive, Converter={StaticResource BoolToVisibility}}">
+                        <c:DmxIcon
+                            VerticalAlignment="Center"
+                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                            Kind="Info"
+                            Size="{StaticResource Dmx.ButtonIconSize}" />
+                        <TextBlock
+                            Margin="4,0,0,0"
+                            VerticalAlignment="Center"
+                            AutomationProperties.LiveSetting="Polite"
+                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                            Text="{x:Static vm:ShowsViewModel.LiveModeHint}" />
+                    </StackPanel>
 
                     <Rectangle Style="{StaticResource ToolbarSeparator}" />
 

@@ -7,6 +7,7 @@ using DmxPro.App.ViewModels.Editors;
 using DmxPro.Core.Functions;
 using DmxPro.Core.Projects;
 using DmxPro.Core.Shows;
+using DmxPro.Engine;
 
 namespace DmxPro.App.ViewModels;
 
@@ -17,7 +18,10 @@ namespace DmxPro.App.ViewModels;
 /// changed. The show's music (audio lane, settings) lives in <see cref="Music"/>. The transport plays the show through
 /// <see cref="IConsolePlayback"/> (the same player as the Virtual Console: one player show at a time; the music
 /// follows it). While the show runs and the page is visible, the playhead follows the playback position (~30 Hz poll);
-/// when stopped it is the start point for Play.
+/// when stopped it is the start point for Play. The open function editor (a show's own copy) previews its draft on the
+/// lights through <see cref="FunctionPreviewService"/> while the page is visible. In live mode
+/// (<see cref="ILiveModeService"/>) only the Virtual Console drives the lights: Play / Resume are disabled here and a
+/// hint says so (the engine refuses <see cref="ShowOrigin.Editor"/> shows anyway).
 /// </summary>
 public sealed partial class ShowsViewModel : PageViewModel
 {
@@ -52,6 +56,8 @@ public sealed partial class ShowsViewModel : PageViewModel
     private readonly AppSettingsService _settings;
     private readonly LightClipboardService _clipboard;
     private readonly IConsolePlayback _playback;
+    private readonly FunctionPreviewService _preview;
+    private readonly ILiveModeService _liveMode;
     private readonly SynchronizationContext? _uiContext;
     private double _timelineSeconds;
     private bool _reloading;
@@ -109,10 +115,12 @@ public sealed partial class ShowsViewModel : PageViewModel
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsPlaying), nameof(PlayPauseIcon), nameof(PlayPauseToolTip), nameof(TransportStateText))]
+    [NotifyCanExecuteChangedFor(nameof(PlayPauseCommand))]
     private bool _isShowRunning;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsPlaying), nameof(PlayPauseIcon), nameof(PlayPauseToolTip), nameof(TransportStateText))]
+    [NotifyCanExecuteChangedFor(nameof(PlayPauseCommand))]
     private bool _isShowPaused;
 
     /// <summary>While playing, scroll the timeline so the playhead stays visible.</summary>
@@ -174,13 +182,17 @@ public sealed partial class ShowsViewModel : PageViewModel
         LightClipboardService clipboard,
         IShowMusicService music,
         IConsolePlayback playback,
-        IFileDialogService files)
+        IFileDialogService files,
+        FunctionPreviewService preview,
+        ILiveModeService liveMode)
     {
         _projects = projects;
         _dialogs = dialogs;
         _settings = settings;
         _clipboard = clipboard;
         _playback = playback;
+        _preview = preview;
+        _liveMode = liveMode;
         _uiContext = SynchronizationContext.Current;
         _music = music;
         Music = new ShowAudioViewModel(this, projects, dialogs, files, music);
@@ -210,6 +222,9 @@ public sealed partial class ShowsViewModel : PageViewModel
 
         // May be raised on any thread.
         _playback.StateChanged += OnPlaybackStateChanged;
+
+        // Raised on the UI thread (contract).
+        liveMode.LiveModeChanged += (_, _) => OnLiveModeChanged();
         Reload(keepShowId: null);
     }
 
@@ -277,7 +292,16 @@ public sealed partial class ShowsViewModel : PageViewModel
 
     public string PlayPauseIcon => IsPlaying ? "Pause" : "Play";
 
-    public string PlayPauseToolTip => IsPlaying ? "Pause (Space)" : IsShowPaused ? "Resume (Space)" : "Play from the playhead (Space)";
+    public string PlayPauseToolTip => IsPlaying ? "Pause (Space)"
+        : IsLive ? LiveModeHint
+        : IsShowPaused ? "Resume (Space)"
+        : "Play from the playhead (Space)";
+
+    /// <summary>Live mode is on: only the Virtual Console drives the lights, so Play / Resume are disabled here.</summary>
+    public bool IsLive => _liveMode.IsLive;
+
+    /// <summary>Neutral hint next to the transport while <see cref="IsLive"/>.</summary>
+    public static string LiveModeHint => "Live mode — shows play from the Virtual Console";
 
     public string TransportStateText => !IsShowRunning ? "Stopped" : IsShowPaused ? "Paused" : "Playing";
 
@@ -357,11 +381,16 @@ public sealed partial class ShowsViewModel : PageViewModel
         return string.Create(CultureInfo.InvariantCulture, $"{(int)t.TotalMinutes:00}:{t.Seconds:00}");
     }
 
+    /// <summary>Leaving the page stops the editor's light preview; it comes back when the page is shown again.</summary>
     public override void OnNavigatedFrom()
     {
         _isPageVisible = false;
         IsNoticeOpen = false;
         UpdateTicker();
+        if (Editor is { } editor)
+        {
+            _preview.Detach(editor);
+        }
     }
 
     public override void OnNavigatedTo()
@@ -376,6 +405,10 @@ public sealed partial class ShowsViewModel : PageViewModel
         }
 
         Editor?.RefreshPatch();
+        if (Editor is { } editor)
+        {
+            _preview.Attach(editor);
+        }
     }
 
     /// <summary>
@@ -941,6 +974,7 @@ public sealed partial class ShowsViewModel : PageViewModel
         {
             oldValue.Saved -= OnEditorSaved;
             oldValue.CloseRequested -= OnEditorCloseRequested;
+            _preview.Detach(oldValue);
             oldValue.Detach();
         }
 
@@ -948,6 +982,10 @@ public sealed partial class ShowsViewModel : PageViewModel
         {
             newValue.Saved += OnEditorSaved;
             newValue.CloseRequested += OnEditorCloseRequested;
+            if (_isPageVisible)
+            {
+                _preview.Attach(newValue);
+            }
         }
     }
 
@@ -1197,8 +1235,11 @@ public sealed partial class ShowsViewModel : PageViewModel
 
     // ───────────── Transport ─────────────
 
-    /// <summary>Play / pause the selected show (Space on the timeline). Play starts at the playhead.</summary>
-    [RelayCommand(CanExecute = nameof(HasShow))]
+    /// <summary>
+    /// Play / pause the selected show (Space on the timeline). Play starts at the playhead. While live, Play and Resume
+    /// are disabled (Pause stays available for a show that is playing).
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanPlayPause))]
     private void PlayPause()
     {
         if (SelectedShow is not { } show)
@@ -1212,7 +1253,7 @@ public sealed partial class ShowsViewModel : PageViewModel
         }
         else if (IsShowRunning)
         {
-            _playback.PlayShow(show.Id);
+            _playback.PlayShow(show.Id, origin: ShowOrigin.Editor);
         }
         else
         {
@@ -1225,10 +1266,21 @@ public sealed partial class ShowsViewModel : PageViewModel
 
             _playStartSeconds = start;
             PlayheadSeconds = start;
-            _playback.PlayShow(show.Id, start);
+            _playback.PlayShow(show.Id, start, ShowOrigin.Editor);
         }
 
         RefreshTransport();
+    }
+
+    private bool CanPlayPause() => HasShow && (IsPlaying || !IsLive);
+
+    /// <summary>Live mode switched: Play / Resume follow it; live-on stops the Shows-page show (the playback reports it).</summary>
+    private void OnLiveModeChanged()
+    {
+        OnPropertyChanged(nameof(IsLive));
+        OnPropertyChanged(nameof(PlayPauseToolTip));
+        RefreshTransport();
+        PlayPauseCommand.NotifyCanExecuteChanged();
     }
 
     /// <summary>Stops the show (lights release; the playhead returns to where Play started). When stopped: back to 0.</summary>

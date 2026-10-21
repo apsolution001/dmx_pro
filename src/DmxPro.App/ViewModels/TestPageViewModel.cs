@@ -30,6 +30,10 @@ namespace DmxPro.App.ViewModels;
 /// and the console Release All raises <see cref="EngineConsolePlayback.AllReleased"/>; both only reset the session.
 /// </para>
 /// <para>Polling (~30 Hz) runs only while the page is visible, on the UI thread.</para>
+/// <para><b>Live mode</b> (<see cref="ILiveModeService"/>): only the Virtual Console drives the lights. Turning it on
+/// releases every test value (the engine refuses new ones, <see cref="ChannelTestSession.Set"/> returns false); the
+/// faders, paste and "Save as function…" are disabled and a banner says why. The Grand Master stays usable (it belongs
+/// to the console too). Test values are not restored when live mode is turned off.</para>
 /// </remarks>
 public sealed partial class TestPageViewModel : PageViewModel
 {
@@ -47,6 +51,7 @@ public sealed partial class TestPageViewModel : PageViewModel
     private readonly ILogger<TestPageViewModel> _logger;
     private readonly SynchronizationContext? _uiContext;
     private readonly IDialogService _dialogs;
+    private readonly ILiveModeService _liveMode;
     private readonly bool[] _monitorOverridden = new bool[DmxAddress.UniverseSize];
     private readonly List<TestWarningViewModel> _fixtureWarnings = [];
     private PatchHealth? _health;
@@ -102,10 +107,12 @@ public sealed partial class TestPageViewModel : PageViewModel
         InputOutputViewModel inputOutput,
         LightClipboardService clipboard,
         IDialogService dialogs,
+        ILiveModeService liveMode,
         ILogger<TestPageViewModel> logger)
     {
         _projects = projects;
         _dialogs = dialogs;
+        _liveMode = liveMode;
         _engine = engine;
         _session = session;
         _inputOutput = inputOutput;
@@ -120,11 +127,11 @@ public sealed partial class TestPageViewModel : PageViewModel
         }
 
         ReleaseAllTestsCommand = new RelayCommand(ReleaseAllTests, () => HasOverrides);
-        SaveAsFunctionCommand = new RelayCommand(SaveAsFunction, () => HasOverrides);
+        SaveAsFunctionCommand = new RelayCommand(SaveAsFunction, () => HasOverrides && !IsLive);
         ResetGrandMasterCommand = new RelayCommand(() => GrandMasterPercent = 100);
         CopyLightCommand = new RelayCommand<TestFixtureRowViewModel?>(CopyLight, row => (row ?? SelectedFixture) is { HasNoChannels: false });
-        PasteLightCommand = new RelayCommand<TestFixtureRowViewModel?>(PasteLight, row => _clipboard.HasValues && (row ?? SelectedFixture) is not null);
-        PasteToAllCommand = new RelayCommand(PasteToAll, () => _clipboard.HasValues && FilteredFixtures.Count > 0);
+        PasteLightCommand = new RelayCommand<TestFixtureRowViewModel?>(PasteLight, row => !IsLive && _clipboard.HasValues && (row ?? SelectedFixture) is not null);
+        PasteToAllCommand = new RelayCommand(PasteToAll, () => !IsLive && _clipboard.HasValues && FilteredFixtures.Count > 0);
         clipboard.Changed += (_, _) =>
         {
             OnPropertyChanged(nameof(CopiedText));
@@ -137,6 +144,7 @@ public sealed partial class TestPageViewModel : PageViewModel
         runtime.ProjectLoaded += (_, _) => OnProjectLoaded();
         runtime.PatchRefreshed += (_, _) => OnPatchRefreshed();
         playback.AllReleased += (_, _) => OnUiThread(OnEngineReleasedAll);
+        liveMode.LiveModeChanged += (_, _) => OnUiThread(OnLiveModeChanged);
     }
 
     public override string Title => "Test & Preview";
@@ -219,9 +227,18 @@ public sealed partial class TestPageViewModel : PageViewModel
     /// </summary>
     public IRelayCommand SaveAsFunctionCommand { get; }
 
-    public string SaveAsFunctionToolTip => HasOverrides
-        ? "Save as function…: save the channels under test as a new scene in the Functions list"
+    public string SaveAsFunctionToolTip => IsLive ? "Not available in live mode: test values are off"
+        : HasOverrides ? "Save as function…: save the channels under test as a new scene in the Functions list"
         : "Set some channels first";
+
+    /// <summary>Live mode is on: the desk shows the output but takes no test values.</summary>
+    public bool IsLive => _liveMode.IsLive;
+
+    /// <summary>The channel faders accept input (not in live mode).</summary>
+    public bool IsDeskEnabled => !IsLive;
+
+    /// <summary>Banner text while <see cref="IsLive"/>.</summary>
+    public static string LiveModeBanner => "Live mode — only the Virtual Console controls the lights. Test values are off.";
 
     /// <summary>Project universes plus any universe a light is patched to, ascending.</summary>
     public ObservableCollection<int> Universes { get; } = [];
@@ -457,6 +474,25 @@ public sealed partial class TestPageViewModel : PageViewModel
         // in the engine if this runs late or the generation check missed it.
         _session.ReleaseAll();
         MarkAllReleased();
+    }
+
+    /// <summary>
+    /// Live on: every test value is released (the engine dropped them already; this clears the session and the faders).
+    /// Live off: nothing is restored, the desk just accepts input again.
+    /// </summary>
+    private void OnLiveModeChanged()
+    {
+        if (_liveMode.IsLive)
+        {
+            OnEngineReleasedAll();
+        }
+
+        OnPropertyChanged(nameof(IsLive));
+        OnPropertyChanged(nameof(IsDeskEnabled));
+        OnPropertyChanged(nameof(SaveAsFunctionToolTip));
+        SaveAsFunctionCommand.NotifyCanExecuteChanged();
+        PasteLightCommand.NotifyCanExecuteChanged();
+        PasteToAllCommand.NotifyCanExecuteChanged();
     }
 
     // ───────────────────────────── Commands from rows / channels ─────────────────────────────
