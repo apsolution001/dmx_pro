@@ -25,4 +25,7 @@ public interface IDialogService
 
     /// <summary>Shows the channel layout editor; returns true when the layout was saved.</summary>
     bool ShowChannelLayout(ViewModels.ChannelLayoutViewModel viewModel);
+
+    /// <summary>Shows the modal "Choose lights" dialog; returns true when the user clicked OK.</summary>
+    bool ShowFixturePicker(ViewModels.FixturePickerViewModel viewModel);
 }

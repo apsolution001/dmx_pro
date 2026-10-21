@@ -45,6 +45,13 @@ public sealed class DialogService : IDialogService
         return window.ShowDialog() == true;
     }
 
+    public bool ShowFixturePicker(FixturePickerViewModel viewModel)
+    {
+        var app = System.Windows.Application.Current;
+        var owner = app.Windows.OfType<System.Windows.Window>().FirstOrDefault(w => w.IsActive) ?? app.MainWindow;
+        return FixturePickerWindow.ShowModal(viewModel, owner);
+    }
+
     public async Task<SaveChangesChoice> AskSaveChangesAsync(string projectName)
     {
         var box = new MessageBox

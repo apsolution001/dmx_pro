@@ -1,31 +1,35 @@
+using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
+using DmxPro.App.ViewModels;
+using DmxPro.App.ViewModels.Editors;
 
 namespace DmxPro.App.Views.Editors;
 
 /// <summary>
-/// Fixtures panel of the sequence and effect editors. Code-behind only moves keyboard focus into and out of the Add
-/// flyout (pure view concern). DataContext: <c>FixtureListEditorViewModel</c>.
+/// Fixtures panel of the sequence and effect editors. Code-behind only tells the ViewModel how to open the modal
+/// Choose lights dialog over this panel's window (the editors are created without DI, so they have no dialog service).
+/// DataContext: <see cref="FixtureListEditorViewModel"/>.
 /// </summary>
 public partial class FixtureListPanel : UserControl
 {
     public FixtureListPanel()
     {
         InitializeComponent();
+        DataContextChanged += OnDataContextChanged;
     }
 
-    /// <summary>A popup does not take focus by itself; put it in the search box so the flyout is keyboard usable.</summary>
-    private void OnAddPopupOpened(object? sender, EventArgs e) =>
-        SearchBox.Dispatcher.BeginInvoke(() => SearchBox.Focus());
-
-    /// <summary>Esc closes the flyout and returns focus to the Add button.</summary>
-    private void OnAddPopupKeyDown(object sender, KeyEventArgs e)
+    private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
-        if (e.Key == Key.Escape)
+        if (e.OldValue is FixtureListEditorViewModel old && old.ShowPicker == ShowPicker)
         {
-            AddPopup.IsOpen = false;
-            AddToggle.Focus();
-            e.Handled = true;
+            old.ShowPicker = null;
+        }
+
+        if (e.NewValue is FixtureListEditorViewModel viewModel)
+        {
+            viewModel.ShowPicker = ShowPicker;
         }
     }
+
+    private bool ShowPicker(FixturePickerViewModel picker) => FixturePickerWindow.ShowModal(picker, Window.GetWindow(this));
 }
