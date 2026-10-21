@@ -29,6 +29,23 @@ public sealed partial class FunctionsViewModel : PageViewModel
     /// <summary><see cref="ProjectService.Revision"/> the lists were last rebuilt from (-1 = never).</summary>
     private long _loadedRevision = -1;
 
+    /// <summary>
+    /// Rows built for <see cref="_rowCacheRevision"/>. Typing in the search box or changing the type filter reuses them
+    /// instead of rebuilding every row (and its colour swatch) per keystroke; any project change starts a new cache.
+    /// </summary>
+    private readonly Dictionary<LightFunction, FunctionRowViewModel> _rowCache = [];
+
+    private long _rowCacheRevision = -1;
+
+    /// <summary>Type folders the user collapsed; remembered while a search opens every folder.</summary>
+    private readonly HashSet<FunctionType> _collapsedTypes = [];
+
+    /// <summary>The current folders were built for a search (all open), so their expanded state is not the user's.</summary>
+    private bool _groupsBuiltForSearch;
+
+    /// <summary>The selected function while the search/type filter hides it; selected again once it is listed.</summary>
+    private LightFunction? _selectionHiddenByFilter;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelection), nameof(SelectedScene), nameof(SelectedIsShowCopy), nameof(SelectedShowInList))]
     [NotifyCanExecuteChangedFor(
@@ -43,6 +60,7 @@ public sealed partial class FunctionsViewModel : PageViewModel
     private FunctionEditorViewModel? _editor;
 
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ClearSearchCommand))]
     private string _search = string.Empty;
 
     [ObservableProperty]
@@ -170,6 +188,12 @@ public sealed partial class FunctionsViewModel : PageViewModel
         OnPropertyChanged(nameof(IsNothingSelected));
         SyncTreeSelection(oldValue, newValue);
         UpdateSelectedPreview();
+        if (!_suppressSelection)
+        {
+            // The user picked something else (or a folder): forget a selection the filter was hiding.
+            _selectionHiddenByFilter = null;
+        }
+
         if (_suppressSelection || Editor is null || ReferenceEquals(Editor.Original, newValue?.Function))
         {
             return;
@@ -197,6 +221,12 @@ public sealed partial class FunctionsViewModel : PageViewModel
     }
 
     partial void OnSearchChanged(string value) => Reload();
+
+    /// <summary>Esc in the search box: clears it (when it is already empty, Esc falls through to the page).</summary>
+    [RelayCommand(CanExecute = nameof(CanClearSearch))]
+    private void ClearSearch() => Search = string.Empty;
+
+    private bool CanClearSearch() => Search.Length > 0;
 
     partial void OnTypeFilterChanged(FunctionTypeOption value)
     {
@@ -437,12 +467,35 @@ public sealed partial class FunctionsViewModel : PageViewModel
     {
         _loadedRevision = _projects.Revision;
         var project = _projects.Current;
-        var selected = SelectedRow?.Function;
-        var search = Search.Trim();
+        var selected = SelectedRow?.Function ?? _selectionHiddenByFilter;
+        var terms = Search.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var searching = terms.Length > 0;
         IEnumerable<LightFunction> source = ShowHiddenShowCopies ? project.Functions : project.FunctionListItems;
 
-        // Folders the user collapsed stay collapsed across rebuilds.
-        var collapsed = Groups.Where(g => !g.IsExpanded).Select(g => g.Type).ToHashSet();
+        if (_rowCacheRevision != _projects.Revision)
+        {
+            _rowCache.Clear();
+            _rowCacheRevision = _projects.Revision;
+        }
+
+        // Folders the user collapsed stay collapsed across rebuilds; a search opens them all so no match is hidden,
+        // and clearing the search brings the user's folders back.
+        if (!_groupsBuiltForSearch)
+        {
+            foreach (var group in Groups)
+            {
+                if (group.IsExpanded)
+                {
+                    _collapsedTypes.Remove(group.Type);
+                }
+                else
+                {
+                    _collapsedTypes.Add(group.Type);
+                }
+            }
+        }
+
+        _groupsBuiltForSearch = searching;
 
         _suppressSelection = true;
         Rows.Clear();
@@ -455,15 +508,18 @@ public sealed partial class FunctionsViewModel : PageViewModel
                 continue;
             }
 
-            var row = new FunctionRowViewModel(function, RenameRow, OnRowSelectedInTree);
-            if (search.Length > 0
-                && !function.Name.Contains(search, StringComparison.OrdinalIgnoreCase)
-                && !row.TypeName.Contains(search, StringComparison.OrdinalIgnoreCase))
+            if (searching && !MatchesSearch(function, project, terms))
             {
                 continue;
             }
 
-            row.Refresh(project);
+            if (!_rowCache.TryGetValue(function, out var row))
+            {
+                row = new FunctionRowViewModel(function, RenameRow, OnRowSelectedInTree);
+                row.Refresh(project);
+                _rowCache[function] = row;
+            }
+
             rows.Add(row);
         }
 
@@ -477,11 +533,12 @@ public sealed partial class FunctionsViewModel : PageViewModel
 
             Groups.Add(new FunctionTreeGroupViewModel(byType.Key, children, OnGroupSelectedInTree)
             {
-                IsExpanded = !collapsed.Contains(byType.Key) || children.Any(c => c.Function == selected),
+                IsExpanded = searching || !_collapsedTypes.Contains(byType.Key) || children.Any(c => c.Function == selected),
             });
         }
 
         SelectedRow = Rows.FirstOrDefault(r => r.Function == selected);
+        _selectionHiddenByFilter = SelectedRow is null && selected is not null && project.Functions.Contains(selected) ? selected : null;
         _suppressSelection = false;
 
         // The edited function was deleted, hidden or the project replaced: the editor has nothing left to edit.
@@ -494,6 +551,27 @@ public sealed partial class FunctionsViewModel : PageViewModel
         OnPropertyChanged(nameof(IsListEmpty));
         OnPropertyChanged(nameof(NoFilterResults));
         OnPropertyChanged(nameof(SelectedShowInList));
+    }
+
+    /// <summary>
+    /// Every search word must appear (any order, any case) in the function's name, its type or the name of the show that
+    /// owns it, so "red wash" finds "Wash red front" and "wedding" finds that show's copies.
+    /// </summary>
+    private static bool MatchesSearch(LightFunction function, Project project, string[] terms)
+    {
+        var typeName = FunctionRowViewModel.TypeDisplayName(function.Type);
+        var showName = function.OwnerShowId is { } showId ? project.FindShow(showId)?.Name : null;
+        foreach (var term in terms)
+        {
+            if (!function.Name.Contains(term, StringComparison.CurrentCultureIgnoreCase)
+                && !typeName.Contains(term, StringComparison.CurrentCultureIgnoreCase)
+                && showName?.Contains(term, StringComparison.CurrentCultureIgnoreCase) != true)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private void UpdateSelectedPreview()

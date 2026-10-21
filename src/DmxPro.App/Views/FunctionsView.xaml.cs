@@ -31,11 +31,21 @@ public partial class FunctionsView : UserControl
         }
     }
 
+    /// <summary>Ctrl+F focuses the search box and selects its text, so typing replaces the old search.</summary>
+    private void OnFindExecuted(object sender, ExecutedRoutedEventArgs e)
+    {
+        SearchBox.Focus();
+        SearchBox.SelectAll();
+        e.Handled = true;
+    }
+
     /// <summary>Enter on a function opens the editor (type folders keep their default behaviour).</summary>
     private void OnFunctionTreePreviewKeyDown(object sender, KeyEventArgs e)
     {
+        // The view model's selection, not TreeView.SelectedItem: the tree is virtualized, so a row selected in code
+        // while scrolled out of view has no container and the tree's SelectedItem can be stale.
         if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.None && e.OriginalSource is not TextBox
-            && FunctionTree.SelectedItem is FunctionRowViewModel
+            && ViewModel?.SelectedRow is not null
             && ViewModel?.EditCommand is { } edit && edit.CanExecute(null))
         {
             edit.Execute(null);

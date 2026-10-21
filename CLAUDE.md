@@ -83,6 +83,11 @@ not only at the end of a big batch — publish a fresh exe and tell the owner wh
 dotnet publish src/DmxPro.App/DmxPro.App.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o G:\cipherverse\DmxPro-exe
 ```
 
+**The only exe folder is `G:\cipherverse\DmxPro-exe`.** Every exe for the owner goes there and nowhere else — never
+into the repo, a scratchpad, a worktree folder, Desktop or a new folder. Overwrite the old `DmxPro.exe` in place (one
+exe, always the latest). If the folder is missing, recreate it with the command above. Always tell the owner the full
+path `G:\cipherverse\DmxPro-exe\DmxPro.exe`. Subagents must not publish exes; only the main session does.
+
 ### No automatic app testing — the owner tests
 
 Never launch the app, take screenshots, or send keyboard/mouse input to test it, and never let agents do so

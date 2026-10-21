@@ -16,6 +16,10 @@
     <UserControl.InputBindings>
         <KeyBinding Command="{Binding CloseEditorCommand}" Gesture="Escape" />
     </UserControl.InputBindings>
+    <UserControl.CommandBindings>
+        <!-- Ctrl+F jumps to the search box. -->
+        <CommandBinding Command="ApplicationCommands.Find" Executed="OnFindExecuted" />
+    </UserControl.CommandBindings>
 
     <UserControl.Resources>
         <!-- Small badge next to a function name ("in show: Wedding"). -->
@@ -367,12 +371,17 @@
                         Style="{StaticResource FormComboBox}"
                         ToolTip="Show only one type of function" />
                     <ui:TextBox
+                        x:Name="SearchBox"
                         Width="180"
                         Margin="0"
                         AutomationProperties.Name="Search functions"
                         PlaceholderText="Search functions"
                         Style="{StaticResource FormTextBox}"
-                        Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}">
+                        Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}"
+                        ToolTip="Search by name, type or show name; several words narrow it down (Ctrl+F). Esc clears.">
+                        <ui:TextBox.InputBindings>
+                            <KeyBinding Command="{Binding ClearSearchCommand}" Gesture="Escape" />
+                        </ui:TextBox.InputBindings>
                         <ui:TextBox.Icon>
                             <ui:SymbolIcon Symbol="Search24" />
                         </ui:TextBox.Icon>
@@ -401,7 +410,10 @@
                             ContextMenu="{StaticResource FunctionContextMenu}"
                             ItemsSource="{Binding Groups}"
                             PreviewKeyDown="OnFunctionTreePreviewKeyDown"
-                            PreviewMouseRightButtonDown="OnFunctionTreePreviewMouseRightButtonDown">
+                            PreviewMouseRightButtonDown="OnFunctionTreePreviewMouseRightButtonDown"
+                            VirtualizingPanel.IsVirtualizing="True"
+                            VirtualizingPanel.ScrollUnit="Pixel"
+                            VirtualizingPanel.VirtualizationMode="Recycling">
                             <TreeView.InputBindings>
                                 <KeyBinding Command="{Binding DeleteCommand}" Gesture="Delete" />
                                 <KeyBinding Command="{Binding DuplicateCommand}" Gesture="Ctrl+D" />
@@ -533,7 +545,7 @@
                                 Size="{StaticResource Dmx.EmptyStateIconSize}"
                                 Style="{StaticResource EmptyStateIcon}" />
                             <TextBlock Style="{StaticResource EmptyStateTitle}" Text="No matching functions" />
-                            <TextBlock Style="{StaticResource EmptyStateText}" Text="Clear the search or pick All types." />
+                            <TextBlock Style="{StaticResource EmptyStateText}" Text="Clear the search (Esc) or pick All types." />
                         </StackPanel>
                     </Grid>
                 </DockPanel>
