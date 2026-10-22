@@ -833,10 +833,24 @@ public sealed partial class ShowsViewModel : PageViewModel
     }
 
     [RelayCommand(CanExecute = nameof(CanEditSelectedItem))]
-    private void DeleteSelectedItem()
+    private async Task DeleteSelectedItemAsync()
     {
         var item = SelectedItem!;
-        _projects.Current.RemoveShowItem(SelectedShow!.Id, item.Item.Id);
+        var show = SelectedShow!;
+
+        // There is no undo for timeline edits yet, so removing a block asks first (like deleting a track or show).
+        if (!await _dialogs.ConfirmAsync("Delete block", $"Delete \"{item.Name}\" from the show?", "Delete"))
+        {
+            return;
+        }
+
+        // The show may have changed while the dialog was open (e.g. project reloaded).
+        if (SelectedShow != show || show.FindTrackOfItem(item.Item.Id) is null)
+        {
+            return;
+        }
+
+        _projects.Current.RemoveShowItem(show.Id, item.Item.Id);
         MarkChanged();
         RebuildTimeline(keepItemId: null);
         RebuildLibrary();

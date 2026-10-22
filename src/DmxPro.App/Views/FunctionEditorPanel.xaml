@@ -183,8 +183,11 @@
                             Margin="4,0,0,0"
                             VerticalAlignment="Center"
                             AutomationProperties.LiveSetting="Polite"
+                            MaxWidth="240"
                             Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                            Text="{Binding PreviewStatus}" />
+                            Text="{Binding PreviewStatus}"
+                            TextTrimming="CharacterEllipsis"
+                            ToolTip="{Binding PreviewStatus}" />
                     </StackPanel>
 
                     <StackPanel Orientation="Horizontal" Visibility="{Binding IsShowCopy, Converter={StaticResource BoolToVisibility}}">

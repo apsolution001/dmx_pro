@@ -243,26 +243,6 @@
                         ToolTip="Follow the playhead: scroll the timeline while the show plays">
                         <c:DmxIcon Data="{StaticResource ShowsFollowGeometry}" Size="{StaticResource Dmx.ToolbarIconSize}" />
                     </ToggleButton>
-                    <!-- Live mode (Ctrl+F5): Play / Resume are disabled here. Neutral info style, not a warning. -->
-                    <StackPanel
-                        Margin="6,0,0,0"
-                        VerticalAlignment="Center"
-                        Background="Transparent"
-                        Orientation="Horizontal"
-                        ToolTip="Live mode is on: only the Virtual Console drives the lights. Leave live mode (Ctrl+F5) to play shows from here."
-                        Visibility="{Binding IsLive, Converter={StaticResource BoolToVisibility}}">
-                        <c:DmxIcon
-                            VerticalAlignment="Center"
-                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                            Kind="Info"
-                            Size="{StaticResource Dmx.ButtonIconSize}" />
-                        <TextBlock
-                            Margin="4,0,0,0"
-                            VerticalAlignment="Center"
-                            AutomationProperties.LiveSetting="Polite"
-                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                            Text="{x:Static vm:ShowsViewModel.LiveModeHint}" />
-                    </StackPanel>
 
                     <Rectangle Style="{StaticResource ToolbarSeparator}" />
 
@@ -314,6 +294,35 @@
                         </StackPanel>
                     </Button>
                 </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!--
+            Live mode (Ctrl+F5): Play / Resume are disabled here. Own thin strip so the toolbar never shifts;
+            neutral info style like the Test page banner, not a warning.
+        -->
+        <Border
+            Padding="6,3"
+            Background="{DynamicResource SubtleFillColorSecondaryBrush}"
+            BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
+            BorderThickness="0,0,0,1"
+            DockPanel.Dock="Top"
+            ToolTip="Live mode is on: only the Virtual Console drives the lights. Leave live mode (Ctrl+F5) to play shows from here."
+            Visibility="{Binding IsLive, Converter={StaticResource BoolToVisibility}}">
+            <DockPanel>
+                <c:DmxIcon
+                    Margin="0,0,6,0"
+                    VerticalAlignment="Center"
+                    DockPanel.Dock="Left"
+                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                    Kind="Info"
+                    Size="{StaticResource Dmx.DenseIconSize}" />
+                <TextBlock
+                    VerticalAlignment="Center"
+                    AutomationProperties.LiveSetting="Polite"
+                    Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                    Text="{x:Static vm:ShowsViewModel.LiveModeHint}"
+                    TextTrimming="CharacterEllipsis" />
             </DockPanel>
         </Border>
 
@@ -930,7 +939,7 @@
                                     <Separator />
                                     <MenuItem
                                         Command="{Binding DeleteSelectedItemCommand}"
-                                        Header="Delete"
+                                        Header="Delete…"
                                         InputGestureText="Del">
                                         <MenuItem.Icon>
                                             <c:DmxIcon Kind="Delete" Size="{StaticResource Dmx.SmallIconSize}" />
@@ -1198,7 +1207,7 @@
                                             AutomationProperties.Name="Delete item"
                                             Command="{Binding DeleteSelectedItemCommand}"
                                             Style="{StaticResource PanelHeaderButton}"
-                                            ToolTip="Remove this item from the show (Del)">
+                                            ToolTip="Delete this block from the show… (Del)">
                                             <c:DmxIcon Kind="Delete" Size="{StaticResource Dmx.SmallIconSize}" />
                                         </Button>
                                     </StackPanel>

@@ -444,11 +444,13 @@
             BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
             BorderThickness="0,0,0,1"
             DockPanel.Dock="Top"
+            ToolTip="{x:Static vm:TestPageViewModel.LiveModeBanner}"
             Visibility="{Binding IsLive, Converter={StaticResource BoolToVisibility}}">
-            <StackPanel Orientation="Horizontal">
+            <DockPanel>
                 <c:DmxIcon
                     Margin="0,0,6,0"
                     VerticalAlignment="Center"
+                    DockPanel.Dock="Left"
                     Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                     Kind="Info"
                     Size="{StaticResource Dmx.DenseIconSize}" />
@@ -458,7 +460,7 @@
                     Foreground="{DynamicResource TextFillColorPrimaryBrush}"
                     Text="{x:Static vm:TestPageViewModel.LiveModeBanner}"
                     TextTrimming="CharacterEllipsis" />
-            </StackPanel>
+            </DockPanel>
         </Border>
 
         <!-- ═════════════ Warnings strip (only when there are warnings) ═════════════ -->
