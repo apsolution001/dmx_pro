@@ -40,6 +40,33 @@ internal sealed class PatchIndex
         return false;
     }
 
+    /// <summary>
+    /// True when both indexes map exactly the same fixture channels to the same flat indexes, so a program compiled
+    /// against one hits the same channels with the other. Off the engine thread (allocation is irrelevant there).
+    /// </summary>
+    public bool HasSameEntries(PatchIndex other)
+    {
+        if (ReferenceEquals(this, other))
+        {
+            return true;
+        }
+
+        if (_fixtures.Count != other._fixtures.Count)
+        {
+            return false;
+        }
+
+        foreach (var (fixtureId, channels) in _fixtures)
+        {
+            if (!other._fixtures.TryGetValue(fixtureId, out var otherChannels) || !channels.HasSameEntries(otherChannels))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     /// <summary>One fixture's channel keys and their flat indexes (a mode has few channels: linear scan beats hashing).</summary>
     internal sealed class FixtureChannels
     {
@@ -60,6 +87,24 @@ internal sealed class PatchIndex
 
             flat = -1;
             return false;
+        }
+
+        public bool HasSameEntries(FixtureChannels other)
+        {
+            if (_count != other._count)
+            {
+                return false;
+            }
+
+            for (var i = 0; i < _count; i++)
+            {
+                if (!other.TryGetFlat(_keys[i], out var flat) || flat != _flats[i])
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         public void Set(string channelKey, int flat)

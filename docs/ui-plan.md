@@ -210,13 +210,21 @@ editor shows its draft on the lights automatically while not live):
   throttled to one update per ~40 ms, so a dragged fader stays smooth. Effects (chaser, sequence, colour cycle, pulse,
   strobe) run live; changing them keeps them running (no restart). A scene's fade-in is skipped (the draft shows at
   once); the preview also ends without fade. A **Flash previews as held** while its editor is open, whatever its
-  duration. A single-shot chaser plays once; the next edit plays it again.
+  duration — like a held flash button it is **released when DMX Pro loses focus** (switching to another program; moving
+  to the app's own Stage window keeps it) and comes back with the next edit, not by itself when the app is activated
+  again (safety rule 5, decided 2026-10-22). Other function types keep previewing when the app loses focus. A
+  single-shot chaser plays once; the next edit plays it again.
 - **Preview stops** (deterministically) on: editor close / save-and-close / cancel, Esc closing the editor, another
   function opened, leaving the page, project replaced, **Go live** on, app close and **Release All**. After Release All it
   stays off until the next edit in the still-open editor ("Released — change something to show it again"); after Go live
-  is switched off it comes back by itself.
+  is switched off it comes back by itself. A Release All from anywhere always wins over a pending throttled update (the
+  update is dropped, not sent). From the start of the close sequence nothing is previewed any more: the engine is put in
+  live mode right after Release All, so nothing can come back before the safe frame (safety rule 6). After a fixture is
+  re-addressed (or the patch changes otherwise) the engine drops the old draft and shows the re-sent one, so it never
+  lands on the old channels.
 - **Editor toolbar hint** (neutral info, not a warning) instead of the removed toggle: "Showing on lights" (output on,
-  not live), "Output off — not on lights", "Live mode — not on lights", "Released — change something to show it again".
+  not live), "Output off — not on lights", "Live mode — not on lights", "Released — change something to show it again"
+  (also after a flash preview was released by focus loss).
 - **Playing for the show** happens only from the Virtual Console or the Show Timeline, never by clicking in this page.
 - **Function clipboard (2026-10-22):** Copy keeps a snapshot of the whole function (later edits or deleting the source
   do not change it). Paste adds a new library function named `<name> (copy)`, `<name> (copy 2)`, … and selects it (filters

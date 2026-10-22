@@ -272,9 +272,9 @@ public sealed partial class DmxEngine
             return;
         }
 
-        // Compiled against an older/newer layout (a project open or universe change raced it): its flat indexes would
-        // land on the wrong channels. The app re-sends the draft after every refresh.
-        if (command.Program is not { } program || command.Model is not { } compiledFor || !compiledFor.HasSameLayout(_model))
+        // Compiled against another patch (a project open, universe change or re-addressing raced it): its flat indexes
+        // would land on the wrong channels. The app re-sends the draft after every refresh.
+        if (command.Program is not { } program || command.Model is not { } compiledFor || !compiledFor.HasSamePatch(_model))
         {
             return;
         }
@@ -444,9 +444,9 @@ public sealed partial class DmxEngine
             {
                 if (function.IsDraft)
                 {
-                    // Not part of any model: keep it while its flat indexes stay valid (the app re-sends the draft
-                    // compiled against the new patch right after the refresh).
-                    if (!_model.HasSameLayout(model))
+                    // Not part of any model: keep it while its flat indexes stay valid, i.e. the patch did not change
+                    // (the app re-sends the draft compiled against the new patch right after the refresh).
+                    if (!_model.HasSamePatch(model))
                     {
                         function.InUse = false;
                     }

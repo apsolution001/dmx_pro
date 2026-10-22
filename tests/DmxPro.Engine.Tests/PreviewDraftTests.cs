@@ -276,6 +276,67 @@ public class PreviewDraftTests
     }
 
     [Fact]
+    public void RefreshPatch_FixtureReaddressedSameLayout_DropsStaleDraftUntilResent()
+    {
+        var rig = new TestRig();
+        var saved = rig.Scene("Red", ("r", 255));
+        rig.Load();
+        var draft = DraftOf(saved);
+        draft.SetValue(rig.Fixture.Id, "r", 200);
+        rig.Engine.SetPreviewFunction(rig.Project, draft);
+        rig.Tick();
+        Assert.Equal(200, rig.At(TestRig.Red));
+
+        rig.Fixture.StartAddress = 100; // same universe layout, different flat channels
+        rig.RefreshAndApply();
+        rig.Tick();
+
+        Assert.Empty(rig.Engine.GetSnapshot()!.ActiveFunctions);
+        Assert.Equal(0, rig.At(TestRig.Red)); // the old address is no longer the fixture's red
+        Assert.Equal(0, rig.At(100)); // and the stale draft did not land anywhere
+
+        rig.Engine.SetPreviewFunction(rig.Project, draft);
+        rig.Tick();
+
+        Assert.Equal(200, rig.At(100));
+        Assert.Equal(0, rig.At(TestRig.Red));
+    }
+
+    [Fact]
+    public void SetPreviewFunction_QueuedBeforeReaddressing_NeverPlaysAfterRefresh()
+    {
+        var rig = new TestRig();
+        var saved = rig.Scene("Red", ("r", 255));
+        rig.Load();
+        var draft = DraftOf(saved);
+        draft.SetValue(rig.Fixture.Id, "r", 200);
+        rig.Engine.SetPreviewFunction(rig.Project, draft); // compiled against the old patch
+
+        rig.Fixture.StartAddress = 100;
+        rig.Engine.RefreshPatch(rig.Project);
+        rig.Tick();
+
+        var frame = rig.Universe();
+        var expected = new byte[512];
+        expected[DmxPro.Core.Patching.DmxAddress.ToIndex(100 + 4)] = 255; // only the re-addressed dimmer default
+        Assert.Equal(expected, frame);
+    }
+
+    [Theory]
+    [InlineData(FunctionType.Flash, true)]
+    [InlineData(FunctionType.Scene, false)]
+    [InlineData(FunctionType.Chaser, false)]
+    [InlineData(FunctionType.Sequence, false)]
+    [InlineData(FunctionType.ColorCycle, false)]
+    [InlineData(FunctionType.Fade, false)]
+    [InlineData(FunctionType.Pulse, false)]
+    [InlineData(FunctionType.Strobe, false)]
+    public void ReleasesOnFocusLoss_FunctionType_OnlyFlashReleases(FunctionType type, bool expected)
+    {
+        Assert.Equal(expected, PreviewFocusPolicy.ReleasesOnFocusLoss(type));
+    }
+
+    [Fact]
     public void SetPreviewFunction_TimedFlash_PreviewsAsHeld()
     {
         var rig = new TestRig();

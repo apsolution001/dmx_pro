@@ -88,10 +88,16 @@ Details (`src/DmxPro.Engine/DmxEngine.cs`, `Runtime/`):
   the project as saved; a timed flash compiles as held) and queues the program; the tick only swaps it in. The same
   draft id keeps its `RunningFunction` (elapsed time and level stay, effects keep running); anything else in the preview
   layer goes. Draft previews start at full level and stop without fade (`ClearPreview`, `StopPreview`). A draft is not
-  part of any model: `RefreshPatch` keeps it while the universe layout is unchanged (the app re-sends the draft after
-  every refresh) and drops it otherwise; a draft compiled for a different layout is ignored. App side:
+  part of any model: every model carries a `PatchVersion` (kept by `RefreshPatch` when universes and every fixture
+  channel → flat index are unchanged, new otherwise, always new on `LoadProject`); `RefreshPatch` keeps a running draft
+  only while the patch version is unchanged (the app re-sends the draft after every refresh) and a draft compiled for
+  another patch version is ignored, so a re-addressed fixture never gets the old flat indexes. App side:
   `FunctionPreviewService` (`Attach`/`Detach` from the page, `FunctionEditorViewModel.DraftChanged`, ~40 ms trailing
-  throttle, `BuildPreviewFunction()` = deep copy with the draft applied, editor hint `PreviewStatus`).
+  throttle, `BuildPreviewFunction()` = deep copy with the draft applied, editor hint `PreviewStatus`). Before each send
+  it compares `ReleaseGeneration` with the one it last adopted (attach, edit after a release, live off), so a release
+  from any thread wins over a pending throttle tick; it releases a flash draft on `Application.Deactivated`
+  (`PreviewFocusPolicy`, safety rule 5) and stops on `EngineRuntimeService.ShuttingDown`. The close sequence switches
+  the engine to live mode right after `ReleaseAll` (rule 6).
 - **Live mode (2026-10-22, "Go live"):** `SetLiveMode(bool)` is an engine-level gate, applied in queue order. On: the
   preview layer is emptied, every manual override is cleared (bumps `ReleaseGeneration`, so `ChannelTestSession`
   forgets them) and every show started with `ShowOrigin.Editor` stops; while on, preview starts/drafts, `SetChannelOverride`

@@ -61,6 +61,7 @@ public sealed partial class DmxEngine
     private double _snapshotIntervalSeconds = DefaultSnapshotInterval.TotalSeconds;
     private volatile int _showOverrideMode = (int)ShowOverrideMode.MuteWholeShow;
     private long _releaseGeneration;
+    private long _patchVersion;
     private volatile bool _liveRequested;
 
     /// <summary>Creates an engine with an empty project (universe 1, nothing patched).</summary>
@@ -173,6 +174,7 @@ public sealed partial class DmxEngine
     public void LoadProject(Project project)
     {
         var model = EngineModelBuilder.Build(project, _logger);
+        model.PatchVersion = Interlocked.Increment(ref _patchVersion);
         _latestModel = model;
         Interlocked.Increment(ref _releaseGeneration);
         _queue.Enqueue(new EngineCommand(EngineCommandKind.LoadModel, Model: model));
@@ -185,6 +187,13 @@ public sealed partial class DmxEngine
     public void RefreshPatch(Project project)
     {
         var model = EngineModelBuilder.Build(project, _logger);
+        var previous = _latestModel;
+
+        // Same patch (only functions/shows edited): keep the version so a previewed draft keeps running smoothly.
+        // Re-addressed, re-moded, added or removed fixtures get a new version: stale drafts are dropped until re-sent.
+        model.PatchVersion = model.HasSameLayout(previous) && model.PatchIndex.HasSameEntries(previous.PatchIndex)
+            ? previous.PatchVersion
+            : Interlocked.Increment(ref _patchVersion);
         _latestModel = model;
         _queue.Enqueue(new EngineCommand(EngineCommandKind.RefreshModel, Model: model));
     }

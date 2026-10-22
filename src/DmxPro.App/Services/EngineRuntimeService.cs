@@ -58,6 +58,12 @@ public sealed class EngineRuntimeService
     /// </summary>
     public event EventHandler? PatchRefreshed;
 
+    /// <summary>
+    /// Raised on the UI thread at the very start of the close sequence, before anything is released. Handlers must stop
+    /// queueing engine commands (e.g. the edit preview); the engine refuses previews and overrides from then on anyway.
+    /// </summary>
+    public event EventHandler? ShuttingDown;
+
     /// <summary>Frame sent once on close (safety rule 6). Settings sets this; default profile defaults.</summary>
     public SafeFrameMode SafeFrameMode
     {
@@ -103,10 +109,23 @@ public sealed class EngineRuntimeService
         _projects.ProjectChanged -= OnProjectChanged;
         _projects.ContentChanged -= OnContentChanged;
         var mode = SafeFrameMode;
+        try
+        {
+            ShuttingDown?.Invoke(this, EventArgs.Empty);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "A shutdown handler failed");
+        }
 
         // 1. Stop functions (applied by the still-running engine at its next tick) and the music, still on the UI
         // thread (before the first await).
         _engine.ReleaseAll();
+
+        // Live mode from now on: the engine refuses edit previews, manual overrides and editor show starts, so a pending
+        // preview throttle tick or a Test page slider can not put anything back between Release All and the safe frame.
+        // Console functions are already released and nothing restarts them during close.
+        _engine.SetLiveMode(true);
         try
         {
             _music.StopAll();
