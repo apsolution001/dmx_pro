@@ -41,9 +41,17 @@ public interface IAudioPlayer : IDisposable
 
     /// <summary>
     /// Fades the music out linearly, sample-accurate, from song position <paramref name="start"/> over
-    /// <paramref name="duration"/> to silence (silent after). A zero duration clears the fade.
+    /// <paramref name="duration"/> to silence (silent after). A zero duration clears the fade. A negative
+    /// <paramref name="start"/> means the fade began before the song start: the window is cut, so the gain at song time t
+    /// is always <c>1 - (t - start) / duration</c> clamped to 0..1.
     /// </summary>
     void SetFadeOut(TimeSpan start, TimeSpan duration);
+
+    /// <summary>
+    /// Memory held by the loaded song's decoded samples, in bytes: the whole song when it was decoded into memory,
+    /// 0 when it is streamed from the file or nothing is loaded. Lets callers cap a pool of preloaded players by size.
+    /// </summary>
+    long MemoryBytes { get; }
 
     /// <summary>Playback failed (device removed, decode error). Raised on a background thread.</summary>
     event EventHandler<AudioErrorEventArgs>? Error;

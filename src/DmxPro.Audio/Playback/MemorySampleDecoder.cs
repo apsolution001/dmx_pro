@@ -32,6 +32,12 @@ internal sealed class MemorySampleDecoder : ISampleDecoder
     public long NextFrame => _next;
 
     /// <summary>
+    /// Memory held by the decoded samples, in bytes: the allocated chunks (the last one is allocated whole, so this can
+    /// be up to one chunk more than the samples need). 0 after <see cref="Dispose"/>.
+    /// </summary>
+    public long MemoryBytes => (long)_chunks.Length * ChunkSamples * sizeof(short);
+
+    /// <summary>
     /// Decodes all of <paramref name="source"/> from its current position. Returns null when the song has more than
     /// <paramref name="maxSamples"/> samples (the caller then streams it instead).
     /// </summary>

@@ -95,7 +95,10 @@ internal sealed class PlaybackSampleProcessor
     /// <summary>Fade to silence from the current transition level (a running fade-in reverses smoothly).</summary>
     public void BeginFadeOut() => _transitionDirection = -1;
 
-    /// <summary>Song fade-out over [startFrame, startFrame + lengthFrames); a length of 0 or less clears it.</summary>
+    /// <summary>
+    /// Song fade-out over [startFrame, startFrame + lengthFrames); a length of 0 or less clears it. The start may be
+    /// negative: the fade then began before the song start, so song frame 0 already gets the partly faded gain.
+    /// </summary>
     public void SetFadeOut(long startFrame, long lengthFrames)
     {
         if (lengthFrames <= 0)
@@ -105,7 +108,7 @@ internal sealed class PlaybackSampleProcessor
             return;
         }
 
-        _fadeStartFrame = Math.Max(0, startFrame);
+        _fadeStartFrame = startFrame;
         _fadeLengthFrames = lengthFrames;
     }
 
