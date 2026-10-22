@@ -111,6 +111,7 @@ public sealed partial class FunctionsViewModel : PageViewModel
 
         // Lights added/removed/renamed while an editor is open must show up in its Add list.
         _projects.ContentChanged += (_, _) => Editor?.RefreshPatch();
+        _projects.ContentRestored += (_, _) => OnContentRestored();
         Reload();
     }
 
@@ -549,6 +550,31 @@ public sealed partial class FunctionsViewModel : PageViewModel
             // SelectedRow may already be null while a search hides the selection: forget that one explicitly too.
             _selectionHiddenByFilter = null;
             SelectedRow = null;
+        }
+    }
+
+    /// <summary>
+    /// Undo / Redo put earlier content back: unchanged functions are the same objects (selection and an open editor,
+    /// unsaved draft included, stay); a function whose content changed is a new object, so it is selected again by id and
+    /// its editor reopens on the restored version (its unsaved draft is dropped, no prompt: the user asked to undo). An
+    /// editor whose function no longer exists closes.
+    /// </summary>
+    private void OnContentRestored()
+    {
+        var selectedId = SelectedRow?.Function.Id;
+        var editedId = Editor?.Original.Id;
+        Reload();
+
+        var project = _projects.Current;
+        if (SelectedRow is null && selectedId is { } id && Rows.FirstOrDefault(r => r.Function.Id == id) is { } row)
+        {
+            SelectSilently(row.Function);
+        }
+
+        if (Editor is null && editedId is { } functionId && project.FindFunction(functionId) is { } function)
+        {
+            Editor = FunctionEditorFactory.Create(project, function, _settings, _clipboard);
+            UpdateSelectedPreview();
         }
     }
 

@@ -112,6 +112,9 @@ public sealed partial class FixturesViewModel : PageViewModel
         }
 
         _projects.ProjectChanged += (_, _) => Reload();
+
+        // Undo / Redo: fixtures whose content changed are new objects; rebuild the rows now (also when hidden: cheap).
+        _projects.ContentRestored += (_, _) => Reload();
         _library.LibraryChanged += (_, _) =>
         {
             _profileOptions = BuildProfileOptions();

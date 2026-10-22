@@ -1,7 +1,9 @@
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Interop;
+using DmxPro.App.Controls;
 using DmxPro.App.Services;
 using DmxPro.App.ViewModels;
 using Wpf.Ui.Controls;
@@ -29,9 +31,23 @@ public partial class MainWindow : FluentWindow
         DataContext = viewModel;
         InitializeComponent();
         FitToWorkArea();
+        AddUndoShortcuts(this, viewModel);
 
         _viewModel.CloseRequested += (_, _) => Close();
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
+    }
+
+    /// <summary>
+    /// Ctrl+Z undo, Ctrl+Y / Ctrl+Shift+Z redo of project edits for <paramref name="window"/> (the main window and the
+    /// live stage window). Not while a text box has focus: there the keys undo the typing.
+    /// </summary>
+    public static void AddUndoShortcuts(Window window, ShellViewModel shell)
+    {
+        var undo = new OutsideTextInputCommand(shell.UndoCommand);
+        var redo = new OutsideTextInputCommand(shell.RedoCommand);
+        window.InputBindings.Add(new KeyBinding(undo, Key.Z, ModifierKeys.Control));
+        window.InputBindings.Add(new KeyBinding(redo, Key.Y, ModifierKeys.Control));
+        window.InputBindings.Add(new KeyBinding(redo, Key.Z, ModifierKeys.Control | ModifierKeys.Shift));
     }
 
     protected override async void OnClosing(CancelEventArgs e)

@@ -93,7 +93,7 @@ focused list decides what they act on); the others work anywhere in the window. 
 | | Import QLC+ workspace (.qxw)… | | Bring fixtures/scenes from QLC+ | Coming soon |
 | | Export show report (PDF)… | | Patch sheet: fixtures, addresses, groups | Coming soon |
 | | Exit | Alt+F4 | Close (stops functions, safe frame, stops output) | ✅ |
-| **Edit** | Undo / Redo | Ctrl+Z / Ctrl+Y | All edits | Coming soon |
+| **Edit** | Undo / Redo | Ctrl+Z / Ctrl+Y (also Ctrl+Shift+Z) | Every project edit (fixtures, groups, functions, shows, console layout, stage, music links). Up to 100 steps; quick edits in a row (a dragged fader) are one step. Tooltip names the step ("Undo: Delete fixture "Par 1" (Ctrl+Z)"); the message bar confirms "Undone: …". Same buttons in the main toolbar; the shortcuts work in the main and the live stage window, but not while a text box has focus (it keeps its own typing undo). Undo never touches output, live mode, Blackout, Grand Master or what is playing (a function that no longer exists stops). An open function editor follows: its function changed → it reopens on the restored version (unsaved draft dropped), deleted → it closes. Undoing back to the last save shows the project as saved; New/Open clear the history | ✅ |
 | | Cut / Copy / Paste | Ctrl+X / C / V *(list)* | Functions page: whole functions (§3.3 function clipboard). Disabled on other pages | ✅ |
 | | Duplicate | Ctrl+D *(list)* | Fixtures (selected rows), Functions, Shows (timeline item), Virtual Console (widget, edit layout) | ✅ |
 | | Delete | Del *(list)* | Same targets as Duplicate, each with its page's confirmation | ✅ |
@@ -457,8 +457,9 @@ as a coloured disc (`StageCanvas` / `StageLightVisual`, drawn in one control, no
   restores and activates it. It has no owner window (it never floats over the main window) and shows in the taskbar;
   closing the main window closes it. Edits in it act on the same layout as the page. Size/position are not remembered.
   The live safety shortcuts also work while it has focus, with the same commands as the main window: Ctrl+B Blackout,
-  Shift+Esc Release all, Ctrl+E / Ctrl+Shift+E output enable / disable, Ctrl+F5 Go live, and Ctrl+S Save.
-- Not built: rotation editing, strobe marker, undo (`open-questions.md` 29-31).
+  Shift+Esc Release all, Ctrl+E / Ctrl+Shift+E output enable / disable, Ctrl+F5 Go live, Ctrl+S Save, and Ctrl+Z / Ctrl+Y
+  (Ctrl+Shift+Z) Undo / Redo.
+- Not built: rotation editing, strobe marker (`open-questions.md` 29-30). Stage edits are undoable (Edit ▸ Undo, 2026-10-23).
 
 ## 4. Build order for the menu/shell
 

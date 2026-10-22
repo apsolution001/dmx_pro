@@ -219,3 +219,37 @@ Bottom status bar: **Output pill** (Disabled / Connected / Sending 44 fps / Erro
 - Test page tooltips are built on open (`LazyToolTip` / `IToolTipSource`); a hidden DMX monitor is not updated.
 - Measured: engine tick allocates 0 bytes, about 0.3-1.3 ms at 512 fixtures / 16 universes / 5 shows; `RefreshPatch` about
   105 ms / 4.4 MB (was 233 ms / 39 MB).
+
+## 10. Undo / redo (2026-10-23)
+
+- **Core** (`src/DmxPro.Core/History/`): `UndoHistory<T>` (linear states S0…Sn, max 100 steps, redo dropped on a new
+  step, saved-state marker), `ProjectSnapshot` (the project as compact JSON **per item** — profiles, fixtures, groups,
+  functions, shows, console pages, stage — with the project file's serializer; unchanged items share the previous
+  snapshot's byte arrays, so a step costs only what changed), `ProjectChangeDescriber` (names a step from the diff:
+  "Add fixture "Par 1"", "Delete 3 functions", "Edit stage"; no caller has to describe its edit) and `ProjectHistory`
+  (the orchestration, unit-tested without WPF).
+- **Coalescing:** `ProjectService.MarkChanged` only reports the edit (`NoteChange`); the snapshot is taken on the UI thread
+  once edits pause for 500 ms, so a dragged fader or a multi-step command is one step and dragging never serializes the
+  project per pixel. Undo, Redo and Save capture a pending edit first. Changes made without `MarkChanged` (music paths
+  relinked by a save, the Stage page's automatic first placement) are folded into the current state, not a step.
+- **Restore in place:** `ProjectSnapshot.RestoreInto` reads every changed item first, then puts the content into the
+  same `Project` object and the same lists; items whose JSON did not change stay the same objects (open editors, rows and
+  console pages of untouched items keep working, an editor's unsaved draft included). An automatic, unarranged stage
+  placement survives undoing to an empty stage.
+- **App:** `ProjectService.TryUndo` / `TryRedo` raise `ContentChanged` (Playback) and then `ContentRestored` — never
+  `ProjectChanged`, so it is **not** a project open: no `LoadProject`, no `EngineRuntimeService.ProjectLoaded`, output
+  enable state, live mode, Grand Master and Blackout untouched. The engine gets the usual coalesced `RefreshPatch`:
+  running functions and shows that still exist keep running with the restored content, ones that no longer exist stop
+  at once (`EngineConsolePlayback.SyncWithModel` updates the console). Pages: Fixtures and Virtual Console rebuild
+  (the console keeps the shown page, edit mode and Shows tab; held flashes end because their buttons are rebuilt),
+  Functions reloads and reopens an editor whose function changed (dropping its draft, no prompt) or closes it when the
+  function is gone; Shows handles `ContentRestored` the same way for its show-copy editor; the others follow
+  `Revision` / `PatchRefreshed` as before. Edits made by pages while they rebuild after an undo do not wipe the redo
+  steps. Dirty flag = not at the saved state, so undoing back to the last save shows the project as saved; New / Open
+  clear the history, Save keeps it.
+- **Shortcuts:** Ctrl+Z, Ctrl+Y and Ctrl+Shift+Z are window input bindings (main window and live stage window) wrapped
+  in `Controls/OutsideTextInputCommand`, which is disabled while a text box has focus, so text boxes keep their own undo.
+- **Not undoable (not project edits):** Test page values, live mode, output enable, Blackout / Grand Master, playback,
+  selection, window layout, app settings, editor drafts (editors have their own Revert).
+- **Measured** (Release, 512 fixtures + 100 full-rig scenes = 16 MB of JSON): first snapshot 58 ms, snapshot after one
+  scene edit 47 ms (161 KB new memory), undo incl. capture 53 ms. Small projects: about 1 ms.
