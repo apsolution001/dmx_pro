@@ -51,4 +51,4 @@
 ## Virtual Stage (added 2026-10-21)
 29. Should lights on the stage have an editable **rotation** (the project file already stores `rotation`, the UI does not edit it)?
 30. A **3D stage** view later (truss height, beam cones)? Or stay 2D?
-31. **Undo / redo** for stage moves (the app has no undo yet, phase 9)?
+31. ~~**Undo / redo** for stage moves?~~ Answered 2026-10-23: every project edit is undoable, stage moves included (`architecture.md` §10).

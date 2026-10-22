@@ -64,6 +64,7 @@ public sealed partial class VirtualConsoleViewModel : PageViewModel
         ShowPlayer = new ShowPlayerViewModel(projects, playback, music) { LargeStepSeconds = settings.Current.SeekStepSeconds };
         settings.Changed += (_, _) => ShowPlayer.LargeStepSeconds = settings.Current.SeekStepSeconds;
         _projects.ProjectChanged += (_, _) => Reload();
+        _projects.ContentRestored += (_, _) => OnContentRestored();
         Playback.StateChanged += OnPlaybackStateChanged;
         Reload();
     }
@@ -691,6 +692,43 @@ public sealed partial class VirtualConsoleViewModel : PageViewModel
         SelectedPage = Pages.FirstOrDefault();
         RaisePageCountChanged();
         OnPropertyChanged(nameof(IsSelectedPageEmpty));
+    }
+
+    /// <summary>
+    /// Undo / Redo put earlier content back. Console pages whose layout did not change are the same objects and keep their
+    /// widgets; otherwise the pages are rebuilt (held flashes end, as their buttons are replaced) while the shown page,
+    /// edit mode and the Shows tab stay as they were. Running functions are not touched.
+    /// </summary>
+    private void OnContentRestored()
+    {
+        var pages = _projects.Current.ConsolePages;
+        var unchanged = Pages.Count == pages.Count;
+        for (var i = 0; unchanged && i < pages.Count; i++)
+        {
+            unchanged = ReferenceEquals(Pages[i].Model, pages[i]);
+        }
+
+        if (unchanged)
+        {
+            // Function, show and group names or targets may still have changed.
+            RebuildTargets();
+            RefreshWidgets();
+            ShowPlayer.Refresh();
+            return;
+        }
+
+        var pageId = SelectedPage?.Id;
+        var editMode = IsEditMode;
+        var showsTab = IsShowsTabSelected;
+        Reload();
+        if (pageId is { } id && Pages.FirstOrDefault(p => p.Id == id) is { } page)
+        {
+            SelectedPage = page;
+        }
+
+        IsEditMode = editMode && !IsOperatorMode;
+        IsShowsTabSelected = showsTab;
+        ShowPlayer.Refresh();
     }
 
     private void RebuildTargets()

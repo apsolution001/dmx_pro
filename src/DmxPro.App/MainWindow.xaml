@@ -181,19 +181,19 @@
             <!-- Edit acts on the current page; items are disabled when that page has nothing to act on. -->
             <MenuItem Header="_Edit">
                 <MenuItem
+                    Command="{Binding UndoCommand}"
                     Header="_Undo"
                     InputGestureText="Ctrl+Z"
-                    IsEnabled="False"
-                    ToolTip="Coming soon">
+                    ToolTip="{Binding UndoToolTip}">
                     <MenuItem.Icon>
                         <c:DmxIcon Kind="Undo" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem
+                    Command="{Binding RedoCommand}"
                     Header="_Redo"
                     InputGestureText="Ctrl+Y"
-                    IsEnabled="False"
-                    ToolTip="Coming soon">
+                    ToolTip="{Binding RedoToolTip}">
                     <MenuItem.Icon>
                         <c:DmxIcon Kind="Redo" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
@@ -736,17 +736,19 @@
                     <Rectangle Style="{StaticResource ToolbarSeparator}" />
 
                     <Button
+                        AutomationProperties.HelpText="{Binding UndoToolTip}"
                         AutomationProperties.Name="Undo"
-                        IsEnabled="False"
+                        Command="{Binding UndoCommand}"
                         Style="{StaticResource ToolbarButton}"
-                        ToolTip="Undo (Ctrl+Z) — coming in phase 9">
+                        ToolTip="{Binding UndoToolTip}">
                         <c:DmxIcon Kind="Undo" Size="{StaticResource Dmx.ToolbarIconSize}" />
                     </Button>
                     <Button
+                        AutomationProperties.HelpText="{Binding RedoToolTip}"
                         AutomationProperties.Name="Redo"
-                        IsEnabled="False"
+                        Command="{Binding RedoCommand}"
                         Style="{StaticResource ToolbarButton}"
-                        ToolTip="Redo (Ctrl+Y) — coming in phase 9">
+                        ToolTip="{Binding RedoToolTip}">
                         <c:DmxIcon Kind="Redo" Size="{StaticResource Dmx.ToolbarIconSize}" />
                     </Button>
 

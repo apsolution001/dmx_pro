@@ -112,6 +112,7 @@ public sealed partial class ShellViewModel : ObservableObject
         ];
         _selectedItem = NavigationItems[0];
         InitializeMenu();
+        InitializeHistory();
     }
 
     /// <summary>Raised when the user picks File ▸ Exit; the window closes itself (with the save prompt).</summary>
@@ -242,6 +243,7 @@ public sealed partial class ShellViewModel : ObservableObject
         "  Ctrl+1 … Ctrl+6  Fixtures, Functions, Shows, Virtual Console, Test & Preview, Input / Output\n" +
         "  Ctrl+7 or Ctrl+,  Settings · Ctrl+8  Stage · Ctrl+Shift+8  Live stage window · Ctrl+M  DMX monitor · F11  Full screen\n\n" +
         "Editing\n" +
+        "  Ctrl+Z  Undo · Ctrl+Y or Ctrl+Shift+Z  Redo (any project change; in a text box they undo its typing)\n" +
         "  Ctrl+X / Ctrl+C / Ctrl+V  Cut / copy / paste functions (in the function list)\n" +
         "  Ctrl+D  Duplicate · Del  Delete · F2  Rename (in the page's list, table or timeline)\n" +
         "  Ctrl+A  Select all (in tables and text boxes) · Ctrl+Shift+A  Add fixture\n" +
@@ -251,7 +253,7 @@ public sealed partial class ShellViewModel : ObservableObject
         "  Ctrl+B  Blackout on/off (output keeps sending) · Shift+Esc  Release all\n" +
         "  F12  Operator mode · Space  Play/pause the show (Shows timeline, Virtual Console)\n" +
         "  Home  Back to the show start (Shows timeline)\n\n" +
-        "Not yet available: Ctrl+Z / Ctrl+Y undo/redo, Ctrl+K search everything, F1 help.");
+        "Not yet available: Ctrl+K search everything, F1 help.");
 
     [RelayCommand]
     private Task ShowAboutAsync() => _dialogs.ShowInfoAsync(

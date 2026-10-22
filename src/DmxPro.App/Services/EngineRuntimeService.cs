@@ -171,6 +171,9 @@ public sealed class EngineRuntimeService
     /// <summary>
     /// Edits can come in bursts (dragging a fader): coalesce them into one recompile per UI dispatcher turn. Edits the
     /// engine never reads (names, groups, console layout) skip the recompile, which is costly for large show projects.
+    /// Undo / Redo arrive here too (a content change, never <see cref="ProjectService.ProjectChanged"/>): the refresh
+    /// keeps running functions and shows that still exist, stops the ones the undo removed, and leaves output, live
+    /// mode, Grand Master, Blackout and manual overrides alone.
     /// </summary>
     private void OnContentChanged(object? sender, ProjectContentChangedEventArgs e)
     {

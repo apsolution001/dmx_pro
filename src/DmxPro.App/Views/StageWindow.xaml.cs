@@ -17,6 +17,7 @@ public partial class StageWindow : FluentWindow
         DataContext = viewModel;
         InitializeComponent();
         AddSafetyShortcuts(shell);
+        MainWindow.AddUndoShortcuts(this, shell);
 
         // Window chrome only (view concern): Ctrl+W closes, like other secondary windows.
         Add(new RelayCommand(Close), Key.W, ModifierKeys.Control);
