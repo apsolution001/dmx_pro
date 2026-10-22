@@ -65,6 +65,7 @@ public sealed class UniverseOccupancy
     }
 
     /// <summary>True when no enabled fixture uses <paramref name="address"/> (1–512).</summary>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="address"/> is outside 1–512.</exception>
     public bool IsFree(int address) => _owners[DmxAddress.ToIndex(address)] is null;
 
     /// <summary>

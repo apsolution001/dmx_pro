@@ -1,3 +1,5 @@
+using DmxPro.Core.Functions;
+
 namespace DmxPro.Engine.Runtime;
 
 /// <summary>
@@ -37,8 +39,15 @@ internal abstract class FunctionProgram
     /// <param name="context">Frame settings (strobe safety, speed) and strobe-limit reporting.</param>
     public abstract void Render(double elapsedSeconds, float weight, LayerBuffer layer, double stamp, long seq, RenderContext context);
 
-    /// <summary>Finite and ≥ 0, else 0.</summary>
-    protected static double SanitizeSeconds(double seconds) => double.IsFinite(seconds) && seconds > 0 ? seconds : 0;
+    /// <summary>
+    /// Longest single time a program uses (fade, hold, step, duration): the editors' limit. Damaged or hand-edited files
+    /// can hold any finite double; without the cap sums such as a chaser's pass length overflow to infinity.
+    /// </summary>
+    public const double MaxSeconds = FunctionEditing.MaxSeconds;
+
+    /// <summary>Finite and ≥ 0, else 0; capped at <see cref="MaxSeconds"/>.</summary>
+    protected static double SanitizeSeconds(double seconds) =>
+        double.IsFinite(seconds) && seconds > 0 ? Math.Min(seconds, MaxSeconds) : 0;
 
     /// <summary>Finite, else <paramref name="fallback"/>; then clamped to 0..1.</summary>
     protected static double SanitizeLevel(double level, double fallback) =>

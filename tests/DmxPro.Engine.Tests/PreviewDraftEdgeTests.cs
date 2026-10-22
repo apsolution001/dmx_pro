@@ -5,15 +5,15 @@ using Microsoft.Extensions.Logging;
 namespace DmxPro.Engine.Tests;
 
 /// <summary>
-/// Bug hunt 2026-10-23: queued-command interleavings around live mode and the live edit preview (drafts), plus
-/// damaged-file timing in compiled chasers.
+/// Queued-command interleavings around live mode and the live edit preview (drafts), plus damaged-file timing in
+/// compiled programs.
 /// </summary>
-public class BugHuntLivePreviewTests
+public class PreviewDraftEdgeTests
 {
     private static T DraftOf<T>(T function)
         where T : LightFunction => PreviewDraftTests.DraftOf(function);
 
-    // ---- Bugs (fail until fixed) ------------------------------------------------------------------------------------
+    // ---- Regression tests for bugs found 2026-10-23 -----------------------------------------------------------------
 
     /// <summary>
     /// SetPreviewFunction documents "Draft previews start and stop without fades" and StopPreview honours it, but
@@ -94,6 +94,170 @@ public class BugHuntLivePreviewTests
 
         Assert.NotEqual(generationBefore, engine.ReleaseGeneration); // the release really happened mid-compile
         Assert.Equal(0, engine.GetSnapshot()!.GetValue(1, TestRig.Red));
+    }
+
+    [Fact]
+    public void SetPreviewFunction_LiveOnAndOffQueuedDuringCompile_DraftNotShown()
+    {
+        var logger = new CallbackLogger();
+        var (engine, project, red) = DeletedSceneRig(logger);
+        var draft = new FadeFunction { Name = "Fade", FromSceneId = Guid.NewGuid(), ToSceneId = red.Id, DurationSeconds = 0 };
+        logger.OnWarning = () =>
+        {
+            logger.OnWarning = null;
+            engine.SetLiveMode(true);
+            engine.SetLiveMode(false);
+        };
+
+        engine.SetPreviewFunction(project, draft);
+        engine.Tick(TestRig.Frame);
+
+        Assert.Equal(0, engine.GetSnapshot()!.GetValue(1, TestRig.Red));
+    }
+
+    [Fact]
+    public void SetPreviewFunction_ClearOverridesQueuedDuringCompile_DraftShown()
+    {
+        // Clearing overrides does not remove the preview, so it must not drop a draft compiled meanwhile either.
+        var logger = new CallbackLogger();
+        var (engine, project, red) = DeletedSceneRig(logger);
+        var draft = new FadeFunction { Name = "Fade", FromSceneId = Guid.NewGuid(), ToSceneId = red.Id, DurationSeconds = 0 };
+        logger.OnWarning = () =>
+        {
+            logger.OnWarning = null;
+            engine.ClearOverrides();
+        };
+
+        engine.SetPreviewFunction(project, draft);
+        engine.Tick(TestRig.Frame);
+
+        Assert.Equal(255, engine.GetSnapshot()!.GetValue(1, TestRig.Red));
+    }
+
+    [Fact]
+    public void SetPreviewFunction_AfterReleaseAllInSameTick_DraftShown()
+    {
+        var rig = new TestRig();
+        var saved = rig.Scene("Red", ("r", 255));
+        rig.Load();
+
+        rig.Engine.ReleaseAll();
+        Assert.True(rig.Engine.SetPreviewFunction(rig.Project, DraftOf(saved)));
+        rig.Tick();
+
+        Assert.Equal(255, rig.At(TestRig.Red));
+    }
+
+    [Fact]
+    public void SetPreviewFunction_AfterProjectReloadInSameTick_DraftShown()
+    {
+        var rig = new TestRig();
+        var saved = rig.Scene("Red", ("r", 255));
+        rig.Load();
+        rig.Load();
+
+        Assert.True(rig.Engine.SetPreviewFunction(rig.Project, DraftOf(saved)));
+        rig.Tick();
+
+        Assert.Equal(255, rig.At(TestRig.Red));
+    }
+
+    [Fact]
+    public void SetPreviewFunction_AfterLiveOffAndReleaseInEarlierTicks_DraftShown()
+    {
+        var rig = new TestRig();
+        var saved = rig.Scene("Red", ("r", 255));
+        rig.Load();
+        rig.Engine.ReleaseAll();
+        rig.Engine.SetLiveMode(true);
+        rig.Tick();
+        rig.Engine.SetLiveMode(false);
+        rig.Tick();
+
+        Assert.True(rig.Engine.SetPreviewFunction(rig.Project, DraftOf(saved)));
+        rig.Tick();
+
+        Assert.Equal(255, rig.At(TestRig.Red));
+    }
+
+    [Fact]
+    public void StopFunction_SavedPreviewWithFadeOut_StillFades()
+    {
+        var rig = new TestRig();
+        var saved = rig.Scene("Red", ("r", 255));
+        saved.FadeOutSeconds = 2;
+        rig.Load();
+        rig.Engine.StartPreview(saved.Id);
+        rig.Tick(1); // no fade-in: full at once
+
+        rig.Engine.StopFunction(saved.Id, EngineLayer.Preview);
+        rig.Tick(1);
+
+        Assert.InRange(rig.At(TestRig.Red), 1, 254);
+    }
+
+    [Fact]
+    public void StartFunction_SingleShotChaserStepTimesOverflow_PlaysFirstStepThenSecond()
+    {
+        var rig = new TestRig();
+        var red = rig.Scene("Red", ("r", 255));
+        var green = rig.Scene("Green", ("g", 255));
+        var chaser = rig.Add(new ChaserFunction { Name = "Damaged", RunOrder = RunOrder.SingleShot });
+        chaser.AddStep(red.Id, holdSeconds: 1e308);
+        chaser.AddStep(green.Id, holdSeconds: 1e308);
+        rig.Load();
+
+        rig.Engine.StartFunction(chaser.Id, EngineLayer.Console);
+        rig.Tick();
+        Assert.Equal(255, rig.At(TestRig.Red));
+
+        rig.Tick(FunctionEditingMax + 1); // the hold is capped to one hour
+
+        Assert.Equal(0, rig.At(TestRig.Red));
+        Assert.Equal(255, rig.At(TestRig.Green));
+    }
+
+    [Fact]
+    public void StartFunction_PingPongChaserHugeFadeTimes_PlaysFirstStepFirst()
+    {
+        var rig = new TestRig();
+        var red = rig.Scene("Red", ("r", 255));
+        var green = rig.Scene("Green", ("g", 255));
+        var blue = rig.Scene("Blue", ("b", 255));
+        var chaser = rig.Add(new ChaserFunction { Name = "Damaged", RunOrder = RunOrder.PingPong });
+        chaser.AddStep(red.Id, holdSeconds: double.MaxValue, fadeOutSeconds: double.MaxValue);
+        chaser.AddStep(green.Id, holdSeconds: double.MaxValue, fadeOutSeconds: double.MaxValue);
+        chaser.AddStep(blue.Id, holdSeconds: double.MaxValue, fadeOutSeconds: double.MaxValue);
+        rig.Load();
+
+        rig.Engine.StartFunction(chaser.Id, EngineLayer.Console);
+        rig.Tick();
+
+        Assert.Equal(255, rig.At(TestRig.Red));
+        Assert.Equal(0, rig.At(TestRig.Green));
+        Assert.Equal(0, rig.At(TestRig.Blue));
+    }
+
+    [Fact]
+    public void StartFunction_ColorCycleHugeOffsetAndTimes_RendersWithoutThrowing()
+    {
+        var rig = new TestRig();
+        var cycle = rig.Add(new ColorCycleFunction
+        {
+            Name = "Damaged",
+            HoldSeconds = 1e308,
+            FadeSeconds = 1e308,
+            FixtureOffsetSeconds = 1e308,
+        });
+        cycle.FixtureIds.Add(rig.Fixture.Id);
+        cycle.FixtureIds.Add(rig.Project.AddFixtures(TestRig.Profile(), "8ch", 1, 1, 100, "Par 2")[0].Id);
+        cycle.Colors = [new RgbColor(255, 0, 0), new RgbColor(0, 255, 0)];
+        rig.Load();
+
+        rig.Engine.StartFunction(cycle.Id, EngineLayer.Console);
+        rig.Tick();
+
+        Assert.Equal(255, rig.At(TestRig.Red));
     }
 
     // ---- Regression tests for interleavings that work -----------------------------------------------------------------
@@ -293,6 +457,22 @@ public class BugHuntLivePreviewTests
 
         Assert.True(rig.Engine.IsLiveMode);
         Assert.False(rig.Engine.SetPreviewFunction(rig.Project, DraftOf(saved)));
+    }
+
+    private const double FunctionEditingMax = FunctionEditing.MaxSeconds;
+
+    /// <summary>An engine on a fresh project with a red scene; compiling a fade from a deleted scene logs a warning.</summary>
+    private static (DmxEngine Engine, Project Project, SceneFunction Red) DeletedSceneRig(CallbackLogger logger)
+    {
+        var engine = new DmxEngine(logger) { SnapshotInterval = TimeSpan.Zero };
+        var project = new Project();
+        var fixture = project.AddFixtures(TestRig.Profile(), "8ch", 1, 1, TestRig.Red, "Par")[0];
+        var red = new SceneFunction { Name = "Red" };
+        red.SetValue(fixture.Id, "r", 255);
+        project.Functions.Add(red);
+        engine.LoadProject(project);
+        engine.Tick(TimeSpan.Zero);
+        return (engine, project, red);
     }
 
     /// <summary>Logger that runs a callback on the first warning (used to inject an action mid-compile).</summary>

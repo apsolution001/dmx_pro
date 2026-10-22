@@ -36,11 +36,16 @@ public class UniverseOccupancyEdgeTests
     [Theory]
     [InlineData(0)]
     [InlineData(513)]
+    [InlineData(-1)]
+    [InlineData(int.MinValue)]
+    [InlineData(int.MaxValue)]
     public void IsFree_AddressOutsideUniverse_Throws(int address)
     {
-        var occupancy = Occupancy(ProjectWith());
+        var occupancy = Occupancy(ProjectWith(Par("first", 1, "4ch")));
 
-        Assert.Throws<ArgumentOutOfRangeException>(() => occupancy.IsFree(address));
+        var ex = Assert.Throws<ArgumentOutOfRangeException>(() => occupancy.IsFree(address));
+        Assert.Equal("address", ex.ParamName);
+        Assert.Contains("1–512", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]

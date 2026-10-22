@@ -16,6 +16,9 @@ public sealed partial class DmxEngine
     private bool _showsMuted;
     private StrobeLimit _frameStrobeLimit;
 
+    // Highest release generation (see ReleaseGeneration) among applied commands that remove the preview layer.
+    private long _appliedPreviewReleaseGeneration;
+
     // Live mode as applied on the engine thread (in command order); _liveRequested is what callers last asked for.
     private bool _live;
 
@@ -88,13 +91,27 @@ public sealed partial class DmxEngine
                 break;
 
             case EngineCommandKind.SetLiveMode:
+                if (command.Value > 0f)
+                {
+                    NotePreviewRelease(command.Generation);
+                }
+
                 ApplyLiveMode(command.Value > 0f);
                 break;
 
             case EngineCommandKind.StopFunction:
                 if (FindRunning(command.Id, command.Layer) is { } stopping)
                 {
-                    stopping.Stopping = true;
+                    // A draft preview has no fade-out (it came up without fade-in either), as with StopPreview.
+                    if (stopping.IsDraft)
+                    {
+                        stopping.InUse = false;
+                        _snapshotDue = true;
+                    }
+                    else
+                    {
+                        stopping.Stopping = true;
+                    }
                 }
 
                 break;
@@ -124,6 +141,7 @@ public sealed partial class DmxEngine
                         if (function.IsDraft)
                         {
                             function.InUse = false;
+                            _snapshotDue = true;
                         }
                         else
                         {
@@ -157,6 +175,7 @@ public sealed partial class DmxEngine
                 break;
 
             case EngineCommandKind.ReleaseAll:
+                NotePreviewRelease(command.Generation);
                 ReleaseAllNow();
                 break;
 
@@ -201,6 +220,7 @@ public sealed partial class DmxEngine
                 break;
 
             case EngineCommandKind.LoadModel:
+                NotePreviewRelease(command.Generation);
                 ReleaseAllNow();
                 _model = command.Model!;
                 _snapshotDue = true;
@@ -272,6 +292,14 @@ public sealed partial class DmxEngine
             return;
         }
 
+        // A release that removes the preview (Release All, project open, live on) was requested after this draft's call
+        // started but applied before it (queued while the draft compiled): showing the draft now would undo the release.
+        if (command.Generation < _appliedPreviewReleaseGeneration)
+        {
+            _logger.LogDebug("Preview of draft {FunctionId} dropped: a release was requested while it compiled", command.Id);
+            return;
+        }
+
         // Compiled against another patch (a project open, universe change or re-addressing raced it): its flat indexes
         // would land on the wrong channels. The app re-sends the draft after every refresh.
         if (command.Program is not { } program || command.Model is not { } compiledFor || !compiledFor.HasSamePatch(_model))
@@ -326,6 +354,18 @@ public sealed partial class DmxEngine
         instance.Stamp = _now;
         instance.Seq = ++_seq;
         _snapshotDue = true;
+    }
+
+    /// <summary>
+    /// Records that a command removing the preview layer was applied. Commands from several threads may be queued out of
+    /// generation order, so the highest one wins.
+    /// </summary>
+    private void NotePreviewRelease(long generation)
+    {
+        if (generation > _appliedPreviewReleaseGeneration)
+        {
+            _appliedPreviewReleaseGeneration = generation;
+        }
     }
 
     /// <summary>Removes everything in the preview layer at once, without fade.</summary>

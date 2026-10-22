@@ -82,12 +82,19 @@ Details (`src/DmxPro.Engine/DmxEngine.cs`, `Runtime/`):
 - **Function programs:** `FunctionCompiler` turns each Core function (scene, chaser, sequence, color cycle, fade, pulse,
   flash, strobe) into a program (`SceneProgram`, `StepProgram`, `ColorCycleProgram`, `FadeProgram`, `PulseProgram`,
   `FlashProgram`, `StrobeProgram`) when a project is loaded or refreshed. Effects write color via `EffectFixture`
-  (profile-resolved; the Dimmer channel carries the level when the fixture has one).
+  (profile-resolved; the Dimmer channel carries the level when the fixture has one). Every program time (fades, holds,
+  durations, periods, offsets) is capped at `FunctionEditing.MaxSeconds` (1 h) when compiling, so damaged files cannot
+  overflow a chaser's pass length to infinity; `ProjectSerializer` also clamps loaded function times to the editor
+  range (`FunctionTimes.ClampTimes`).
 - **Live edit preview (2026-10-22):** `SetPreviewFunction(project, draft)` compiles one (unsaved) `LightFunction` on the
   calling (UI) thread against the patch of the latest model (`EngineModel.PatchIndex`; referenced scenes/steps come from
   the project as saved; a timed flash compiles as held) and queues the program; the tick only swaps it in. The same
   draft id keeps its `RunningFunction` (elapsed time and level stay, effects keep running); anything else in the preview
-  layer goes. Draft previews start at full level and stop without fade (`ClearPreview`, `StopPreview`). A draft is not
+  layer goes. Draft previews start at full level and stop without fade (`ClearPreview`, `StopPreview`,
+  `StopFunction(id, Preview)`). The call reads `ReleaseGeneration` before compiling and carries it in the queued command;
+  preview-removing commands (Release All, project open, live on) carry their own incremented generation, the tick keeps
+  the highest one applied and drops a draft with an older generation, so a release queued while the draft compiled
+  always wins (allocation-free; clearing overrides does not drop drafts). A draft is not
   part of any model: every model carries a `PatchVersion` (kept by `RefreshPatch` when universes and every fixture
   channel → flat index are unchanged, new otherwise, always new on `LoadProject`); `RefreshPatch` keeps a running draft
   only while the patch version is unchanged (the app re-sends the draft after every refresh) and a draft compiled for
