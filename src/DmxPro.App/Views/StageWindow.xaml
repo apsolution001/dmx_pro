@@ -55,6 +55,9 @@
         </ui:TitleBar>
 
         <!-- Same view as the Stage page (shared ViewModel), without the lights list: the window is for watching. -->
-        <views:StageView Grid.Row="1" ShowLightList="False" />
+        <views:StageView
+            x:Name="StageContent"
+            Grid.Row="1"
+            ShowLightList="False" />
     </Grid>
 </ui:FluentWindow>

@@ -56,10 +56,11 @@ Earlier web-style sketch (superseded look, same content):
 - **Left navigation rail** (Ctrl+1 … Ctrl+8): the main workspaces in workflow order.
 - **Status bar** is always visible, on every page: output state, Grand Master, Blackout, Release All, BPM.
 - **Full screen** (F11) hides the title bar for shows; **Operator mode** (F12) locks editing.
-- **Main toolbar, right side:** **Go live** toggle (Ctrl+F5), then **Stage window** (Ctrl+Shift+8, opens the live stage
-  window, section 3.10).
-- **Go live** (owner decision 2026-10-22) is a **mode switch like QLC+ Operate mode, not output enable**: off = ▶ "Go
-  live"; on = accent fill, ⏸ "Live" (icon and text change, not colour only). While live **only the Virtual Console drives
+- **Main toolbar, right side:** **Go live** toggle (Ctrl+F5, also **Output > Go live**, checked while live), then
+  **Stage window** (Ctrl+Shift+8, also **View > Stage window**; opens the live stage window, section 3.10).
+- **Go live** (owner decision 2026-10-22) is a **mode switch like QLC+ Operate mode, not output enable**: off = outline
+  broadcast icon + "Go live"; on = accent fill, filled broadcast icon + "Live" (icon and text change, not colour only; no
+  play/pause glyphs, which would read as show transport). While live **only the Virtual Console drives
   the lights** — console functions, console shows, Grand Master, Blackout, Release All. Function-editor previews, Test &
   Preview test values and shows played from the Shows page are suppressed **in the engine**. Switching on: the editor
   preview is removed, every test value is **released** (deterministic, like Release All for overrides; they do not come

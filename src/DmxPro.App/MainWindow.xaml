@@ -351,11 +351,20 @@
                 <Separator />
                 <MenuItem
                     Command="{Binding ShowMonitorCommand}"
-                    Header="_DMX monitor"
+                    Header="DMX _monitor"
                     InputGestureText="Ctrl+M"
                     ToolTip="Opens Test &amp; Preview with the live DMX values of every channel">
                     <MenuItem.Icon>
                         <c:DmxIcon Kind="Monitor" Size="{StaticResource Dmx.MenuIconSize}" />
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem
+                    Command="{Binding OpenStageWindowCommand}"
+                    Header="Stage _window"
+                    InputGestureText="Ctrl+Shift+8"
+                    ToolTip="Opens the live stage in its own window">
+                    <MenuItem.Icon>
+                        <c:DmxIcon Kind="Stage" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
                 </MenuItem>
                 <Separator />
@@ -383,7 +392,7 @@
                 <Separator />
                 <MenuItem
                     Command="{Binding ToggleFullScreenCommand}"
-                    Header="F_ull screen"
+                    Header="Full sc_reen"
                     InputGestureText="F11"
                     IsCheckable="False"
                     IsChecked="{Binding IsFullScreen, Mode=OneWay}">
@@ -502,7 +511,7 @@
                 </MenuItem>
                 <Separator />
                 <MenuItem
-                    Header="Create _starter scenes"
+                    Header="Create starter sce_nes"
                     IsEnabled="False"
                     ToolTip="Coming soon">
                     <MenuItem.Icon>
@@ -593,6 +602,19 @@
                     ToolTip="Stops every function and show and returns channels to their defaults">
                     <MenuItem.Icon>
                         <c:DmxIcon Kind="ReleaseAll" Size="{StaticResource Dmx.MenuIconSize}" />
+                    </MenuItem.Icon>
+                </MenuItem>
+                <Separator />
+                <!-- Live mode is a mode switch (only the Virtual Console drives the lights), not output enable. -->
+                <MenuItem
+                    Command="{Binding ToggleLiveModeCommand}"
+                    Header="Go _live"
+                    InputGestureText="Ctrl+F5"
+                    IsCheckable="False"
+                    IsChecked="{Binding IsLive, Mode=OneWay}"
+                    ToolTip="Only the Virtual Console drives the lights while checked; DMX output on/off is separate">
+                    <MenuItem.Icon>
+                        <c:DmxIcon Kind="Live" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
                 </MenuItem>
                 <Separator />
@@ -771,7 +793,7 @@
                     DockPanel.Dock="Right"
                     Orientation="Horizontal">
                     <!--
-                        Go live: a mode switch, NOT output enable. On = accent fill + pause icon + "Live" (not colour only).
+                        Go live: a mode switch, NOT output enable. On = accent fill + filled broadcast icon + "Live" (not colour only).
                         Labelled, so the fixed 24 px width of ToolbarToggleButton is lifted here.
                     -->
                     <ToggleButton
