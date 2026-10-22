@@ -335,10 +335,14 @@ Right panel: selected item properties (start, length, fade in/out, intensity) or
 - **Live edit preview (2026-10-22):** an editor opened from the timeline (the show's own copy) previews its draft on the
   lights like on the Functions page (§3.3): it starts when the editor opens while the page is visible, stops when the
   editor closes or another opens, and leaving the page stops it (it comes back on return).
-- **Go live:** the transport plays shows as an *editor* source, so while live **Play / Resume are disabled** (Space too)
-  and a neutral hint "Live mode — shows play from the Virtual Console" sits next to the transport; turning live on stops
-  a show started here (with its music). Pause / Stop / seek still act on the shared player, so a show the Virtual Console
-  started can be paused or stopped from here.
+- **Go live:** while live only the Virtual Console controls the lights, so the **whole transport is disabled** on this
+  page: Play / Pause / Resume (Space), Stop, Go to start (Home), Rewind / Fast forward and the ruler (click / drag does
+  not seek; arrow cursor, hint tooltip). The commands' CanExecute and the methods themselves both refuse, so keyboard
+  shortcuts are covered too. The playhead stays read-only and still moves to show what the console is playing (Follow
+  playhead keeps scrolling). A neutral hint strip reads "Live mode — shows play from the Virtual Console; the timeline
+  only follows". Turning live on stops a show started here (with its music) and cancels a ruler drag in progress without
+  seeking. Timeline **editing** (moving / resizing blocks, properties, tracks, placing functions) stays available while
+  live — it changes the project, never the player position.
 
 ### 3.7 Test & Preview (phase 6, partly built 2026-10-19; desk layout 2026-10-20)
 

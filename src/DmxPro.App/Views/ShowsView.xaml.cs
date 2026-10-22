@@ -314,6 +314,14 @@ public partial class ShowsView : UserControl
             return;
         }
 
+        if (!vm.CanControlTransport)
+        {
+            // Live mode: the ruler does not seek (the playhead only follows the Virtual Console).
+            LaneScroll.Focus();
+            e.Handled = true;
+            return;
+        }
+
         vm.BeginScrub();
         _scrubSeconds = RulerSeconds(vm, e);
         vm.ScrubTo(_scrubSeconds);
@@ -389,6 +397,15 @@ public partial class ShowsView : UserControl
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(ShowsViewModel.IsLive)
+            && sender is ShowsViewModel { IsLive: true }
+            && RulerArea.IsMouseCaptured)
+        {
+            // Live mode turned on mid-drag: end it without a seek (the ViewModel already cancelled the scrub).
+            RulerArea.ReleaseMouseCapture();
+            return;
+        }
+
         if (e.PropertyName == nameof(ShowsViewModel.PlayheadSeconds)
             && sender is ShowsViewModel { FollowPlayhead: true, IsShowRunning: true } vm
             && !RulerArea.IsMouseCaptured)

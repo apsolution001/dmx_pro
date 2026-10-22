@@ -208,7 +208,7 @@
                     <RepeatButton
                         AutomationProperties.Name="Rewind"
                         Click="OnRewindClick"
-                        IsEnabled="{Binding HasShow}"
+                        IsEnabled="{Binding CanControlTransport}"
                         Style="{StaticResource ShowsRepeatButton}"
                         ToolTip="Rewind by the seek step (Settings); hold to keep going faster">
                         <c:DmxIcon Data="{StaticResource ShowsRewindGeometry}" Size="{StaticResource Dmx.ToolbarIconSize}" />
@@ -216,7 +216,7 @@
                     <RepeatButton
                         AutomationProperties.Name="Fast forward"
                         Click="OnForwardClick"
-                        IsEnabled="{Binding HasShow}"
+                        IsEnabled="{Binding CanControlTransport}"
                         Style="{StaticResource ShowsRepeatButton}"
                         ToolTip="Fast forward by the seek step (Settings); hold to keep going faster">
                         <c:DmxIcon Data="{StaticResource ShowsForwardGeometry}" Size="{StaticResource Dmx.ToolbarIconSize}" />
@@ -298,8 +298,9 @@
         </Border>
 
         <!--
-            Live mode (Ctrl+F5): Play / Resume are disabled here. Own thin strip so the toolbar never shifts;
-            neutral info style like the Test page banner, not a warning.
+            Live mode (Ctrl+F5): the whole transport (play, pause, stop, seek) is disabled here and the playhead only
+            follows the Virtual Console. Own thin strip so the toolbar never shifts; neutral info style like the Test
+            page banner, not a warning.
         -->
         <Border
             Padding="6,3"
@@ -307,7 +308,7 @@
             BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
             BorderThickness="0,0,0,1"
             DockPanel.Dock="Top"
-            ToolTip="Live mode is on: only the Virtual Console drives the lights. Leave live mode (Ctrl+F5) to play shows from here."
+            ToolTip="Live mode is on: only the Virtual Console drives the lights. Play, pause, stop and seeking are off here and the playhead only follows the console; editing the timeline still works. Leave live mode (Ctrl+F5) to play shows from here."
             Visibility="{Binding IsLive, Converter={StaticResource BoolToVisibility}}">
             <DockPanel>
                 <c:DmxIcon
@@ -534,12 +535,23 @@
                                     x:Name="RulerArea"
                                     Grid.RowSpan="2"
                                     Background="{DynamicResource ControlFillColorDefaultBrush}"
-                                    Cursor="Hand"
                                     LostMouseCapture="OnRulerLostMouseCapture"
                                     MouseLeftButtonDown="OnRulerMouseLeftButtonDown"
                                     MouseLeftButtonUp="OnRulerMouseLeftButtonUp"
-                                    MouseMove="OnRulerMouseMove"
-                                    ToolTip="Click to move the playhead: when playing, the show jumps there; when stopped, Play starts there">
+                                    MouseMove="OnRulerMouseMove">
+                                    <!-- Live mode: the ruler does not seek (only the Virtual Console controls playback). -->
+                                    <Grid.Style>
+                                        <Style TargetType="Grid">
+                                            <Setter Property="Cursor" Value="Hand" />
+                                            <Setter Property="ToolTip" Value="Click to move the playhead: when playing, the show jumps there; when stopped, Play starts there" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsLive}" Value="True">
+                                                    <Setter Property="Cursor" Value="Arrow" />
+                                                    <Setter Property="ToolTip" Value="{x:Static vm:ShowsViewModel.LiveModeHint}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Grid.Style>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="18" />
                                         <RowDefinition Height="12" />

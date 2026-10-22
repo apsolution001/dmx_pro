@@ -20,8 +20,10 @@ namespace DmxPro.App.ViewModels;
 /// follows it). While the show runs and the page is visible, the playhead follows the playback position (~30 Hz poll);
 /// when stopped it is the start point for Play. The open function editor (a show's own copy) previews its draft on the
 /// lights through <see cref="FunctionPreviewService"/> while the page is visible. In live mode
-/// (<see cref="ILiveModeService"/>) only the Virtual Console drives the lights: Play / Resume are disabled here and a
-/// hint says so (the engine refuses <see cref="ShowOrigin.Editor"/> shows anyway).
+/// (<see cref="ILiveModeService"/>) only the Virtual Console drives the lights: every transport action here (play,
+/// pause, stop, go to start, rewind / forward, ruler scrub) is disabled and ignored, the playhead only follows what the
+/// console plays, and a hint says so (the engine refuses <see cref="ShowOrigin.Editor"/> shows anyway). Timeline
+/// editing stays available while live; it never touches the player.
 /// </summary>
 public sealed partial class ShowsViewModel : PageViewModel
 {
@@ -81,7 +83,7 @@ public sealed partial class ShowsViewModel : PageViewModel
     private long _loadedRevision = -1;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasShow), nameof(ShowLengthSeconds), nameof(ShowBpm), nameof(LengthText), nameof(BpmText))]
+    [NotifyPropertyChangedFor(nameof(HasShow), nameof(CanControlTransport), nameof(ShowLengthSeconds), nameof(ShowBpm), nameof(LengthText), nameof(BpmText))]
     [NotifyCanExecuteChangedFor(nameof(BeginRenameShowCommand), nameof(DeleteShowCommand), nameof(AddTrackCommand))]
     private Show? _selectedShow;
 
@@ -292,16 +294,25 @@ public sealed partial class ShowsViewModel : PageViewModel
 
     public string PlayPauseIcon => IsPlaying ? "Pause" : "Play";
 
-    public string PlayPauseToolTip => IsPlaying ? "Pause (Space)"
-        : IsLive ? LiveModeHint
+    public string PlayPauseToolTip => IsLive ? LiveModeHint
+        : IsPlaying ? "Pause (Space)"
         : IsShowPaused ? "Resume (Space)"
         : "Play from the playhead (Space)";
 
-    /// <summary>Live mode is on: only the Virtual Console drives the lights, so Play / Resume are disabled here.</summary>
+    /// <summary>
+    /// Live mode is on: only the Virtual Console drives the lights, so every transport action here is disabled and the
+    /// playhead only follows the player (read-only).
+    /// </summary>
     public bool IsLive => _liveMode.IsLive;
 
-    /// <summary>Neutral hint next to the transport while <see cref="IsLive"/>.</summary>
-    public static string LiveModeHint => "Live mode — shows play from the Virtual Console";
+    /// <summary>
+    /// The transport (play / pause, stop, go to start, rewind / forward, ruler scrub) may act on the shared show player:
+    /// a show is selected and live mode is off.
+    /// </summary>
+    public bool CanControlTransport => HasShow && !IsLive;
+
+    /// <summary>Neutral hint above the timeline while <see cref="IsLive"/>.</summary>
+    public static string LiveModeHint => "Live mode — shows play from the Virtual Console; the timeline only follows";
 
     public string TransportStateText => !IsShowRunning ? "Stopped" : IsShowPaused ? "Paused" : "Playing";
 
@@ -485,11 +496,26 @@ public sealed partial class ShowsViewModel : PageViewModel
 
     public void SetActiveTrack(ShowTrackViewModel? track) => ActiveTrack = track;
 
-    /// <summary>Ruler drag started: the playhead follows the pointer only (no seek per mouse move).</summary>
-    public void BeginScrub() => _isScrubbing = true;
+    /// <summary>
+    /// Ruler drag started: the playhead follows the pointer only (no seek per mouse move). Ignored while live (the
+    /// playhead then only follows the Virtual Console's playback).
+    /// </summary>
+    public void BeginScrub()
+    {
+        if (CanControlTransport)
+        {
+            _isScrubbing = true;
+        }
+    }
 
-    /// <summary>Ruler drag: moves the playhead on screen only.</summary>
-    public void ScrubTo(double seconds) => PlayheadSeconds = ClampToShow(seconds);
+    /// <summary>Ruler drag: moves the playhead on screen only (only during a scrub started by <see cref="BeginScrub"/>).</summary>
+    public void ScrubTo(double seconds)
+    {
+        if (_isScrubbing)
+        {
+            PlayheadSeconds = ClampToShow(seconds);
+        }
+    }
 
     /// <summary>Ruler released (or capture lost): one seek to where it was let go.</summary>
     public void EndScrub(double seconds)
@@ -505,10 +531,15 @@ public sealed partial class ShowsViewModel : PageViewModel
 
     /// <summary>
     /// Moves the playhead (clamped to the show): a seek while the show runs (lights and music follow), else the start
-    /// point for Play.
+    /// point for Play. Ignored while live: only the Virtual Console controls playback then.
     /// </summary>
     public void Seek(double seconds)
     {
+        if (!CanControlTransport)
+        {
+            return;
+        }
+
         var target = ClampToShow(seconds);
         if (SelectedShow is { } show && IsShowRunning)
         {
@@ -524,6 +555,11 @@ public sealed partial class ShowsViewModel : PageViewModel
     /// </summary>
     public void SkipBy(int direction, int repeat)
     {
+        if (!CanControlTransport)
+        {
+            return;
+        }
+
         var step = Math.Clamp(_settings.Current.SeekStepSeconds, AppSettings.MinSeekStepSeconds, AppSettings.MaxSeekStepSeconds);
         var factor = Math.Min(MaxSkipAcceleration, 1 + (Math.Max(0, repeat) / 6.0));
         var from = SelectedShow is { } show && IsShowRunning ? _playback.GetShowPosition(show.Id) : PlayheadSeconds;
@@ -1250,13 +1286,13 @@ public sealed partial class ShowsViewModel : PageViewModel
     // ───────────── Transport ─────────────
 
     /// <summary>
-    /// Play / pause the selected show (Space on the timeline). Play starts at the playhead. While live, Play and Resume
-    /// are disabled (Pause stays available for a show that is playing).
+    /// Play / pause the selected show (Space on the timeline). Play starts at the playhead. Disabled while live (Pause
+    /// too: a show the Virtual Console started must not be paused from here).
     /// </summary>
-    [RelayCommand(CanExecute = nameof(CanPlayPause))]
+    [RelayCommand(CanExecute = nameof(CanControlTransport))]
     private void PlayPause()
     {
-        if (SelectedShow is not { } show)
+        if (!CanControlTransport || SelectedShow is not { } show)
         {
             return;
         }
@@ -1286,22 +1322,39 @@ public sealed partial class ShowsViewModel : PageViewModel
         RefreshTransport();
     }
 
-    private bool CanPlayPause() => HasShow && (IsPlaying || !IsLive);
-
-    /// <summary>Live mode switched: Play / Resume follow it; live-on stops the Shows-page show (the playback reports it).</summary>
+    /// <summary>
+    /// Live mode switched: the transport is disabled / enabled again; live-on cancels a ruler scrub in progress (no seek
+    /// on release) and stops the Shows-page show (the playback reports it).
+    /// </summary>
     private void OnLiveModeChanged()
     {
+        if (IsLive)
+        {
+            _isScrubbing = false;
+        }
+
         OnPropertyChanged(nameof(IsLive));
+        OnPropertyChanged(nameof(CanControlTransport));
         OnPropertyChanged(nameof(PlayPauseToolTip));
         RefreshTransport();
-        PlayPauseCommand.NotifyCanExecuteChanged();
+        NotifyTransportCommands();
     }
 
-    /// <summary>Stops the show (lights release; the playhead returns to where Play started). When stopped: back to 0.</summary>
-    [RelayCommand(CanExecute = nameof(HasShow))]
+    private void NotifyTransportCommands()
+    {
+        PlayPauseCommand.NotifyCanExecuteChanged();
+        StopCommand.NotifyCanExecuteChanged();
+        GoToStartCommand.NotifyCanExecuteChanged();
+    }
+
+    /// <summary>
+    /// Stops the show (lights release; the playhead returns to where Play started). When stopped: back to 0. Disabled
+    /// while live.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanControlTransport))]
     private void Stop()
     {
-        if (SelectedShow is not { } show)
+        if (!CanControlTransport || SelectedShow is not { } show)
         {
             return;
         }
@@ -1318,8 +1371,8 @@ public sealed partial class ShowsViewModel : PageViewModel
         }
     }
 
-    /// <summary>Back to the show's start (Home).</summary>
-    [RelayCommand(CanExecute = nameof(HasShow))]
+    /// <summary>Back to the show's start (Home). Disabled while live.</summary>
+    [RelayCommand(CanExecute = nameof(CanControlTransport))]
     private void GoToStart() => Seek(0);
 
     /// <summary>A different show is selected (or the project reloaded): music, grid and transport follow it.</summary>
@@ -1335,9 +1388,7 @@ public sealed partial class ShowsViewModel : PageViewModel
         OnPropertyChanged(nameof(ShowBeatOffsetSeconds));
         Music.Load(SelectedShow);
         RefreshTransport();
-        PlayPauseCommand.NotifyCanExecuteChanged();
-        StopCommand.NotifyCanExecuteChanged();
-        GoToStartCommand.NotifyCanExecuteChanged();
+        NotifyTransportCommands();
     }
 
     private void OnPlaybackStateChanged(object? sender, EventArgs e)
