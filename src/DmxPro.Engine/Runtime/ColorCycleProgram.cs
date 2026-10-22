@@ -37,7 +37,7 @@ internal sealed class ColorCycleProgram : FunctionProgram
         _fade = SanitizeSeconds(fadeSeconds);
         _slot = Math.Max(_hold + _fade, StepProgram.MinStepSeconds);
         _hold = _slot - _fade;
-        _offset = double.IsFinite(offsetSeconds) ? offsetSeconds : 0;
+        _offset = double.IsFinite(offsetSeconds) ? Math.Clamp(offsetSeconds, -MaxSeconds, MaxSeconds) : 0;
         _useWhite = useWhite;
     }
 

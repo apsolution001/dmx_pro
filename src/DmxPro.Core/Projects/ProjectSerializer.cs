@@ -61,6 +61,11 @@ public sealed class ProjectSerializer
         project.SchemaVersion = Project.CurrentSchemaVersion;
         ShareChannelKeys(project);
         RepairStage(project);
+        foreach (var function in project.Functions)
+        {
+            function.ClampTimes();
+        }
+
         foreach (var show in project.Shows)
         {
             show.NormalizeAudio();

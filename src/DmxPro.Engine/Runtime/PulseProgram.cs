@@ -20,7 +20,7 @@ internal sealed class PulseProgram : FunctionProgram
         _color = color;
         _shape = shape;
         _period = double.IsFinite(periodSeconds)
-            ? Math.Max(periodSeconds, PulseFunction.MinPeriodSeconds)
+            ? Math.Clamp(periodSeconds, PulseFunction.MinPeriodSeconds, MaxSeconds)
             : PulseFunction.DefaultPeriodSeconds;
         _min = (float)SanitizeLevel(minLevel, 0);
         _max = (float)SanitizeLevel(maxLevel, 1);

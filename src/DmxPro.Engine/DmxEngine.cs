@@ -156,7 +156,9 @@ public sealed partial class DmxEngine
     /// one was queued before that clear and is (or will be) gone. One recorded with the current generation normally
     /// survives (it may not when queued concurrently from another thread; treating it as alive is the safe side, since
     /// its holder will still clear it). Holders of overrides (the Test page session) compare it to forget overrides that
-    /// are gone. Never touched by the tick.
+    /// are gone. Live mode on counts too. Never written by the tick; it only remembers the highest generation of the
+    /// applied commands that remove the preview (Release All, project open, live on) and drops a preview draft whose
+    /// <see cref="SetPreviewFunction"/> call started before such a release that was applied ahead of it.
     /// </summary>
     public long ReleaseGeneration => Interlocked.Read(ref _releaseGeneration);
 
@@ -176,8 +178,8 @@ public sealed partial class DmxEngine
         var model = EngineModelBuilder.Build(project, _logger);
         model.PatchVersion = Interlocked.Increment(ref _patchVersion);
         _latestModel = model;
-        Interlocked.Increment(ref _releaseGeneration);
-        _queue.Enqueue(new EngineCommand(EngineCommandKind.LoadModel, Model: model));
+        var generation = Interlocked.Increment(ref _releaseGeneration);
+        _queue.Enqueue(new EngineCommand(EngineCommandKind.LoadModel, Model: model, Generation: generation));
     }
 
     /// <summary>
@@ -274,6 +276,10 @@ public sealed partial class DmxEngine
             return false;
         }
 
+        // Read before compiling: a preview-removing release requested while this call runs (another thread, or anything
+        // the compile triggers) gets a higher generation, and the tick drops this draft when that release is applied
+        // first. A caller's own "check ReleaseGeneration, then call" cannot close that window.
+        var generation = Interlocked.Read(ref _releaseGeneration);
         var model = _latestModel;
         var program = EngineModelBuilder.CompileDraft(project, draft, model, _logger);
         if (program is null)
@@ -281,7 +287,14 @@ public sealed partial class DmxEngine
             return false;
         }
 
-        _queue.Enqueue(new EngineCommand(EngineCommandKind.SetPreviewDraft, draft.Id, EngineLayer.Preview, 1f, Model: model, Program: program));
+        _queue.Enqueue(new EngineCommand(
+            EngineCommandKind.SetPreviewDraft,
+            draft.Id,
+            EngineLayer.Preview,
+            1f,
+            Model: model,
+            Program: program,
+            Generation: generation));
         return true;
     }
 
@@ -302,13 +315,9 @@ public sealed partial class DmxEngine
     /// </summary>
     public void SetLiveMode(bool live)
     {
-        if (live)
-        {
-            Interlocked.Increment(ref _releaseGeneration);
-        }
-
+        var generation = live ? Interlocked.Increment(ref _releaseGeneration) : 0;
         _liveRequested = live;
-        _queue.Enqueue(new EngineCommand(EngineCommandKind.SetLiveMode, Value: live ? 1f : 0f));
+        _queue.Enqueue(new EngineCommand(EngineCommandKind.SetLiveMode, Value: live ? 1f : 0f, Generation: generation));
     }
 
     /// <summary>The live mode last requested with <see cref="SetLiveMode"/> (applies at the next tick).</summary>
@@ -337,8 +346,8 @@ public sealed partial class DmxEngine
     /// <summary>Removes all manual overrides.</summary>
     public void ClearOverrides()
     {
-        Interlocked.Increment(ref _releaseGeneration);
-        _queue.Enqueue(new EngineCommand(EngineCommandKind.ClearOverrides));
+        var generation = Interlocked.Increment(ref _releaseGeneration);
+        _queue.Enqueue(new EngineCommand(EngineCommandKind.ClearOverrides, Generation: generation));
     }
 
     /// <summary>
@@ -348,8 +357,8 @@ public sealed partial class DmxEngine
     /// </summary>
     public void ReleaseAll()
     {
-        Interlocked.Increment(ref _releaseGeneration);
-        _queue.Enqueue(new EngineCommand(EngineCommandKind.ReleaseAll));
+        var generation = Interlocked.Increment(ref _releaseGeneration);
+        _queue.Enqueue(new EngineCommand(EngineCommandKind.ReleaseAll, Generation: generation));
     }
 
     /// <summary>

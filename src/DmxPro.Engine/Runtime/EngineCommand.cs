@@ -4,7 +4,9 @@ namespace DmxPro.Engine.Runtime;
 /// <remarks>
 /// <see cref="Seconds"/> carries show positions in full precision (a float loses milliseconds on long shows).
 /// <see cref="Program"/> carries a function compiled off the engine thread (preview draft) together with the
-/// <see cref="Model"/> it was compiled against.
+/// <see cref="Model"/> it was compiled against. <see cref="Generation"/> is the release generation: the incremented one
+/// for release commands (Release All, project open, clear overrides, live on), the one read before compiling for a
+/// preview draft.
 /// </remarks>
 internal readonly record struct EngineCommand(
     EngineCommandKind Kind,
@@ -16,4 +18,5 @@ internal readonly record struct EngineCommand(
     EngineModel? Model = null,
     double Seconds = 0,
     FunctionProgram? Program = null,
-    ShowOrigin Origin = ShowOrigin.Console);
+    ShowOrigin Origin = ShowOrigin.Console,
+    long Generation = 0);

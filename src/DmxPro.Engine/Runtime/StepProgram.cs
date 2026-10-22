@@ -58,11 +58,13 @@ internal sealed class StepProgram : FunctionProgram
             time += _length[k];
         }
 
+        // Step times are capped (SanitizeSeconds), so this only guards absurd step counts: a pass that does not fit in a
+        // double plays once instead of computing NaN slots.
         _period = time;
-        _repeat = order != RunOrder.SingleShot;
+        _repeat = order != RunOrder.SingleShot && double.IsFinite(_period);
     }
 
-    public override double DurationSeconds => _repeat || _programs.Length == 0 ? double.PositiveInfinity : _total;
+    public override double DurationSeconds => _repeat || _programs.Length == 0 || !double.IsFinite(_total) ? double.PositiveInfinity : _total;
 
     public override void Render(double elapsedSeconds, float weight, LayerBuffer layer, double stamp, long seq, RenderContext context)
     {
@@ -167,8 +169,9 @@ internal sealed class StepProgram : FunctionProgram
 
     private double SlotStart(long slot)
     {
+        // The first pass needs no period (keeps 0 × period out of the sum when the period is not finite).
         var n = _programs.Length;
-        return ((slot / n) * _period) + _start[(int)(slot % n)];
+        return slot < n ? _start[(int)slot] : ((slot / n) * _period) + _start[(int)(slot % n)];
     }
 
     /// <summary>One step before unrolling.</summary>
