@@ -28,7 +28,11 @@ namespace DmxPro.App.Services;
 /// <para>
 /// <b>Safety.</b> It is only a layer: nothing goes out while output is disabled (safety rule 1), Grand Master, Blackout,
 /// "allow strobe" and the maximum strobe rate (rule 8) and clamping (rule 9) apply as for every other source. A timed
-/// flash previews as held while its editor is open.
+/// flash previews as held while its editor is open, so like a held flash button (rule 5) it is released when the
+/// application loses focus (<see cref="PreviewFocusPolicy"/>; switching between the app's own windows keeps it) and
+/// comes back with the next edit. A release from any thread wins over a pending throttled send: every send first
+/// checks <see cref="DmxEngine.ReleaseGeneration"/> synchronously (rule 4). From the start of the close sequence
+/// nothing is sent any more (rule 6).
 /// </para>
 /// Call every member on the UI thread.
 /// </remarks>
@@ -53,6 +57,11 @@ public sealed class FunctionPreviewService
     private DispatcherTimer? _throttle;
     private bool _released;
     private bool _failed;
+    private bool _closed;
+
+    // Engine release generation the current preview belongs to: a newer one means Release All / project open / live
+    // mode removed the preview since, so a pending send must not bring it back.
+    private long _generation;
 
     public FunctionPreviewService(
         DmxEngine engine,
@@ -81,6 +90,13 @@ public sealed class FunctionPreviewService
             }
         };
         output.StatusChanged += (_, _) => OnUiThread(UpdateStatus);
+        runtime.ShuttingDown += (_, _) => OnShuttingDown();
+
+        // Application (not MainWindow) deactivation: moving to the app's own Stage window keeps the preview.
+        if (System.Windows.Application.Current is { } app)
+        {
+            app.Deactivated += (_, _) => OnAppDeactivated();
+        }
     }
 
     /// <summary>The editor whose draft is previewed, or null.</summary>
@@ -105,6 +121,7 @@ public sealed class FunctionPreviewService
         }
 
         _released = false;
+        _generation = _engine.ReleaseGeneration;
         SendNow();
         UpdateStatus();
     }
@@ -135,9 +152,16 @@ public sealed class FunctionPreviewService
             return;
         }
 
+        if (_closed)
+        {
+            return;
+        }
+
         if (_released)
         {
+            // A new user action after a release: show the draft again from the current engine state on.
             _released = false;
+            _generation = _engine.ReleaseGeneration;
             UpdateStatus();
         }
 
@@ -162,8 +186,15 @@ public sealed class FunctionPreviewService
     /// <summary>Compiles the current draft and hands it to the engine preview layer (or clears it when it cannot play).</summary>
     private void SendNow()
     {
-        if (_editor is not { } editor || _liveMode.IsLive || _released)
+        if (_editor is not { } editor || _closed || _liveMode.IsLive || _engine.IsLiveMode || _released)
         {
+            return;
+        }
+
+        if (_engine.ReleaseGeneration != _generation)
+        {
+            // Released since the last send (possibly from another thread, its AllReleased post not handled yet).
+            MarkReleased();
             return;
         }
 
@@ -200,6 +231,8 @@ public sealed class FunctionPreviewService
         }
         else
         {
+            // Switching live mode on counted as a release; the still-open editor's preview comes back by itself.
+            _generation = _engine.ReleaseGeneration;
             SendNow();
         }
 
@@ -208,9 +241,38 @@ public sealed class FunctionPreviewService
 
     private void OnAllReleased()
     {
-        // Engine Release All already removed the preview (safety rule 4); stay off until the user edits again.
+        // Engine Release All already removed the preview (safety rule 4); stay off until the user edits again. Posted:
+        // when the user already edited again after this release (generation adopted), there is nothing to do.
+        if (_editor is not null && _engine.ReleaseGeneration != _generation)
+        {
+            MarkReleased();
+        }
+    }
+
+    private void OnAppDeactivated()
+    {
+        if (_editor is not { } editor || _released || !PreviewFocusPolicy.ReleasesOnFocusLoss(editor.Type))
+        {
+            return;
+        }
+
+        // Safety rule 5: a flash preview is a held flash; focus loss releases it. Not restored on activation: the next
+        // edit shows it again.
+        MarkReleased();
+    }
+
+    private void OnShuttingDown()
+    {
+        _closed = true;
         _throttle?.Stop();
-        _released = _editor is not null;
+    }
+
+    private void MarkReleased()
+    {
+        // Usually already gone in the engine (Release All / live mode); clearing again is harmless and deterministic.
+        _engine.ClearPreview();
+        _throttle?.Stop();
+        _released = true;
         UpdateStatus();
     }
 

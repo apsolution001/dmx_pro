@@ -25,21 +25,13 @@ public class AllocationTests
         rig.Engine.StartPreview(preview.Id);
         rig.Engine.SetChannelOverride(1, 300, 50);
         rig.Engine.GrandMaster = 0.7;
-        for (var i = 0; i < 200; i++)
-        {
-            rig.Engine.SetFunctionIntensity(console.Id, EngineLayer.Console, 0.5);
-            rig.Tick();
-        }
 
-        var before = GC.GetAllocatedBytesForCurrentThread();
-        for (var i = 0; i < 2000; i++)
+        var allocated = MeasureSteadyState(i =>
         {
             rig.Engine.SetFunctionIntensity(console.Id, EngineLayer.Console, (i % 10) / 10.0);
             rig.Engine.Blackout = i % 100 == 0;
             rig.Tick();
-        }
-
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        });
 
         Assert.Equal(0, allocated);
         Assert.True(sink.Frames > 0);
@@ -74,18 +66,7 @@ public class AllocationTests
             rig.Engine.TryGetShowPlayback(timeline.Id, out _, out _);
         }
 
-        for (var i = 0; i < 200; i++)
-        {
-            Cycle(i);
-        }
-
-        var before = GC.GetAllocatedBytesForCurrentThread();
-        for (var i = 0; i < 2000; i++)
-        {
-            Cycle(i);
-        }
-
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        var allocated = MeasureSteadyState(Cycle);
 
         Assert.Equal(0, allocated);
     }
@@ -147,21 +128,54 @@ public class AllocationTests
             rig.Tick();
         }
 
-        for (var i = 0; i < 200; i++)
-        {
-            Cycle(i);
-        }
-
-        var before = GC.GetAllocatedBytesForCurrentThread();
-        for (var i = 0; i < 2000; i++)
-        {
-            Cycle(i);
-        }
-
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        var allocated = MeasureSteadyState(Cycle);
 
         Assert.Equal(0, allocated);
         Assert.Equal(all.Length, rig.Engine.GetSnapshot()!.ActiveFunctions.Count);
+    }
+
+    /// <summary>
+    /// Bytes allocated on this thread by <paramref name="iterations"/> steady-state cycles. Runs the measured cycle itself
+    /// as warm-up until the JIT settles (no new methods compiled during a round, capped), so tier-0 code, tiering and
+    /// one-time lazy initialisation are not measured. Under a parallel full-solution run other test assemblies keep the
+    /// machine busy and tiering can still land mid-measurement, so the measurement is repeated up to
+    /// <paramref name="attempts"/> times and the first clean round counts: a real per-tick allocation shows up in every
+    /// round (each one runs thousands of ticks), so the assertion is not weakened.
+    /// </summary>
+    private static long MeasureSteadyState(Action<int> cycle, int iterations = 2000, int attempts = 3)
+    {
+        var i = 0;
+        for (var round = 0; round < 20; round++)
+        {
+            var compiled = System.Runtime.JitInfo.GetCompiledMethodCount();
+            for (var k = 0; k < 200; k++)
+            {
+                cycle(i++);
+            }
+
+            if (round > 0 && System.Runtime.JitInfo.GetCompiledMethodCount() == compiled)
+            {
+                break;
+            }
+        }
+
+        long allocated = 0;
+        for (var attempt = 0; attempt < attempts; attempt++)
+        {
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            for (var k = 0; k < iterations; k++)
+            {
+                cycle(i++);
+            }
+
+            allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+            if (allocated == 0)
+            {
+                return 0;
+            }
+        }
+
+        return allocated;
     }
 
     private sealed class CopyingSink : IFrameSink

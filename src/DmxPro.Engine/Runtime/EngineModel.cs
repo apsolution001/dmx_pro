@@ -78,6 +78,13 @@ internal sealed class EngineModel
 
     public Dictionary<Guid, ShowProgram> Shows { get; }
 
+    /// <summary>
+    /// Identifies the patch (universe layout + fixture channel → flat index) this model was built with. Two models with
+    /// the same version resolve every fixture channel to the same flat index, so a preview draft compiled against one
+    /// is valid in the other. Assigned by <see cref="DmxEngine"/> before the model is published; never changed after.
+    /// </summary>
+    public long PatchVersion { get; set; }
+
     /// <summary>One accumulator per <see cref="EngineLayer"/> (engine thread only).</summary>
     public LayerBuffer[] Layers { get; }
 
@@ -133,6 +140,13 @@ internal sealed class EngineModel
 
         return true;
     }
+
+    /// <summary>
+    /// True when <paramref name="other"/> resolves every fixture channel to the same flat index (same
+    /// <see cref="PatchVersion"/>): a draft compiled against one is valid in the other. A re-addressed fixture with an
+    /// unchanged universe layout is a different patch. Allocation-free (engine thread).
+    /// </summary>
+    public bool HasSamePatch(EngineModel other) => ReferenceEquals(this, other) || PatchVersion == other.PatchVersion;
 
     /// <summary>Flat channel index of a universe/address, or -1 when the universe is not part of the project.</summary>
     public int FlatIndex(int universe, int address)
