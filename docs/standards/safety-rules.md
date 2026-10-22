@@ -6,7 +6,9 @@ These come from spec §1 and §12. Code reviews must reject changes that violate
 2. Output cannot be enabled without a valid output configuration.
 3. **Blackout ≠ Output disabled.** Blackout sends a dark state; disabling stops transmission. Keep them separate in code and UI.
 4. **Release All** stops all functions deterministically and returns channels to profile defaults.
-5. Flash/momentary actions must release on button-up, input disconnect, focus loss, and application close.
+5. Flash/momentary actions must release on button-up, input disconnect, focus moving to another control or page inside
+   the app, and application close. Switching to another program does **not** release them: every light, held flashes
+   included, stays as it is (owner decision 2026-10-22).
 6. On application close: stop functions → send one safe frame (configurable: blackout or defaults) → stop output.
 7. Never present an unknown channel meaning as confirmed: channels without a known meaning (`Generic`) are shown as
    raw channels only. Checking a profile against the real light is the owner's job (done in QLC+ before patching), so

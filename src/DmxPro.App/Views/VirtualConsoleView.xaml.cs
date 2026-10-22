@@ -19,7 +19,6 @@ public partial class VirtualConsoleView : UserControl
     private static readonly string PaletteDragFormat = "DmxPro.ConsoleWidgetKind";
     private static readonly double SurfaceMargin = 8;
 
-    private Window? _window;
     private VirtualConsoleViewModel? _subscribed;
     private ConsoleWidgetViewModel? _dragWidget;
     private Point _dragStart;
@@ -39,12 +38,8 @@ public partial class VirtualConsoleView : UserControl
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        _window = Window.GetWindow(this);
-        if (_window is not null)
-        {
-            _window.Deactivated += OnWindowDeactivated;
-        }
-
+        // No release on window deactivation: switching to another program keeps every light as it is, held flashes
+        // included (owner decision 2026-10-22). Button-up, leaving the page and app close still release (safety rule 5).
         UpdateCellSize();
         FocusCanvas();
     }
@@ -79,17 +74,10 @@ public partial class VirtualConsoleView : UserControl
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
-        if (_window is not null)
-        {
-            _window.Deactivated -= OnWindowDeactivated;
-            _window = null;
-        }
-
         EndDrag();
         Vm?.ReleaseFlashes();
     }
 
-    private void OnWindowDeactivated(object? sender, EventArgs e) => Vm?.ReleaseFlashes();
 
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {

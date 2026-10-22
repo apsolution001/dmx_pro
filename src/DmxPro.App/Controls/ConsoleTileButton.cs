@@ -45,8 +45,9 @@ public sealed class ConsoleTileButton : Button
     {
         base.OnLostKeyboardFocus(e);
 
-        // Focus loss while Space is held must also end a flash (safety rule 5).
-        if (ReleaseCommand?.CanExecute(null) == true)
+        // Focus moving to another control in the app while Space is held ends a flash (safety rule 5). Focus leaving the
+        // app (NewFocus null: switching to another program) keeps it on, like every other light (owner decision 2026-10-22).
+        if (e.NewFocus is not null && ReleaseCommand?.CanExecute(null) == true)
         {
             ReleaseCommand.Execute(null);
         }

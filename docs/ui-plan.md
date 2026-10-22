@@ -211,9 +211,8 @@ editor shows its draft on the lights automatically while not live):
   throttled to one update per ~40 ms, so a dragged fader stays smooth. Effects (chaser, sequence, colour cycle, pulse,
   strobe) run live; changing them keeps them running (no restart). A scene's fade-in is skipped (the draft shows at
   once); the preview also ends without fade. A **Flash previews as held** while its editor is open, whatever its
-  duration — like a held flash button it is **released when DMX Pro loses focus** (switching to another program; moving
-  to the app's own Stage window keeps it) and comes back with the next edit, not by itself when the app is activated
-  again (safety rule 5, decided 2026-10-22). Other function types keep previewing when the app loses focus. A
+  duration. **Switching to another program keeps every preview on the lights, flashes included** (owner decision
+  2026-10-22: the operator switches apps while the lights are set). A
   single-shot chaser plays once; the next edit plays it again.
 - **Preview stops** (deterministically) on: editor close / save-and-close / cancel, Esc closing the editor, another
   function opened, leaving the page, project replaced, **Go live** on, app close and **Release All**. After Release All it
@@ -224,8 +223,7 @@ editor shows its draft on the lights automatically while not live):
   re-addressed (or the patch changes otherwise) the engine drops the old draft and shows the re-sent one, so it never
   lands on the old channels.
 - **Editor toolbar hint** (neutral info, not a warning) instead of the removed toggle: "Showing on lights" (output on,
-  not live), "Output off — not on lights", "Live mode — not on lights", "Released — change something to show it again"
-  (also after a flash preview was released by focus loss).
+  not live), "Output off — not on lights", "Live mode — not on lights", "Released — change something to show it again".
 - **Playing for the show** happens only from the Virtual Console or the Show Timeline, never by clicking in this page.
 - **Function clipboard (2026-10-22):** Copy keeps a snapshot of the whole function (later edits or deleting the source
   do not change it). Paste adds a new library function named `<name> (copy)`, `<name> (copy 2)`, … and selects it (filters

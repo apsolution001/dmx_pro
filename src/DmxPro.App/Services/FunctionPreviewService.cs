@@ -28,9 +28,8 @@ namespace DmxPro.App.Services;
 /// <para>
 /// <b>Safety.</b> It is only a layer: nothing goes out while output is disabled (safety rule 1), Grand Master, Blackout,
 /// "allow strobe" and the maximum strobe rate (rule 8) and clamping (rule 9) apply as for every other source. A timed
-/// flash previews as held while its editor is open, so like a held flash button (rule 5) it is released when the
-/// application loses focus (<see cref="PreviewFocusPolicy"/>; switching between the app's own windows keeps it) and
-/// comes back with the next edit. A release from any thread wins over a pending throttled send: every send first
+/// flash previews as held while its editor is open; switching to another program keeps it on, like every other light
+/// (owner decision 2026-10-22, safety rule 5). A release from any thread wins over a pending throttled send: every send first
 /// checks <see cref="DmxEngine.ReleaseGeneration"/> synchronously (rule 4). From the start of the close sequence
 /// nothing is sent any more (rule 6).
 /// </para>
@@ -91,12 +90,6 @@ public sealed class FunctionPreviewService
         };
         output.StatusChanged += (_, _) => OnUiThread(UpdateStatus);
         runtime.ShuttingDown += (_, _) => OnShuttingDown();
-
-        // Application (not MainWindow) deactivation: moving to the app's own Stage window keeps the preview.
-        if (System.Windows.Application.Current is { } app)
-        {
-            app.Deactivated += (_, _) => OnAppDeactivated();
-        }
     }
 
     /// <summary>The editor whose draft is previewed, or null.</summary>
@@ -247,18 +240,6 @@ public sealed class FunctionPreviewService
         {
             MarkReleased();
         }
-    }
-
-    private void OnAppDeactivated()
-    {
-        if (_editor is not { } editor || _released || !PreviewFocusPolicy.ReleasesOnFocusLoss(editor.Type))
-        {
-            return;
-        }
-
-        // Safety rule 5: a flash preview is a held flash; focus loss releases it. Not restored on activation: the next
-        // edit shows it again.
-        MarkReleased();
     }
 
     private void OnShuttingDown()

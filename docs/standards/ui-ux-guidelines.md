@@ -67,7 +67,8 @@ The owner wants a **proper Windows application**, not a web-page look. Structure
 
 - Big targets (min 64×64 px), high contrast, clear active state (glow/border + color).
 - Operator lock mode hides editing chrome.
-- Flash buttons release on mouse-up, touch-up, focus loss, and window deactivation.
+- Flash buttons release on mouse-up, touch-up and focus moving to another control or page inside the app. Switching
+  to another program keeps every light as it is, held flashes included (owner decision 2026-10-22).
 
 ## Safety in the UI
 

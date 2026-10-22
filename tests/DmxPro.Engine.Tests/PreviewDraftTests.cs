@@ -322,20 +322,6 @@ public class PreviewDraftTests
         Assert.Equal(expected, frame);
     }
 
-    [Theory]
-    [InlineData(FunctionType.Flash, true)]
-    [InlineData(FunctionType.Scene, false)]
-    [InlineData(FunctionType.Chaser, false)]
-    [InlineData(FunctionType.Sequence, false)]
-    [InlineData(FunctionType.ColorCycle, false)]
-    [InlineData(FunctionType.Fade, false)]
-    [InlineData(FunctionType.Pulse, false)]
-    [InlineData(FunctionType.Strobe, false)]
-    public void ReleasesOnFocusLoss_FunctionType_OnlyFlashReleases(FunctionType type, bool expected)
-    {
-        Assert.Equal(expected, PreviewFocusPolicy.ReleasesOnFocusLoss(type));
-    }
-
     [Fact]
     public void SetPreviewFunction_TimedFlash_PreviewsAsHeld()
     {
