@@ -186,12 +186,14 @@ internal sealed class PlaybackSource : ISampleProvider, IDisposable
                 return count;
             }
 
-            Command command = TakeCommand(out long commandFrame, out int commandGeneration);
+            // A queued command is only peeked here and taken (atomically) when it actually executes: the fade-out of the
+            // old audio may use up this whole read (small device periods), and a command taken now would then be lost.
+            bool commandPending = ApplyChangesAndPeekCommand();
             int done = 0;
             while (done < frames)
             {
                 Span<float> destination = buffer.AsSpan(offset + (done * _channels), (frames - done) * _channels);
-                if (command != Command.None)
+                if (commandPending)
                 {
                     if (_mode == Mode.Audio && !_processor.IsTransitionSilent)
                     {
@@ -206,8 +208,14 @@ internal sealed class PlaybackSource : ISampleProvider, IDisposable
                         }
                     }
 
-                    Execute(command, commandFrame, commandGeneration);
-                    command = Command.None;
+                    // Take the newest command only now: whatever arrived during the fade replaces the older one.
+                    Command command = TakeCommand(out long commandFrame, out int commandGeneration);
+                    if (command != Command.None)
+                    {
+                        Execute(command, commandFrame, commandGeneration);
+                    }
+
+                    commandPending = false;
                     continue;
                 }
 
@@ -254,7 +262,8 @@ internal sealed class PlaybackSource : ISampleProvider, IDisposable
         }
     }
 
-    private Command TakeCommand(out long frame, out int generation)
+    /// <summary>Applies volume / fade / silence changes made by the player; true when a transport command is queued.</summary>
+    private bool ApplyChangesAndPeekCommand()
     {
         lock (_sync)
         {
@@ -276,6 +285,15 @@ internal sealed class PlaybackSource : ISampleProvider, IDisposable
                 }
             }
 
+            return _pendingCommand != Command.None;
+        }
+    }
+
+    /// <summary>Removes and returns the queued command (the newest one: a later Run / Halt overwrites an earlier one).</summary>
+    private Command TakeCommand(out long frame, out int generation)
+    {
+        lock (_sync)
+        {
             Command command = _pendingCommand;
             frame = _pendingFrame;
             generation = _pendingGeneration;

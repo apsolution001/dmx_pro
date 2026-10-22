@@ -41,6 +41,9 @@ public sealed class AudioPlayer : IAudioPlayer
     /// <summary>Extra silence that must be heard before the device is stopped (device clock interpolation margin).</summary>
     private const double StopMarginSeconds = 0.020;
 
+    /// <summary>Bound for frame numbers from arbitrary times (far beyond any song), so frame arithmetic never overflows.</summary>
+    private const double MaxFrameMagnitude = 1L << 52;
+
     /// <summary>Longest wait for a playing song to fade out when another song is loaded.</summary>
     private static readonly TimeSpan GracefulCloseTimeout = TimeSpan.FromMilliseconds(300);
 
@@ -142,6 +145,17 @@ public sealed class AudioPlayer : IAudioPlayer
                 RefreshLocked(s);
                 long length = s.Source.LengthFrames;
                 return FramesToTime(length > 0 ? Math.Min(_positionFrame, length) : _positionFrame, s.SampleRate);
+            }
+        }
+    }
+
+    public long MemoryBytes
+    {
+        get
+        {
+            lock (_stateLock)
+            {
+                return _session?.MemoryBytes ?? 0;
             }
         }
     }
@@ -402,7 +416,9 @@ public sealed class AudioPlayer : IAudioPlayer
                 return;
             }
 
-            long startFrame = TimeToFrames(start, s.SampleRate);
+            // Signed: a start before the song means the fade is already partly done at song time 0 (the window is cut,
+            // not moved), so the gain at every song time is the same straight line from start to start + duration.
+            long startFrame = TimeToSignedFrames(start, s.SampleRate);
             long lengthFrames = Math.Max(1, TimeToFrames(duration, s.SampleRate));
             s.Source.SetFadeOut(startFrame, lengthFrames);
         }
@@ -481,6 +497,10 @@ public sealed class AudioPlayer : IAudioPlayer
     internal static long TimeToFrames(TimeSpan time, int sampleRate) =>
         time <= TimeSpan.Zero ? 0 : (long)Math.Round(time.Ticks * (double)sampleRate / TimeSpan.TicksPerSecond);
 
+    /// <summary>Like <see cref="TimeToFrames"/> but keeps negative times (song positions before the song start).</summary>
+    internal static long TimeToSignedFrames(TimeSpan time, int sampleRate) =>
+        (long)Math.Clamp(Math.Round(time.Ticks * (double)sampleRate / TimeSpan.TicksPerSecond), -MaxFrameMagnitude, MaxFrameMagnitude);
+
     internal static TimeSpan FramesToTime(long frames, int sampleRate) =>
         frames <= 0 ? TimeSpan.Zero : TimeSpan.FromTicks((long)Math.Round(frames * (double)TimeSpan.TicksPerSecond / sampleRate));
 
@@ -523,7 +543,7 @@ public sealed class AudioPlayer : IAudioPlayer
         }
 
         var source = new PlaybackSource(decoder);
-        var session = new Session(path, source);
+        var session = new Session(path, source, decoder is MemorySampleDecoder memory ? memory.MemoryBytes : 0);
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -738,9 +758,12 @@ public sealed class AudioPlayer : IAudioPlayer
     private void StopMonitor() => _monitor?.Change(Timeout.Infinite, Timeout.Infinite);
 
     /// <summary>One loaded song: its source and (while a device is available) its output.</summary>
-    private sealed class Session(string path, PlaybackSource source)
+    private sealed class Session(string path, PlaybackSource source, long memoryBytes)
     {
         public string Path { get; } = path;
+
+        /// <summary>Bytes held by the decoded song (fixed once decoded); 0 when streamed.</summary>
+        public long MemoryBytes { get; } = memoryBytes;
 
         public PlaybackSource Source { get; } = source;
 

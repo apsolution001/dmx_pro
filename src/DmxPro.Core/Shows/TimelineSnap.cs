@@ -16,12 +16,22 @@ public static class TimelineSnap
     /// <summary>Upper bound on the lines one <see cref="BeatLines"/> call yields, so a silly BPM or range cannot hang the UI.</summary>
     public const int MaxBeatLines = 100_000;
 
-    /// <summary>Seconds per beat for <paramref name="bpm"/>; a non-positive or non-finite BPM falls back to <see cref="Show.DefaultBpm"/>.</summary>
-    public static double BeatSeconds(double bpm) =>
-        60.0 / (double.IsFinite(bpm) && bpm > 0 ? bpm : Show.DefaultBpm);
+    /// <summary>
+    /// Seconds per beat for <paramref name="bpm"/>; a non-positive or non-finite BPM, or one so tiny that the beat
+    /// length would not be finite (damaged file), falls back to <see cref="Show.DefaultBpm"/>.
+    /// </summary>
+    public static double BeatSeconds(double bpm)
+    {
+        var beat = double.IsFinite(bpm) && bpm > 0 ? 60.0 / bpm : double.NaN;
+        return double.IsFinite(beat) && beat > 0 ? beat : 60.0 / Show.DefaultBpm;
+    }
 
-    /// <summary>Seconds per bar (<see cref="BeatsPerBar"/> beats).</summary>
-    public static double BarSeconds(double bpm) => BeatSeconds(bpm) * BeatsPerBar;
+    /// <summary>Seconds per bar (<see cref="BeatsPerBar"/> beats); falls back to the default tempo when not finite.</summary>
+    public static double BarSeconds(double bpm)
+    {
+        var bar = BeatSeconds(bpm) * BeatsPerBar;
+        return double.IsFinite(bar) ? bar : 60.0 / Show.DefaultBpm * BeatsPerBar;
+    }
 
     /// <summary>Grid step in seconds for a snap mode.</summary>
     public static double StepSeconds(TimelineSnapMode mode, double bpm) => mode switch
@@ -83,7 +93,9 @@ public static class TimelineSnap
             seconds = 0;
         }
 
-        var index = Math.Floor((seconds - GridOrigin(bpm, beatOffsetSeconds)) / BeatSeconds(bpm));
+        // Same tolerance as FirstBeatIndexAtOrAfter: a time that is a beat line up to floating-point noise belongs to
+        // that beat, not to the one before.
+        var index = Math.Floor(((seconds - GridOrigin(bpm, beatOffsetSeconds)) / BeatSeconds(bpm)) + 1e-9);
         return ClampToLong(index);
     }
 
@@ -101,7 +113,7 @@ public static class TimelineSnap
     public static double FirstBeatAtOrAfter(double seconds, double bpm, double beatOffsetSeconds)
     {
         var index = FirstBeatIndexAtOrAfter(seconds, bpm, beatOffsetSeconds, 1);
-        return BeatTime(index, bpm, beatOffsetSeconds);
+        return Math.Max(0, BeatTime(index, bpm, beatOffsetSeconds));
     }
 
     /// <summary>
@@ -118,8 +130,18 @@ public static class TimelineSnap
             return default;
         }
 
+        var origin = GridOrigin(bpm, beatOffsetSeconds);
+        var beat = BeatSeconds(bpm);
         var first = FirstBeatIndexAtOrAfter(fromSeconds, bpm, beatOffsetSeconds, stride);
-        return new BeatLineRange(first, stride, toSeconds, GridOrigin(bpm, beatOffsetSeconds), BeatSeconds(bpm));
+
+        // An absurd start time (beyond what a beat index can count) clamps the index: its line would lie long before
+        // fromSeconds. Return nothing rather than lines outside the requested range.
+        if (double.IsFinite(fromSeconds) && origin + (first * beat) < fromSeconds - (beat * stride))
+        {
+            return default;
+        }
+
+        return new BeatLineRange(first, stride, toSeconds, origin, beat);
     }
 
     private static long FirstBeatIndexAtOrAfter(double seconds, double bpm, double beatOffsetSeconds, int stride)
@@ -140,8 +162,8 @@ public static class TimelineSnap
             index += remainder > 0 ? stride - remainder : -remainder;
         }
 
-        // Lines before show time 0 do not exist.
-        while (origin + (index * beat) < 0)
+        // Lines before show time 0 do not exist (a line at 0 up to floating-point noise does: a pickup beat at 0).
+        while (origin + (index * beat) < -1e-9)
         {
             index += stride;
         }

@@ -61,7 +61,8 @@ public readonly struct BeatLineRange
                 return false;
             }
 
-            _current = new BeatLine(seconds, _index, TimelineSnap.IsBarStart(_index));
+            // A line at show time 0 may come out as -1e-17 from rounding; never report a time before 0.
+            _current = new BeatLine(Math.Max(0, seconds), _index, TimelineSnap.IsBarStart(_index));
             _index += _stride;
             _produced++;
             return true;
