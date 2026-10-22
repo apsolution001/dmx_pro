@@ -421,15 +421,15 @@
                     </ToggleButton>
                     <Rectangle Style="{StaticResource ToolbarSeparator}" Visibility="{Binding ShowEditChrome, Converter={StaticResource BoolToVisibility}}" />
                     <ToggleButton
-                        AutomationProperties.Name="Edit layout"
+                        AutomationProperties.Name="{Binding EditLayoutLabel}"
                         IsChecked="{Binding IsEditMode, Mode=TwoWay}"
                         IsEnabled="{Binding HasSelectedPage}"
                         Style="{StaticResource ToolbarEditToggleButton}"
                         ToolTip="Edit layout: add, move, resize and set up widgets"
                         Visibility="{Binding ShowEditChrome, Converter={StaticResource BoolToVisibility}}">
                         <StackPanel Orientation="Horizontal">
-                            <c:DmxIcon Kind="Edit" Size="16" />
-                            <TextBlock Style="{StaticResource ButtonLabel}" Text="Edit layout" />
+                            <c:DmxIcon Kind="Edit" Size="{StaticResource Dmx.EditButtonIconSize}" />
+                            <TextBlock Style="{StaticResource ButtonLabel}" Text="{Binding EditLayoutLabel}" />
                         </StackPanel>
                     </ToggleButton>
                     <ToggleButton
