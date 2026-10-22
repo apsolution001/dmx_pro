@@ -91,6 +91,8 @@ xmlns:c="clr-namespace:DmxPro.App.Controls"
 | `input-output.svg` | `InputOutput` | Plug Connected (`ic_fluent_plug_connected_24_regular`) |
 | `keyboard.svg` | `Keyboard` | Keyboard (`ic_fluent_keyboard_24_regular`) |
 | `library.svg` | `Library` | Library (`ic_fluent_library_24_regular`) |
+| `live-on.svg` | `LiveOn` | Live, **Filled** (`ic_fluent_live_24_filled`): the on state of `live.svg` |
+| `live.svg` | `Live` | Live (`ic_fluent_live_24_regular`) |
 | `lock.svg` | `Lock` | Lock Closed (`ic_fluent_lock_closed_24_regular`) |
 | `monitor.svg` | `Monitor` | Pulse (`ic_fluent_pulse_24_regular`) |
 | `more.svg` | `More` | More Horizontal (`ic_fluent_more_horizontal_24_regular`) |

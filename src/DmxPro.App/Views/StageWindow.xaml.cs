@@ -1,4 +1,6 @@
+using System.Windows;
 using System.Windows.Input;
+using CommunityToolkit.Mvvm.Input;
 using DmxPro.App.ViewModels;
 using Wpf.Ui.Controls;
 
@@ -15,6 +17,18 @@ public partial class StageWindow : FluentWindow
         DataContext = viewModel;
         InitializeComponent();
         AddSafetyShortcuts(shell);
+
+        // Window chrome only (view concern): Ctrl+W closes, like other secondary windows.
+        Add(new RelayCommand(Close), Key.W, ModifierKeys.Control);
+        Loaded += OnLoaded;
+    }
+
+    /// <summary>Puts keyboard focus on the stage content (its first focusable control) so the window is keyboard
+    /// usable at once instead of starting with nothing focused.</summary>
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        Loaded -= OnLoaded;
+        StageContent.MoveFocus(new TraversalRequest(FocusNavigationDirection.First));
     }
 
     /// <summary>

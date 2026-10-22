@@ -34,8 +34,8 @@ public sealed partial class ShellViewModel
     /// <summary>"Go live" (off) / "Live" (on): the text changes too, so the state is not shown by colour only.</summary>
     public string LiveButtonText => IsLive ? "Live" : "Go live";
 
-    /// <summary>▶ while off (press to go live), ⏸ while live (press to stop).</summary>
-    public string LiveIconKind => IsLive ? "Pause" : "Play";
+    /// <summary>A mode glyph, not show transport: outline broadcast icon while off, filled while live.</summary>
+    public string LiveIconKind => IsLive ? "LiveOn" : "Live";
 
     public string LiveToolTip => IsLive
         ? $"Live: only the Virtual Console drives the lights. Editor previews, test values and Shows-page playback are off. Click to leave live mode ({LiveModeShortcut})."
