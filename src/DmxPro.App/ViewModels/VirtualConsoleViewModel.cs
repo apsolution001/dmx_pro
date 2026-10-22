@@ -34,7 +34,7 @@ public sealed partial class VirtualConsoleViewModel : PageViewModel
     private VirtualConsolePageViewModel? _selectedPage;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsOperatingMode))]
+    [NotifyPropertyChangedFor(nameof(IsOperatingMode), nameof(EditLayoutLabel))]
     private bool _isEditMode;
 
     [ObservableProperty]
@@ -144,6 +144,9 @@ public sealed partial class VirtualConsoleViewModel : PageViewModel
     public bool IsSelectedPageEmpty => SelectedPage is { Widgets.Count: 0 };
 
     public bool IsOperatingMode => !IsEditMode;
+
+    /// <summary>Label of the edit-layout toggle, so its state is not shown by colour alone.</summary>
+    public string EditLayoutLabel => IsEditMode ? "Done editing" : "Edit layout";
 
     /// <summary>The widget canvas is visible: a page exists and the Shows tab is not open.</summary>
     public bool ShowCanvas => HasPages && !IsShowsTabSelected;

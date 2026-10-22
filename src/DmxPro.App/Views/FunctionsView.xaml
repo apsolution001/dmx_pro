@@ -310,7 +310,7 @@
                         Style="{StaticResource ToolbarEditButton}"
                         ToolTip="Edit the selected function (Enter or double-click)">
                         <StackPanel Orientation="Horizontal">
-                            <c:DmxIcon Kind="Edit" Size="16" />
+                            <c:DmxIcon Kind="Edit" Size="{StaticResource Dmx.EditButtonIconSize}" />
                             <TextBlock Style="{StaticResource ButtonLabel}" Text="Edit" />
                         </StackPanel>
                     </Button>
@@ -397,6 +397,7 @@
                             ItemsSource="{Binding Groups}"
                             PreviewKeyDown="OnFunctionTreePreviewKeyDown"
                             PreviewMouseRightButtonDown="OnFunctionTreePreviewMouseRightButtonDown"
+                            ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                             VirtualizingPanel.IsVirtualizing="True"
                             VirtualizingPanel.ScrollUnit="Pixel"
                             VirtualizingPanel.VirtualizationMode="Recycling">
@@ -408,11 +409,23 @@
                                 <KeyBinding Command="{Binding CopyCommand}" Gesture="Ctrl+C" />
                                 <KeyBinding Command="{Binding PasteCommand}" Gesture="Ctrl+V" />
                             </TreeView.InputBindings>
+                            <TreeView.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <VirtualizingStackPanel />
+                                </ItemsPanelTemplate>
+                            </TreeView.ItemsPanel>
                             <TreeView.ItemContainerStyle>
                                 <!-- Type folders -->
                                 <Style BasedOn="{StaticResource {x:Type TreeViewItem}}" TargetType="TreeViewItem">
                                     <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
                                     <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                                    <Setter Property="ItemsPanel">
+                                        <Setter.Value>
+                                            <ItemsPanelTemplate>
+                                                <VirtualizingStackPanel />
+                                            </ItemsPanelTemplate>
+                                        </Setter.Value>
+                                    </Setter>
                                     <Setter Property="AutomationProperties.Name" Value="{Binding AutomationName}" />
                                     <Setter Property="ItemContainerStyle">
                                         <Setter.Value>
@@ -420,6 +433,13 @@
                                             <Style BasedOn="{StaticResource {x:Type TreeViewItem}}" TargetType="TreeViewItem">
                                                 <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
                                                 <Setter Property="AutomationProperties.Name" Value="{Binding AutomationName}" />
+                                                <Setter Property="ItemsPanel">
+                                                    <Setter.Value>
+                                                        <ItemsPanelTemplate>
+                                                            <VirtualizingStackPanel />
+                                                        </ItemsPanelTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
                                                 <EventSetter Event="MouseDoubleClick" Handler="OnFunctionItemDoubleClick" />
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding IsHiddenFromList}" Value="True">
@@ -453,10 +473,12 @@
                                     </StackPanel>
                                 </HierarchicalDataTemplate>
                                 <DataTemplate DataType="{x:Type vm:FunctionRowViewModel}">
-                                    <StackPanel MinHeight="{StaticResource Dmx.ListRowMinHeight}" Orientation="Horizontal">
+                                    <!-- DockPanel, not a horizontal StackPanel: a long name trims instead of pushing the badge and details out of view. -->
+                                    <DockPanel MinHeight="{StaticResource Dmx.ListRowMinHeight}" LastChildFill="True">
                                         <!-- Colour (scene: first fixture; effects: their colour); a hollow ring when there is none -->
                                         <Grid
                                             Width="10"
+                                            DockPanel.Dock="Left"
                                             Height="10"
                                             Margin="0,0,6,0"
                                             VerticalAlignment="Center">
@@ -468,6 +490,23 @@
                                                 ToolTip="Colour of the function (on screen only)"
                                                 Visibility="{Binding HasSwatch, Converter={StaticResource BoolToVisibility}}" />
                                         </Grid>
+                                        <TextBlock
+                                            Margin="6,0,0,0"
+                                            DockPanel.Dock="Right"
+                                            VerticalAlignment="Center"
+                                            FontSize="{StaticResource Dmx.FontSize.Small}"
+                                            Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                            Text="{Binding Details}" />
+                                        <Border
+                                            DockPanel.Dock="Right"
+                                            Style="{StaticResource BadgeBorder}"
+                                            ToolTip="This is a show's own copy: changing it never changes the original"
+                                            Visibility="{Binding HasShowBadge, Converter={StaticResource BoolToVisibility}}">
+                                            <TextBlock
+                                                FontSize="{StaticResource Dmx.FontSize.Caption}"
+                                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                Text="{Binding ShowBadge}" />
+                                        </Border>
                                         <Grid VerticalAlignment="Center">
                                             <TextBlock
                                                 VerticalAlignment="Center"
@@ -489,22 +528,7 @@
                                                 </TextBox.InputBindings>
                                             </TextBox>
                                         </Grid>
-                                        <Border
-                                            Style="{StaticResource BadgeBorder}"
-                                            ToolTip="This is a show's own copy: changing it never changes the original"
-                                            Visibility="{Binding HasShowBadge, Converter={StaticResource BoolToVisibility}}">
-                                            <TextBlock
-                                                FontSize="{StaticResource Dmx.FontSize.Caption}"
-                                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                                Text="{Binding ShowBadge}" />
-                                        </Border>
-                                        <TextBlock
-                                            Margin="6,0,0,0"
-                                            VerticalAlignment="Center"
-                                            FontSize="{StaticResource Dmx.FontSize.Small}"
-                                            Foreground="{DynamicResource TextFillColorTertiaryBrush}"
-                                            Text="{Binding Details}" />
-                                    </StackPanel>
+                                    </DockPanel>
                                 </DataTemplate>
                             </TreeView.Resources>
                         </TreeView>
@@ -566,7 +590,7 @@
                                     Style="{StaticResource ToolbarEditButton}"
                                     ToolTip="Edit this function (Enter or double-click)">
                                     <StackPanel Orientation="Horizontal">
-                                        <c:DmxIcon Kind="Edit" Size="16" />
+                                        <c:DmxIcon Kind="Edit" Size="{StaticResource Dmx.EditButtonIconSize}" />
                                         <TextBlock Style="{StaticResource ButtonLabel}" Text="Edit" />
                                     </StackPanel>
                                 </Button>

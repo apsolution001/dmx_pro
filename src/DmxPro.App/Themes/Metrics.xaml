@@ -48,6 +48,11 @@
     <sys:Double x:Key="Dmx.DenseIconSize">12</sys:Double>
     <!-- Icon slot in menus and context menus. -->
     <sys:Double x:Key="Dmx.MenuIconSize">14</sys:Double>
+    <!-- Main labelled "Edit" action (ToolbarEditButton / ToolbarEditToggleButton): taller and easy to hit. -->
+    <sys:Double x:Key="Dmx.EditButtonHeight">28</sys:Double>
+    <sys:Double x:Key="Dmx.EditButtonMinWidth">64</sys:Double>
+    <Thickness x:Key="Dmx.EditButtonPadding">10,0</Thickness>
+    <sys:Double x:Key="Dmx.EditButtonIconSize">16</sys:Double>
 
     <!-- Check boxes and radio buttons: 16 px glyph box on a 20 px row. -->
     <sys:Double x:Key="Dmx.CheckBoxSize">16</sys:Double>

@@ -98,6 +98,27 @@ public partial class FixturePickerWindow : FluentWindow
         }
     }
 
+    /// <summary>
+    /// Enter in the search box ends the search instead of pressing the default OK button: focus moves to the first
+    /// matching light, where Enter means OK.
+    /// </summary>
+    private void OnSearchBoxPreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter || Keyboard.Modifiers != ModifierKeys.None)
+        {
+            return;
+        }
+
+        e.Handled = true;
+        LightsGrid.Focus();
+        if (LightsGrid.Items.Count > 0 && LightsGrid.Columns.Count > 0)
+        {
+            var first = LightsGrid.Items[0];
+            LightsGrid.ScrollIntoView(first);
+            LightsGrid.CurrentCell = new DataGridCellInfo(first, LightsGrid.Columns[0]);
+        }
+    }
+
     /// <summary>Ctrl+F: go to the search box on the Lights tab.</summary>
     private void OnWindowPreviewKeyDown(object sender, KeyEventArgs e)
     {
