@@ -219,6 +219,9 @@ public sealed partial class ShowsViewModel : PageViewModel
         // Lights added/removed/renamed while a show-copy editor is open must show up in its Add list.
         _projects.ContentChanged += (_, _) => Editor?.RefreshPatch();
 
+        // Undo / Redo put earlier content back: changed shows and show copies are new objects now.
+        _projects.ContentRestored += (_, _) => OnContentRestored();
+
         // Raised on the UI thread (contract).
         music.StateChanged += (_, showId) => OnMusicStateChanged(showId);
 
@@ -1140,6 +1143,20 @@ public sealed partial class ShowsViewModel : PageViewModel
     }
 
     // ───────────── Rebuilding ─────────────
+
+    /// <summary>
+    /// After Undo / Redo: rebuild the timeline on the restored objects. An open show-copy editor whose function was
+    /// replaced reopens on the restored version (draft dropped, as on the Functions page); a vanished one stays closed.
+    /// </summary>
+    private void OnContentRestored()
+    {
+        var editedId = Editor?.Original.Id;
+        Reload(SelectedShow?.Id);
+        if (Editor is null && editedId is { } id && _projects.Current.FindFunction(id) is { } function)
+        {
+            Editor = FunctionEditorFactory.Create(_projects.Current, function, _settings, _clipboard);
+        }
+    }
 
     private void Reload(Guid? keepShowId)
     {

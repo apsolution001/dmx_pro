@@ -19,7 +19,7 @@ internal sealed class AppRig : IDisposable
 
     public AppRig()
     {
-        Projects = new ProjectService(new ProjectSerializer());
+        Projects = new ProjectService(new ProjectSerializer(), NullLogger<ProjectService>.Instance);
         Engine = new DmxEngine();
         Playback = new EngineConsolePlayback(Engine, NullLogger<EngineConsolePlayback>.Instance);
         Output = new OutputManager(new NoHardwareOutputFactory());
