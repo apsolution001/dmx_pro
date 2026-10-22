@@ -546,6 +546,8 @@ public sealed partial class FunctionsViewModel : PageViewModel
     {
         if (!_suppressSelection && Groups.Contains(group))
         {
+            // SelectedRow may already be null while a search hides the selection: forget that one explicitly too.
+            _selectionHiddenByFilter = null;
             SelectedRow = null;
         }
     }

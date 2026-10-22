@@ -55,6 +55,9 @@ dotnet format DmxPro.CrossPlatform.slnf --verify-no-changes
 
 CI (`.github/workflows/ci.yml`) builds and tests the **full** solution on `windows-latest` on every push — it is the
 authority for XAML/WPF compile errors. When adding a new non-WPF project, add it to `DmxPro.CrossPlatform.slnf` too.
+`tests/DmxPro.App.Tests` (view-model / App service tests, `net8.0-windows` + WPF) is Windows-only: it is in
+`DmxPro.sln` but deliberately **not** in the `.slnf`. Its tests build the services by hand (`AppRig`) and never create
+windows, an `Application` or real outputs.
 
 ## Definition of done
 
