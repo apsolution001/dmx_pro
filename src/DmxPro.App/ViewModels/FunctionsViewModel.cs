@@ -97,7 +97,7 @@ public sealed partial class FunctionsViewModel : PageViewModel
         _virtualConsole = virtualConsole;
         _functionClipboard.Changed += (_, _) => PasteCommand.NotifyCanExecuteChanged();
         _preview = preview;
-        TypeOptions = [AllTypes, .. Enum.GetValues<FunctionType>().Select(t => new FunctionTypeOption(t, FunctionRowViewModel.TypeDisplayName(t)))];
+        TypeOptions = [AllTypes, .. Enum.GetValues<FunctionType>().Where(t => t != FunctionType.Sequence).Select(t => new FunctionTypeOption(t, FunctionRowViewModel.TypeDisplayName(t)))];
 
         // A different project replaces everything; the shell has already asked about saving the project.
         _projects.ProjectChanged += (_, _) =>

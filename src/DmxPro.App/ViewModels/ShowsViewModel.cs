@@ -199,6 +199,7 @@ public sealed partial class ShowsViewModel : PageViewModel
         _music = music;
         Music = new ShowAudioViewModel(this, projects, dialogs, files, music);
         NewFunctionTypes = Enum.GetValues<FunctionType>()
+            .Where(t => t != FunctionType.Sequence)
             .Select(t => new FunctionTypeOption(t, FunctionRowViewModel.TypeDisplayName(t)))
             .ToList();
         _newFunctionType = NewFunctionTypes[0];

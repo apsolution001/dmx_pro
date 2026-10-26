@@ -80,18 +80,9 @@
                     Command="{Binding NewFunctionCommand}"
                     CommandParameter="{x:Static fn:FunctionType.Chaser}"
                     Header="Chaser"
-                    ToolTip="Plays scenes (or other functions) one after another">
+                    ToolTip="Plays steps one after another; each step can have its own colours">
                     <MenuItem.Icon>
                         <c:DmxIcon Kind="Chaser" Size="{StaticResource Dmx.SmallIconSize}" />
-                    </MenuItem.Icon>
-                </MenuItem>
-                <MenuItem
-                    Command="{Binding NewFunctionCommand}"
-                    CommandParameter="{x:Static fn:FunctionType.Sequence}"
-                    Header="Sequence"
-                    ToolTip="Steps with their own channel values, like a chaser of mini-scenes">
-                    <MenuItem.Icon>
-                        <c:DmxIcon Kind="Sequence" Size="{StaticResource Dmx.SmallIconSize}" />
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem
@@ -214,7 +205,7 @@
                         AutomationProperties.Name="New function"
                         Click="OnNewMenuButtonClick"
                         Style="{StaticResource ToolbarPrimaryButton}"
-                        ToolTip="Create a new function: scene, chaser, sequence, color cycle, fade, pulse, flash or strobe">
+                        ToolTip="Create a new function: scene, chaser, color cycle, fade, pulse, flash or strobe">
                         <StackPanel Orientation="Horizontal">
                             <c:DmxIcon Kind="Add" Size="{StaticResource Dmx.ButtonIconSize}" />
                             <TextBlock Style="{StaticResource ButtonLabel}" Text="New" />
@@ -239,18 +230,9 @@
                                     Command="{Binding NewFunctionCommand}"
                                     CommandParameter="{x:Static fn:FunctionType.Chaser}"
                                     Header="Chaser"
-                                    ToolTip="Plays scenes (or other functions) one after another">
+                                    ToolTip="Plays steps one after another; each step can have its own colours">
                                     <MenuItem.Icon>
                                         <c:DmxIcon Kind="Chaser" Size="{StaticResource Dmx.SmallIconSize}" />
-                                    </MenuItem.Icon>
-                                </MenuItem>
-                                <MenuItem
-                                    Command="{Binding NewFunctionCommand}"
-                                    CommandParameter="{x:Static fn:FunctionType.Sequence}"
-                                    Header="Sequence"
-                                    ToolTip="Steps with their own channel values, like a chaser of mini-scenes">
-                                    <MenuItem.Icon>
-                                        <c:DmxIcon Kind="Sequence" Size="{StaticResource Dmx.SmallIconSize}" />
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <MenuItem
@@ -540,7 +522,7 @@
                                 Size="{StaticResource Dmx.EmptyStateIconSize}"
                                 Style="{StaticResource EmptyStateIcon}" />
                             <TextBlock Style="{StaticResource EmptyStateTitle}" Text="No functions yet" />
-                            <TextBlock Style="{StaticResource EmptyStateText}" Text="Click New and pick a type. Start with a scene: chasers, fades and sequences build on scenes." />
+                            <TextBlock Style="{StaticResource EmptyStateText}" Text="Click New and pick a type. Start with a scene: chasers and fades build on scenes." />
                             <Button
                                 HorizontalAlignment="Center"
                                 AutomationProperties.Name="New scene"

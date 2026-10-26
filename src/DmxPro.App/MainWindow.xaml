@@ -463,14 +463,6 @@
                 </MenuItem>
                 <MenuItem
                     Command="{Binding NewFunctionCommand}"
-                    CommandParameter="{x:Static fn:FunctionType.Sequence}"
-                    Header="New se_quence">
-                    <MenuItem.Icon>
-                        <c:DmxIcon Kind="Sequence" Size="{StaticResource Dmx.MenuIconSize}" />
-                    </MenuItem.Icon>
-                </MenuItem>
-                <MenuItem
-                    Command="{Binding NewFunctionCommand}"
                     CommandParameter="{x:Static fn:FunctionType.ColorCycle}"
                     Header="New color c_ycle">
                     <MenuItem.Icon>

@@ -188,6 +188,15 @@ public sealed class FunctionsViewModelSearchTests : IDisposable
     }
 
     [Fact]
+    public void NewFunctionTypes_DoNotContainSequence()
+    {
+        var vm = CreateWithLibrary();
+
+        Assert.DoesNotContain(vm.TypeOptions, o => o.Type == FunctionType.Sequence);
+        Assert.Contains(vm.TypeOptions, o => o.Type == FunctionType.Chaser);
+    }
+
+    [Fact]
     public void TypeFilter_HidesSelectedFunction_SelectionComesBackWithAllTypes()
     {
         var vm = CreateWithLibrary();
