@@ -68,6 +68,8 @@ public partial class App : Application
             services.AddSingleton<IStageWindowService>(sp => new StageWindowService(
                 sp.GetRequiredService<StagePageViewModel>(),
                 () => sp.GetRequiredService<ShellViewModel>()));
+            services.AddSingleton(TimeProvider.System);
+            services.AddSingleton<InfoBarState>();
             services.AddSingleton<ShellViewModel>();
             services.AddSingleton<MainWindow>();
         })

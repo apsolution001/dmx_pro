@@ -24,24 +24,16 @@ public sealed partial class ShellViewModel : ObservableObject
     private readonly SettingsViewModel _settings;
     private readonly AppSettingsService _appSettings;
     private readonly IStageWindowService _stageWindow;
+    private readonly InfoBarState _infoBar;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CurrentPage))]
     private NavigationItem _selectedItem;
 
-    /// <summary>Message of the shell info bar; null hides it. Set through <see cref="ShowInfo"/>.</summary>
-    // Only ShowInfo (plus its own auto-hide / close handling) writes InfoMessage and InfoSeverity: a direct write would
-    // leave a pending success auto-hide timer running, which could then wipe a later warning (safety rule 10).
-    [ObservableProperty]
-    private string? _infoMessage;
-
     /// <summary>Full screen (F11) covers the whole monitor, taskbar included, without a title bar; the window applies it.</summary>
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ExitFullScreenCommand))]
     private bool _isFullScreen;
-
-    [ObservableProperty]
-    private InfoBarSeverity _infoSeverity = InfoBarSeverity.Informational;
 
     public ShellViewModel(
         ProjectService projects,
@@ -60,8 +52,11 @@ public sealed partial class ShellViewModel : ObservableObject
         SettingsViewModel settings,
         AppSettingsService appSettings,
         IStageWindowService stageWindow,
-        ILiveModeService liveMode)
+        ILiveModeService liveMode,
+        InfoBarState infoBar)
     {
+        _infoBar = infoBar;
+        _infoBar.PropertyChanged += OnInfoBarPropertyChanged;
         InitializeLiveMode(liveMode);
         _stageWindow = stageWindow;
         _inputOutput = inputOutput;
@@ -376,77 +371,47 @@ public sealed partial class ShellViewModel : ObservableObject
             (issues.Count > 5 ? " …" : string.Empty));
     }
 
-    // ───────────────────────────── Live stage window + info bar auto-hide ─────────────────────────────
+    // ───────────────────────────── Live stage window + info bar ─────────────────────────────
 
-    /// <summary>How long a success message (Saved / Opened …) stays in the info bar.</summary>
-    public static readonly TimeSpan SuccessMessageDuration = TimeSpan.FromSeconds(3);
+    /// <summary>Message of the shell info bar; null hides it. Set through <see cref="ShowInfo"/>.</summary>
+    public string? InfoMessage => _infoBar.Message;
 
-    /// <summary>Pending auto-hide of the current success message; a newer message or closing the bar cancels it.</summary>
-    private CancellationTokenSource? _infoAutoHide;
+    public InfoBarSeverity InfoSeverity => _infoBar.Severity;
 
     /// <summary>
     /// Whether the info bar is open. Bound two-way to the bar: its close button sets this to false, which clears the
     /// message, so the same message shown again (a second save) opens the bar again.
     /// </summary>
-    [ObservableProperty]
-    private bool _isInfoOpen;
+    public bool IsInfoOpen
+    {
+        get => _infoBar.IsOpen;
+        set => _infoBar.IsOpen = value;
+    }
 
     /// <summary>Opens the live stage in its own window, or brings the open one to the front (Ctrl+Shift+8).</summary>
     [RelayCommand]
     private void OpenStageWindow() => _stageWindow.Show();
 
     /// <summary>
-    /// Shows a message in the info bar (null hides it). The bar always reopens, also for a message identical to the
-    /// current one. Success messages hide themselves after <see cref="SuccessMessageDuration"/> unless
-    /// <paramref name="autoHide"/> is false; warnings and errors stay until the user closes them (safety rule 10).
+    /// Shows a message in the info bar (null hides it); the rules (success auto-hide, warnings and errors stay until
+    /// closed, identical repeats reopen the bar) live in <see cref="InfoBarState.Show"/>.
     /// </summary>
-    private void ShowInfo(InfoBarSeverity severity, string? message, bool autoHide = true)
+    private void ShowInfo(InfoBarSeverity severity, string? message, bool autoHide = true) =>
+        _infoBar.Show(severity, message, autoHide);
+
+    private void OnInfoBarPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        CancelInfoAutoHide();
-
-        // An identical message would not raise a change: clear first so the bar shows (and restarts its timer) again.
-        if (message is not null && message == InfoMessage)
+        switch (e.PropertyName)
         {
-            InfoMessage = null;
-        }
-
-        InfoSeverity = severity;
-        InfoMessage = message;
-        if (message is not null && autoHide && severity == InfoBarSeverity.Success)
-        {
-            _infoAutoHide = new CancellationTokenSource();
-            _ = HideInfoLaterAsync(_infoAutoHide.Token);
-        }
-    }
-
-    private async Task HideInfoLaterAsync(CancellationToken token)
-    {
-        // Resumes on the UI thread (captured context); a cancelled delay completes quietly instead of throwing.
-        await Task.Delay(SuccessMessageDuration, token)
-            .ConfigureAwait(ConfigureAwaitOptions.ContinueOnCapturedContext | ConfigureAwaitOptions.SuppressThrowing);
-        if (!token.IsCancellationRequested)
-        {
-            CancelInfoAutoHide();
-            InfoMessage = null;
-        }
-    }
-
-    private void CancelInfoAutoHide()
-    {
-        _infoAutoHide?.Cancel();
-        _infoAutoHide?.Dispose();
-        _infoAutoHide = null;
-    }
-
-    partial void OnInfoMessageChanged(string? value) => IsInfoOpen = value is not null;
-
-    partial void OnIsInfoOpenChanged(bool value)
-    {
-        // Closed with the bar's close button: forget the message (and its timer).
-        if (!value && InfoMessage is not null)
-        {
-            CancelInfoAutoHide();
-            InfoMessage = null;
+            case nameof(InfoBarState.Message):
+                OnPropertyChanged(nameof(InfoMessage));
+                break;
+            case nameof(InfoBarState.Severity):
+                OnPropertyChanged(nameof(InfoSeverity));
+                break;
+            case nameof(InfoBarState.IsOpen):
+                OnPropertyChanged(nameof(IsInfoOpen));
+                break;
         }
     }
 }
