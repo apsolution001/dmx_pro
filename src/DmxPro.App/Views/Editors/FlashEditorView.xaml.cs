@@ -8,5 +8,6 @@ public partial class FlashEditorView : UserControl
     public FlashEditorView()
     {
         InitializeComponent();
+        EffectEditorPicker.Attach(this);
     }
 }
