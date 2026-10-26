@@ -37,7 +37,7 @@
 18. Keyboard shortcuts on console widgets: only for the **active page**, or for all pages? (Current assumption: active page only.)
 
 ## Functions & shows (added 2026-10-18)
-19. A chaser or fade placed in a show references scenes from the library: should placing it deep-copy those scenes into the show (so the show is self-contained), and what happens when a referenced scene is deleted (block, warn, or break the step)? (Today: references are validated, `CHASER_MISSING_FUNCTION` / `FADE_MISSING_SCENE`.)
+19. ~~Chaser placed in a show~~ answered 2026-10-27 (decisions log): placing a chaser deep-copies the chaser and its owned step functions. **Still open:** a **fade** placed in a show copies only the fade; its From / To keep pointing at library scenes (validated by `FADE_MISSING_SCENE`). Should a fade also copy its scenes, and what happens when a referenced scene is deleted (block, warn, or break)?
 20. Strobe hardware rate: should profiles carry a value → Hz calibration for strobe channels so the max strobe rate can also limit hardware strobe? (Today only software strobe is rate-limited.)
 21. Should fast pulses and fast chasers count toward the strobe limit (a 10 Hz pulse is a strobe in effect)? (Today only Strobe functions and strobe channels do.)
 22. Should effects (pulse, strobe, colour cycle) be able to target a fixture **group** directly, or only lists of lights? (Today: lights.)

@@ -6,7 +6,7 @@ A modern, easy-to-use **Windows DMX lighting controller** for RGB/RGBW fixtures 
 ## Planned features
 
 - **Fixtures** — profile-driven patching, address calculator, overlap warnings, groups
-- **Functions** — scenes, chasers, sequences, color cycles, fades, pulses, flash, strobe; copy/paste
+- **Functions** — scenes, chasers (steps can be built right in the chaser), color cycles, fades, pulses, flash, strobe; copy/paste
 - **Scene Creator** — color picker, RGBW handling, fades, live stage preview
 - **Virtual Console** — pages of buttons/sliders, drag & drop layout, operator lock
 - **Music Show** — upload a song, automatic beat/energy analysis, auto-generated editable light show

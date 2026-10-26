@@ -79,7 +79,7 @@ Details (`src/DmxPro.Engine/DmxEngine.cs`, `Runtime/`):
   **elapsed time** (not accumulated deltas), so a seek shows the correct step/fade level at once.
   `TryGetShowPlayback` returns a `ShowPlaybackInfo` (position, `IsPaused`, `IsMuted`) from the latest snapshot without
   copying universes (cheap for a 30 Hz UI timer).
-- **Function programs:** `FunctionCompiler` turns each Core function (scene, chaser, sequence, color cycle, fade, pulse,
+- **Function programs:** `FunctionCompiler` turns each Core function (scene, chaser, color cycle, fade, pulse,
   flash, strobe) into a program (`SceneProgram`, `StepProgram`, `ColorCycleProgram`, `FadeProgram`, `PulseProgram`,
   `FlashProgram`, `StrobeProgram`) when a project is loaded or refreshed. Effects write color via `EffectFixture`
   (profile-resolved; the Dimmer channel carries the level when the fixture has one). Every program time (fades, holds,
@@ -121,10 +121,24 @@ Details (`src/DmxPro.Engine/DmxEngine.cs`, `Runtime/`):
   value → Hz calibration).
 - **Safe frame:** `CreateSafeFrame(universe, SafeFrameMode)` — profile defaults (strobe at its safe value), or
   blackout (intensity 0). Used on close.
-- **Core functions** (`src/DmxPro.Core/Functions`): `LightFunction` is polymorphic on `"type"` (Scene, Chaser, Sequence,
+- **Core functions** (`src/DmxPro.Core/Functions`): `LightFunction` is polymorphic on `"type"` (Scene, Chaser, Sequence (legacy, load-only, see below),
   ColorCycle, Fade, Pulse, Flash, Strobe); `FunctionFactory` creates them, `FunctionReferences` validates references
   (`CHASER_MISSING_FUNCTION`, `FADE_MISSING_SCENE`, `FUNCTION_MISSING_FIXTURE`, `SEQUENCE_UNKNOWN_CHANNEL`,
   `FUNCTION_REFERENCE_LOOP`). `RgbColor` is saved as `"#RRGGBB"`.
+
+- **Function ownership (design 2026-10-27, being built):** `LightFunction.OwnerShowId` (show copies) and
+  `OwnerFunctionId` (chaser steps) mark a function as owned; a function has **at most one owner**. Owned functions are
+  hidden from every list (`FunctionListItems`, Virtual Console targets, Shows library, pickers, fade scene lists). A
+  chaser step is an own look (owned hidden `SceneFunction`) or a deep copy of a library function; the engine plays steps
+  as before. Lifecycle (Core, tested): delete chaser = delete its owned functions; remove step = delete its owned
+  function; duplicate / clipboard copy-paste / `PlaceFunctionInShow` = deep copy of the chaser and its owned functions
+  (re-pointed, nothing shared); deleting a show cleans up its chaser copies' owned functions. The chaser editor keeps new
+  step functions in its draft until Save, then commits chaser and owned functions as one undo step. Old chasers whose
+  steps point at library functions keep working; the first edit of such a step makes it an owned copy.
+- **Sequence → Chaser migration:** on load each `SequenceFunction` becomes a `ChaserFunction` with the same id, name, run
+  order, direction and timing; each step becomes an own-look step (owned hidden scene limited to the sequence's lights).
+  References (VC widgets, show items, chaser steps, fades) keep working; output is frame-identical (engine test). Files
+  are saved as chasers.
 
 ## 5. Project file
 
@@ -132,7 +146,7 @@ Details (`src/DmxPro.Engine/DmxEngine.cs`, `Runtime/`):
 - Contains: profiles used (embedded copies, so projects are portable), fixtures, groups, scenes, functions,
   shows (timelines), console pages/widgets. Output configs and settings are currently **app-level**
   (`settings.json`, see §6), not in the project; they never contain an enabled flag.
-- Stable GUID ids for all entities; references by id.
+- Stable GUID ids for all entities; references by id. Additive since 2026-10-27: `ownerFunctionId` on a function (absent = not owned); older files load unchanged.
 - Migrations: `IProjectMigrator` per schema version.
 - Autosave to `%LOCALAPPDATA%/DmxPro/autosave/` every 2 min + on crash; recovery prompt on start.
 

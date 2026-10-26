@@ -110,7 +110,7 @@ focused list decides what they act on); the others work anywhere in the window. 
 | | Auto-patch selected | | Re-address the selected fixtures one after another; disabled without a selection | ✅ |
 | | Import fixture profile (.qxf / .json)… | | Into the fixture library | ✅ |
 | | New fixture profile… | | Channel layout editor for a new layout (as *New layout…* in Add fixture) | ✅ |
-| **Functions** | New scene / chaser / sequence / color cycle / fade / pulse / flash / strobe | | Opens the Functions page with the new function in its editor | ✅ |
+| **Functions** | New scene / chaser / color cycle / fade / pulse / flash / strobe | | Opens the Functions page with the new function in its editor | ✅ |
 | | Create starter scenes | | Blackout, Red, Green, Blue, White, Cyan, Magenta, Yellow | Coming soon |
 | | Stop all functions | Shift+Esc | Same as Output ▸ Release all (also toolbar *Stop all*) | ✅ |
 | **Show** | New show | | Opens the Shows page with a new show | ✅ |
@@ -187,10 +187,10 @@ table (Ch, Name, Type, Default, Ranges). The profile editor was replaced by the 
 │                               │ │ Speed [1.0×]   Targets: Front, Stage L PAR                        │
 └───────────────────────────────┘ └──────────────────────────────────────────────────────────────────┘
 ```
-Types: Scene, Chaser, Sequence, Color cycle, Fade, Pulse, Flash, Strobe. Copy/paste and duplicate everywhere.
+Types: Scene, Chaser, Color cycle, Fade, Pulse, Flash, Strobe. Copy/paste and duplicate everywhere.
 
 > **Status 2026-10-18:** the engine and the Core model support all eight types; the Functions page has the scene editor
-> (§3.4). Every other type has its own editor in the same panel (`Views/Editors/`, `ViewModels/Editors/`): chaser and sequence step grids, colour cycle, fade, pulse, flash and strobe forms. Since 2026-10-22 the open editor previews its draft on the lights automatically (below).
+> (§3.4). Every other type has its own editor in the same panel (`Views/Editors/`, `ViewModels/Editors/`): the chaser step grid, colour cycle, fade, pulse, flash and strobe forms. Since 2026-10-22 the open editor previews its draft on the lights automatically (below).
 
 **Chaser editor (rebuilt 2026-10-27, owner: "simple and obvious"):** one page, no tabs (only a handful of settings).
 `Views/Editors/ChaserEditorView.xaml`, `ChaserEditorViewModel`, list logic in `ChaserStepListEditing` (unit-tested).
@@ -254,24 +254,27 @@ docked panels with splitters:
 - **On-screen preview:** one round as a strip (hold, then blend) and the colour of each light (up to 24) at the start.
   The real lights follow the draft as for every editor. No playback options: a colour cycle loops until stopped.
 
-**Sequence editor (2026-10-27):** a chaser of mini-scenes, laid out like the scene editor with three tabs.
-- **Lights** — the lights every step uses (Fixtures panel + Choose lights dialog), with a "Next: Steps" button.
-- **Steps** — left: the step list (#, a colour swatch per light — up to 16, then "+N", tooltip names the light and its
-  R/G/B —, optional name, Fade in / Hold / Fade out cells; Ctrl/Shift multi-select). Toolbar: **Add step** (a copy of the
-  selected step right after it; blank when there are no steps), **Add blank** (every channel at its default, timing of the
-  selected step), Duplicate (selected steps, Ctrl+D), Remove (Del, with an **Undo** bar instead of a confirmation), Move
-  up / down (Ctrl+Up / Ctrl+Down, also Alt+); the step count and cycle length sit on the right. Below the list: Fade in /
-  Hold / Fade out boxes and **Apply to selected**. Right: the selected step's values in two views — **Colours** (simple:
-  pick lights on the left with All / None, the colour-editor presets plus **Off**, and Intensity / Red / Green / Blue /
-  White / Amber / UV sliders, only for types the selected lights have; a preset raises a dimmer that is at 0 to full) and
-  **All channels** (the scene editor's Channels view: every channel 0–255, Set on selected, Copy / Paste). The light
-  selection is shared by both views and kept when another step is selected. Header switch **Lights show: This step /
-  Whole sequence**: by default the live preview holds the selected step (no fades); Whole sequence runs it with its timing.
-- **Playback** — After the last step: **Loop** / **Play once** / **Back and forth**; Direction: **Forward** / **Backward**
-  (radio buttons with plain descriptions); **Same time for all steps** (Fade in / Hold / Fade out + Apply to all steps);
-  cycle length.
-- Empty states: no lights → "Choose lights first" with a Choose lights… button; lights but no steps → "No steps yet" with
-  an Add step button; no step selected → "Select a step on the left to set its colours."
+**Sequence editor: merged into the Chaser editor (decided 2026-10-27, being built).** There is no Sequence type or editor any
+more; `New ▸ Sequence` is gone and old sequences open as chasers. The step-look panel below reuses the former Sequence
+editor's Colours / All channels views. Design: `docs/superpowers/specs/2026-10-27-chaser-steps-design.md`.
+
+**Chaser steps (design 2026-10-27, being built; replaces the "Add steps…" picker above):** a step is either an **own look**
+(set right in the chaser, no function in the list) or a **function step** (a copy of a colour cycle / fade / pulse / flash /
+strobe / chaser). Both are owned by the chaser, hidden from the Functions list, and can be mixed and reordered.
+- **Toolbar:** **Add step** (new own look; copies the selected step's look, or starts blank with the lights of the nearest
+  own-look step above when a function step is selected), **Add blank step**, **Add from function…** (the searchable picker;
+  a scene becomes an own-look step, other types a function step; always a copy, the original is never changed),
+  **Save as function…** (makes a library copy of the selected step; the step keeps its own). Duplicate / Remove / Move stay
+  as above.
+- **Step-look panel** (right, own-look step selected): Choose lights for this step (defaults to the previous step's
+  lights), colour presets / **Off** / level sliders, and the **All channels** view; the live preview holds the selected
+  step, with the header switch **This step / Whole chaser**.
+- **Function step selected:** the panel shows its kind, name and a short summary, plus **Edit step**. If the chaser has
+  unsaved changes the usual Save / Don't save / Cancel prompt comes first; then the copy's normal editor opens in the
+  same area with a **"← Back to chaser 'Name'"** link.
+- **Linked mark:** a step of an old chaser that still points at a library function shows a small "linked" mark. The first
+  edit of it makes it the chaser's own copy and shows a note: "This step is now the chaser's own copy; the original
+  'Red wash' is unchanged." No "Make independent" button.
 
 **Select ≠ edit ≠ play** (decided 2026-10-17, preview changed 2026-10-22 — selecting never changes the lights; the open
 editor shows its draft on the lights automatically while not live):
