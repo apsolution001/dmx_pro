@@ -228,6 +228,32 @@ Types: Scene, Chaser, Sequence, Color cycle, Fade, Pulse, Flash, Strobe. Copy/pa
   0). *Apply to selected (n)* and *Apply to all steps* copy them onto existing steps ("same time for all steps").
 - Empty state: "No steps yet — Add scenes to play them one after another." with an **Add steps…** button.
 
+**Colour cycle editor** (reworked 2026-10-27, owner: "proper, like the Scene editor", simple for non-experts). Three
+docked panels with splitters:
+
+```
+┌ Fixtures ─────────┐║┌ Colours · 3 colours [+][⧉][−][↑][↓] ┐║┌ Change colour 2 · Green ─────────────────┐
+│ 1 PAR 1 U1 · 1–4  │║│ Fill with: [Rainbow][Warm][Cool]     │║│ presets · swatch · #RRGGBB · R/G/B        │
+│ 2 PAR 2 U1 · 5–8  │║│ 1 [██] Red      #FF0000              │║│ Timing: Each colour stays [1] s           │
+│                   │║│ 2 [██] Green    #00FF00              │║│         then blends over [1] s            │
+│                   │║│ 3 [██] Blue     #0000FF              │║│ One round: 6 s (3 colours × 2 s) …       │
+│                   │║│ Add a colour: (●Red)(●Green)…        │║│ Spread across lights   Same ──●── Rainbow │
+│                   │║│ [+ Custom colour…]                   │║│ Preview: [███▒▒███▒▒███▒▒]  ●1 ●2 ●3     │
+└───────────────────┘║└──────────────────────────────────────┘║│ [ ] Use the lights' white channel         │
+```
+
+- **Colours** in play order, each with swatch, plain name ("Warm white", "Orange", "Dark blue") and hex — never colour
+  alone. One click on a scene-editor preset adds it after the selected colour; **Custom colour…** adds one to mix on the
+  right. Insert = add, Ctrl+D = duplicate, Delete = remove, Ctrl+Up/Down (or Alt+Up/Down) = move.
+- **Fill with Rainbow / Warm / Cool** replaces the list; an inline "Replaced 3 colours with Rainbow. [Undo]" follows
+  (forgotten at the next colour edit).
+- **Timing:** one hold and one fade for all colours (the model has no per-colour times); the round length is shown.
+- **Spread across lights** 0–100 % (slider, steps of 5): 0 % = all lights the same colour, 100 % = one round spread
+  evenly across all lights (a rainbow wave in light-list order). Saved as `FixtureOffsetSeconds` = % × round ÷ lights;
+  the percentage is kept when colours, times or lights change. Needs 2+ lights. An older, larger offset is kept as is.
+- **On-screen preview:** one round as a strip (hold, then blend) and the colour of each light (up to 24) at the start.
+  The real lights follow the draft as for every editor. No playback options: a colour cycle loops until stopped.
+
 **Select ≠ edit ≠ play** (decided 2026-10-17, preview changed 2026-10-22 — selecting never changes the lights; the open
 editor shows its draft on the lights automatically while not live):
 
