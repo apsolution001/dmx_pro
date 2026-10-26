@@ -12,6 +12,6 @@ public sealed class FolderPickerService : IFolderPickerService
             dialog.InitialDirectory = initialDirectory;
         }
 
-        return dialog.ShowDialog() == true ? dialog.FolderName : null;
+        return dialog.ShowDialog(DialogOwner.ActiveOwner()) == true ? dialog.FolderName : null;
     }
 }

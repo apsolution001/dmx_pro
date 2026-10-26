@@ -12,7 +12,7 @@ public sealed class FileDialogService : IFileDialogService
     public string? ShowOpenProject(string initialDirectory)
     {
         var dialog = new OpenFileDialog { Filter = ProjectFilter, InitialDirectory = initialDirectory };
-        return dialog.ShowDialog() == true ? dialog.FileName : null;
+        return dialog.ShowDialog(DialogOwner.ActiveOwner()) == true ? dialog.FileName : null;
     }
 
     public string? ShowSaveProject(string initialDirectory, string suggestedName)
@@ -25,7 +25,7 @@ public sealed class FileDialogService : IFileDialogService
             FileName = suggestedName + Project.FileExtension,
             AddExtension = true,
         };
-        return dialog.ShowDialog() == true ? dialog.FileName : null;
+        return dialog.ShowDialog(DialogOwner.ActiveOwner()) == true ? dialog.FileName : null;
     }
 
     public IReadOnlyList<string> ShowOpenProfiles()
@@ -37,7 +37,7 @@ public sealed class FileDialogService : IFileDialogService
                      $"DMX Pro profile (*{ProfileSerializer.FileExtension})|*.json",
             Multiselect = true,
         };
-        return dialog.ShowDialog() == true ? dialog.FileNames : [];
+        return dialog.ShowDialog(DialogOwner.ActiveOwner()) == true ? dialog.FileNames : [];
     }
 
     public string? ShowOpenAudio(string? initialDirectory)
@@ -48,6 +48,6 @@ public sealed class FileDialogService : IFileDialogService
             dialog.InitialDirectory = initialDirectory;
         }
 
-        return dialog.ShowDialog() == true ? dialog.FileName : null;
+        return dialog.ShowDialog(DialogOwner.ActiveOwner()) == true ? dialog.FileName : null;
     }
 }

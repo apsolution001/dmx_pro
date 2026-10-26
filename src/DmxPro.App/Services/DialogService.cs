@@ -14,56 +14,51 @@ public sealed class DialogService : IDialogService
 
     public async Task ShowErrorAsync(string title, string message)
     {
-        var box = new MessageBox { Title = title, Content = message, CloseButtonText = "OK", MinWidth = MessageBoxMinWidth };
+        var box = NewMessageBox(title, message);
+        box.CloseButtonText = "OK";
         await box.ShowDialogAsync();
     }
 
     public async Task ShowInfoAsync(string title, string message)
     {
-        var box = new MessageBox { Title = title, Content = message, CloseButtonText = "Close", MinWidth = MessageBoxMinWidth };
+        var box = NewMessageBox(title, message);
+        box.CloseButtonText = "Close";
         await box.ShowDialogAsync();
     }
 
     public async Task<bool> ConfirmAsync(string title, string message, string confirmText)
     {
-        var box = new MessageBox { Title = title, Content = message, PrimaryButtonText = confirmText, CloseButtonText = "Cancel", MinWidth = MessageBoxMinWidth };
+        var box = NewMessageBox(title, message);
+        box.PrimaryButtonText = confirmText;
+        box.CloseButtonText = "Cancel";
         return await box.ShowDialogAsync() == MessageBoxResult.Primary;
     }
 
     public bool ShowAddFixture(AddFixtureViewModel viewModel)
     {
-        var window = new AddFixtureWindow(viewModel) { Owner = System.Windows.Application.Current.MainWindow };
+        var window = new AddFixtureWindow(viewModel) { Owner = DialogOwner.ActiveOwner() };
         return window.ShowDialog() == true;
     }
 
     public bool ShowChannelLayout(ChannelLayoutViewModel viewModel)
     {
         // Opened from the Fixtures page or from the Add Fixture dialog: own it by whichever window is active.
-        var app = System.Windows.Application.Current;
-        var owner = app.Windows.OfType<System.Windows.Window>().FirstOrDefault(w => w.IsActive) ?? app.MainWindow;
-        var window = new ChannelLayoutWindow(viewModel) { Owner = owner };
+        var window = new ChannelLayoutWindow(viewModel) { Owner = DialogOwner.ActiveOwner() };
         return window.ShowDialog() == true;
     }
 
     public bool ShowSaveFunction(SaveFunctionDialogViewModel viewModel)
     {
-        var app = System.Windows.Application.Current;
-        var owner = app.Windows.OfType<System.Windows.Window>().FirstOrDefault(w => w.IsActive) ?? app.MainWindow;
-        var window = new SaveFunctionDialog(viewModel) { Owner = owner };
+        var window = new SaveFunctionDialog(viewModel) { Owner = DialogOwner.ActiveOwner() };
         return window.ShowDialog() == true;
     }
 
     public async Task<SaveChangesChoice> AskSaveChangesAsync(string projectName)
     {
-        var box = new MessageBox
-        {
-            Title = "Unsaved changes",
-            Content = $"Save changes to \"{projectName}\"?",
-            PrimaryButtonText = "Save",
-            SecondaryButtonText = "Don't save",
-            CloseButtonText = "Cancel",
-            MinWidth = MessageBoxMinWidth,
-        };
+        var box = NewMessageBox("Unsaved changes", $"Save changes to \"{projectName}\"?");
+        box.PrimaryButtonText = "Save";
+        box.SecondaryButtonText = "Don't save";
+        box.CloseButtonText = "Cancel";
 
         return await box.ShowDialogAsync() switch
         {
@@ -72,4 +67,14 @@ public sealed class DialogService : IDialogService
             _ => SaveChangesChoice.Cancel,
         };
     }
+
+    // Owned by the active window (the Stage window may be on another monitor) and centred on it.
+    private static MessageBox NewMessageBox(string title, string message) => new()
+    {
+        Title = title,
+        Content = message,
+        MinWidth = MessageBoxMinWidth,
+        Owner = DialogOwner.ActiveOwner(),
+        WindowStartupLocation = System.Windows.WindowStartupLocation.CenterOwner,
+    };
 }
