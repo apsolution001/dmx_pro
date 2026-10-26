@@ -192,6 +192,42 @@ Types: Scene, Chaser, Sequence, Color cycle, Fade, Pulse, Flash, Strobe. Copy/pa
 > **Status 2026-10-18:** the engine and the Core model support all eight types; the Functions page has the scene editor
 > (§3.4). Every other type has its own editor in the same panel (`Views/Editors/`, `ViewModels/Editors/`): chaser and sequence step grids, colour cycle, fade, pulse, flash and strobe forms. Since 2026-10-22 the open editor previews its draft on the lights automatically (below).
 
+**Chaser editor (rebuilt 2026-10-27, owner: "simple and obvious"):** one page, no tabs (only a handful of settings).
+`Views/Editors/ChaserEditorView.xaml`, `ChaserEditorViewModel`, list logic in `ChaserStepListEditing` (unit-tested).
+
+```
+┌──────────────────────────────────────────────────────────────┐║┌─────────────────────────────┐
+│ [+ Add steps… ▾] │ [⧉][−][↑][↓]                2 of 4 selected│║│ Playback                    │
+│ Plays [1][2][3][4]  then starts again   (step colours, in play order)║│ Run order (•) Loop          │
+│ ⠿ #  ● ◐ Scene / function      Hold (s)  Fade in (s)  Fade out (s)║│           ( ) Play once     │
+│ ⠿ 1  ● ◐ Red                   [1]       [0]          [0]      │║│           ( ) Back and forth│
+│ ⠿ 2  ● ◐ Blue                  [1]       [0.5]        [0]      │║│ Direction (•) Forward ( ) Backward
+│                                                              │║│ ◷ Cycle: 4 s                │
+│                                                              │║│ Step timing                 │
+│                                                              │║│ Hold / Fade in / Fade out   │
+│                                                              │║│ [Apply to selected (2)]     │
+│                                                              │║│ [Apply to all steps]        │
+└──────────────────────────────────────────────────────────────┘║└─────────────────────────────┘
+```
+- **Steps list:** number, colour swatch of the step's function (on screen only; dashed ring = no colour), type icon,
+  name, editable Hold / Fade in / Fade out seconds (Enter or Tab applies, invalid text reverts). Several steps can be
+  selected (Ctrl / Shift + click, Ctrl+A). Remove, duplicate (copies go after the last selected step) and move up / down
+  act on the whole selection; dragging the ⠿ grip moves the selected steps (accent line shows where they land). Keys:
+  Ins add, Del remove, Ctrl+D duplicate, Ctrl+Up / Ctrl+Down (also Alt+arrows) move. A deleted function shows as
+  "(missing function)" with a warning icon and plays nothing. Removing is not confirmed: the editor is a draft, Revert
+  brings steps back until Save.
+- **Add steps…** (also the empty-state button, Ins): searchable picker with swatches; Enter in the search box adds the
+  first match, Enter / double-click in the list adds the picked ones (Ctrl / Shift picks several). New steps go after
+  the last selected step (or at the end), get the "Step timing" times and become the selection; the picker closes.
+  The chaser itself and functions that would make it play itself are not offered.
+- **Colour strip ("Plays"):** one cycle in play order (direction and back-and-forth applied), numbered blocks, selected
+  steps outlined; the text after it says "then starts again" / "then stops".
+- **Playback:** Run order *Loop* / *Play once* / *Back and forth* and Direction *Forward* / *Backward* as radio buttons
+  with one-line tooltips; the cycle length below ("Cycle: 8 s", "Runs once: 7 s", "There and back: 10 s").
+- **Step timing:** Hold, Fade in, Fade out (seconds) that new steps get (starts with the first step's times, else 1 / 0 /
+  0). *Apply to selected (n)* and *Apply to all steps* copy them onto existing steps ("same time for all steps").
+- Empty state: "No steps yet — Add scenes to play them one after another." with an **Add steps…** button.
+
 **Select ≠ edit ≠ play** (decided 2026-10-17, preview changed 2026-10-22 — selecting never changes the lights; the open
 editor shows its draft on the lights automatically while not live):
 
