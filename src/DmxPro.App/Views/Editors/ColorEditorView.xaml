@@ -6,20 +6,21 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:ed="clr-namespace:DmxPro.App.ViewModels.Editors"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:vm="clr-namespace:DmxPro.App.ViewModels"
     d:DataContext="{d:DesignInstance Type=ed:ColorEditorViewModel}"
     d:DesignHeight="140"
     d:DesignWidth="420"
     mc:Ignorable="d">
     <!--
-        An effect colour (DataContext: ColorEditorViewModel), dense: the scene editor's colour presets with the
-        swatch and #RRGGBB box on the same line, then one compact R / G / B slider row each with a 0-255 box. The engine
-        sends the colour through each fixture's profile (white / amber / UV handled there).
+        An effect colour (DataContext: ColorEditorViewModel), dense: the scene editor's colour presets (the chosen one
+        gets an accent ring and its name is shown next to the swatch, so it is not told by colour alone), then the
+        "Custom" part (Red / Green / Blue sliders with 0-255 boxes and a #RRGGBB box), which the Custom toggle folds
+        away. The custom part opens by itself for a colour that is not a preset. The engine sends the colour through
+        each fixture's profile (white / amber / UV handled there).
 
-        ■■■■■■■■■              [██] [#FF5000]
+        (●)(●)(●)(●)(●)(●)(●)(●)(●)   [██] Red      [Custom ▾]
         ● R ───────●─── [255]
         ● G ──●──────── [ 80]
-        ● B ●────────── [  0]
+        ● B ●────────── [  0]      Hex [#FF5000]
     -->
     <UserControl.Resources>
         <Style
@@ -48,6 +49,17 @@
             <Setter Property="FontSize" Value="{StaticResource Dmx.FontSize.Small}" />
             <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
         </Style>
+        <Style
+            x:Key="CustomToggle"
+            BasedOn="{StaticResource ToolbarToggleButton}"
+            TargetType="ToggleButton">
+            <Setter Property="Width" Value="NaN" />
+            <Setter Property="Height" Value="{StaticResource Dmx.ControlHeight}" />
+            <Setter Property="Padding" Value="8,0" />
+            <Setter Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
         <Style x:Key="ChannelDot" TargetType="Ellipse">
             <Setter Property="Width" Value="8" />
             <Setter Property="Height" Value="8" />
@@ -59,7 +71,7 @@
 
     <StackPanel>
         <DockPanel Margin="0,0,0,2">
-            <!-- Swatch and hex box on the preset line. -->
+            <!-- Swatch, colour name and the Custom toggle on the preset line. -->
             <StackPanel
                 Margin="8,0,0,0"
                 VerticalAlignment="Top"
@@ -73,55 +85,75 @@
                     BorderThickness="1"
                     CornerRadius="{StaticResource Dmx.CornerRadius}"
                     ToolTip="The colour (on screen only)" />
-                <c:CommitTextBox
-                    Width="76"
-                    MinHeight="{StaticResource Dmx.ControlHeight}"
-                    Height="{StaticResource Dmx.ControlHeight}"
-                    Margin="4,0,0,0"
-                    Padding="{StaticResource Dmx.TextControlPadding}"
+                <TextBlock
+                    MinWidth="84"
+                    Margin="6,0,6,0"
                     VerticalAlignment="Center"
-                    AutomationProperties.Name="Colour as hex"
-                    MaxLength="7"
-                    Text="{Binding Hex}"
-                    ToolTip="Colour as #RRGGBB; press Enter to apply" />
+                    AutomationProperties.LiveSetting="Polite"
+                    AutomationProperties.Name="{Binding ColorName, StringFormat=Chosen colour: {0}}"
+                    Text="{Binding ColorName}" />
+                <ToggleButton
+                    AutomationProperties.Name="Custom colour: show the red, green and blue sliders"
+                    IsChecked="{Binding IsCustomOpen, Mode=TwoWay}"
+                    Style="{StaticResource CustomToggle}"
+                    ToolTip="Mix your own colour from red, green and blue">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock VerticalAlignment="Center" Text="Custom" />
+                        <c:DmxIcon
+                            Margin="4,0,0,0"
+                            VerticalAlignment="Center"
+                            Kind="ChevronDown"
+                            Size="{StaticResource Dmx.DenseIconSize}" />
+                    </StackPanel>
+                </ToggleButton>
             </StackPanel>
 
             <ItemsControl
                 AutomationProperties.Name="Colour presets"
                 IsTabStop="False"
-                ItemsSource="{Binding Presets}">
+                ItemsSource="{Binding PresetItems}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <WrapPanel />
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
-                    <DataTemplate DataType="{x:Type vm:SceneEditorColorPreset}">
+                    <DataTemplate DataType="{x:Type ed:EffectColorPresetItem}">
                         <Button
-                            Width="{StaticResource Dmx.ListRowMinHeight}"
-                            Height="{StaticResource Dmx.ListRowMinHeight}"
+                            Width="{StaticResource Dmx.ControlHeight}"
+                            Height="{StaticResource Dmx.ControlHeight}"
                             Margin="0,0,2,2"
-                            AutomationProperties.Name="{Binding Name, StringFormat=Colour preset {0}}"
-                            Command="{Binding DataContext.ApplyPresetCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                            AutomationProperties.Name="{Binding AutomationName}"
+                            Command="{Binding DataContext.ApplyPresetItemCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                             CommandParameter="{Binding}"
                             Style="{StaticResource ToolbarButton}"
-                            ToolTip="{Binding ToolTip}">
-                            <Ellipse
-                                Width="{StaticResource Dmx.DenseIconSize}"
-                                Height="{StaticResource Dmx.DenseIconSize}"
-                                Fill="{Binding Swatch}"
-                                Stroke="{DynamicResource ControlStrokeColorDefaultBrush}" />
+                            ToolTip="{Binding Name}">
+                            <Grid>
+                                <!-- Accent ring around the chosen preset. -->
+                                <Ellipse
+                                    Width="20"
+                                    Height="20"
+                                    Stroke="{DynamicResource AccentFillColorDefaultBrush}"
+                                    StrokeThickness="2"
+                                    Visibility="{Binding IsSelected, Converter={StaticResource BoolToVisibility}}" />
+                                <Ellipse
+                                    Width="{StaticResource Dmx.DenseIconSize}"
+                                    Height="{StaticResource Dmx.DenseIconSize}"
+                                    Fill="{Binding Swatch}"
+                                    Stroke="{DynamicResource ControlStrokeColorDefaultBrush}" />
+                            </Grid>
                         </Button>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
         </DockPanel>
 
-        <Grid>
+        <Grid Visibility="{Binding IsCustomOpen, Converter={StaticResource BoolToVisibility}}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="12" />
                 <ColumnDefinition Width="16" />
                 <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
@@ -193,6 +225,25 @@
                 AutomationProperties.Name="Blue value"
                 Style="{StaticResource LevelBox}"
                 Value="{Binding Blue}" />
+
+            <StackPanel
+                Grid.Row="2"
+                Grid.Column="4"
+                Margin="10,0,0,0"
+                Orientation="Horizontal">
+                <TextBlock Style="{StaticResource ChannelLetter}" Text="Hex" />
+                <c:CommitTextBox
+                    Width="76"
+                    MinHeight="{StaticResource Dmx.ControlHeight}"
+                    Height="{StaticResource Dmx.ControlHeight}"
+                    Margin="4,1,0,1"
+                    Padding="{StaticResource Dmx.TextControlPadding}"
+                    VerticalAlignment="Center"
+                    AutomationProperties.Name="Colour as hex"
+                    MaxLength="7"
+                    Text="{Binding Hex}"
+                    ToolTip="Colour as #RRGGBB; press Enter to apply" />
+            </StackPanel>
         </Grid>
     </StackPanel>
 </UserControl>

@@ -239,6 +239,27 @@ editor shows its draft on the lights automatically while not live):
 - The Scene Creator (§3.4) follows the same rules.
 - **Function-type assumptions** (decided 2026-10-18, see decisions log): Strobe defaults to Software mode; Fade references
   scenes; Flash duration 0 = while held; Pulse/Strobe/Color cycle drive the Dimmer channel when a fixture has one.
+- **Pulse, Flash and Strobe editors (2026-10-27, owner: "proper, like the Scene editor", simple words for a
+  non-expert):** two tabs in the editor's tab strip like the scene editor — **Lights** (the Fixtures panel with
+  *Add / choose lights…*, count on the tab) and the effect's own tab (**Pulse** / **Flash** / **Strobe**). The editor
+  opens on the effect tab when it already has lights, else on Lights; Ctrl+L opens Choose lights from either tab and an
+  empty effect shows "No lights chosen yet" with a **Choose lights…** button. The effect tab starts with a one-line
+  explanation, then small sections, and a docked **Preview (on screen)** panel on the right:
+  - *Colour* (all three): the scene presets (chosen one ringed + its name shown) and a foldable **Custom** part
+    (R/G/B + hex; opens by itself for a non-preset colour). Pulse also has **A colour / Brightness only** (dimmer only).
+  - *Pulse:* Speed **Slow 4 s / Medium 2 s / Fast 1 s** + exact "s per breath" ("= 30 times a minute"); Shape
+    **Smooth** (sine) / **Straight** (triangle) with small curve pictures; **Darkest / Brightest** sliders in %. Preview:
+    lamp + curve of two breaths with a moving marker (only when Windows animations are on and the breath is ≥ 0.5 s;
+    faster ones are a still picture).
+  - *Flash:* **While the button is held** or **For a set time: x s** (min 0.1 s; the time is remembered while "held" is
+    picked). Preview: lamp in the flash colour + what pressing / letting go does.
+  - *Strobe:* **How it flashes** (DMX Pro flashes the lights / the light's own strobe), Speed **Slow 2 / Medium 5 /
+    Fast 10** per second + exact value with "Settings limit: N per second", **Flash length Short 20 / Normal 50 /
+    Long 80 %** + exact %, and for the light's own strobe the channel value (from the profile or exact). Safety rule 8,
+    always visible and live with Settings: photosensitivity note, "Strobe is turned off in Settings" bar (also a ⚠ on
+    the tab), "Slowed down: Settings allow at most …" when above the limit, and for the light's own strobe that the
+    limit cannot be checked there. The preview is a **still** picture of one second as the lights will really do it
+    (steady when strobe is off, capped speed) — nothing flashes on screen.
 
 ### 3.4 Scenes — Scene Creator (phase 3)
 
