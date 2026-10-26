@@ -192,6 +192,25 @@ Types: Scene, Chaser, Sequence, Color cycle, Fade, Pulse, Flash, Strobe. Copy/pa
 > **Status 2026-10-18:** the engine and the Core model support all eight types; the Functions page has the scene editor
 > (§3.4). Every other type has its own editor in the same panel (`Views/Editors/`, `ViewModels/Editors/`): chaser and sequence step grids, colour cycle, fade, pulse, flash and strobe forms. Since 2026-10-22 the open editor previews its draft on the lights automatically (below).
 
+**Sequence editor (2026-10-27):** a chaser of mini-scenes, laid out like the scene editor with three tabs.
+- **Lights** — the lights every step uses (Fixtures panel + Choose lights dialog), with a "Next: Steps" button.
+- **Steps** — left: the step list (#, a colour swatch per light — up to 16, then "+N", tooltip names the light and its
+  R/G/B —, optional name, Fade in / Hold / Fade out cells; Ctrl/Shift multi-select). Toolbar: **Add step** (a copy of the
+  selected step right after it; blank when there are no steps), **Add blank** (every channel at its default, timing of the
+  selected step), Duplicate (selected steps, Ctrl+D), Remove (Del, with an **Undo** bar instead of a confirmation), Move
+  up / down (Ctrl+Up / Ctrl+Down, also Alt+); the step count and cycle length sit on the right. Below the list: Fade in /
+  Hold / Fade out boxes and **Apply to selected**. Right: the selected step's values in two views — **Colours** (simple:
+  pick lights on the left with All / None, the colour-editor presets plus **Off**, and Intensity / Red / Green / Blue /
+  White / Amber / UV sliders, only for types the selected lights have; a preset raises a dimmer that is at 0 to full) and
+  **All channels** (the scene editor's Channels view: every channel 0–255, Set on selected, Copy / Paste). The light
+  selection is shared by both views and kept when another step is selected. Header switch **Lights show: This step /
+  Whole sequence**: by default the live preview holds the selected step (no fades); Whole sequence runs it with its timing.
+- **Playback** — After the last step: **Loop** / **Play once** / **Back and forth**; Direction: **Forward** / **Backward**
+  (radio buttons with plain descriptions); **Same time for all steps** (Fade in / Hold / Fade out + Apply to all steps);
+  cycle length.
+- Empty states: no lights → "Choose lights first" with a Choose lights… button; lights but no steps → "No steps yet" with
+  an Add step button; no step selected → "Select a step on the left to set its colours."
+
 **Select ≠ edit ≠ play** (decided 2026-10-17, preview changed 2026-10-22 — selecting never changes the lights; the open
 editor shows its draft on the lights automatically while not live):
 
