@@ -301,6 +301,28 @@ editor shows its draft on the lights automatically while not live):
 - The Scene Creator (§3.4) follows the same rules.
 - **Function-type assumptions** (decided 2026-10-18, see decisions log): Strobe defaults to Software mode; Fade references
   scenes; Flash duration 0 = while held; Pulse/Strobe/Color cycle drive the Dimmer channel when a fixture has one.
+- **Fade editor** (2026-10-27, owner: "proper, like the Scene editor", simple words for a non-expert):
+
+  ```
+  ┌ From  where the lights start ─┐  →   ┌ To  where the lights end up ──┐
+  │ [██] Warm red   4 lights ●●●● │ [⇄]  │ [██] Deep blue  4 lights ●●●● │
+  │ [⌕ Find scene            ]    │      │ [⌕ Find scene            ]    │
+  │  ◌ Current look               │      │  ■ Deep blue                  │
+  │  ■ Warm red                   │      │  ■ Green                      │
+  └───────────────────────────────┘      └───────────────────────────────┘
+  Duration [3] seconds  [1 s] [3 s] [5 s] [10 s]
+  [██████ colour strip From → To ██████]   Warm red — 3 s — Deep blue
+  The lights start on "Warm red" and move smoothly to "Deep blue" over 3 s, then stay on "Deep blue" until stopped.
+  (i) 1 light is only in To (PAR 5): it fades in from what it shows now.
+  ```
+
+  Each side shows the chosen scene (swatch, name, its lights as colour dots) over a searchable scene list (click or
+  arrow keys pick; Down in the search box moves into the list). From has **Current look** (no From scene: start from
+  whatever the lights show now); To starts as "Not chosen yet". **Swap** (⇄) needs a scene on both sides. Quick
+  durations 1 / 3 / 5 / 10 s (active one filled), 0 s = jump. The strip is an on-screen hint only (Current look = the
+  To colour growing from transparent). Inline notes follow the engine's fade: lights only in To fade in from what they
+  show now; lights only in From fade back to how they would look without the fade; deleted or empty scenes and From =
+  To are flagged. No scenes in the project → empty state "No scenes to fade between".
 
 ### 3.4 Scenes — Scene Creator (phase 3)
 
