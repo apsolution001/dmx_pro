@@ -7,126 +7,496 @@
     xmlns:ed="clr-namespace:DmxPro.App.ViewModels.Editors"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    xmlns:vm="clr-namespace:DmxPro.App.ViewModels"
     d:DataContext="{d:DesignInstance Type=ed:FadeEditorViewModel}"
-    d:DesignHeight="200"
-    d:DesignWidth="800"
+    d:DesignHeight="420"
+    d:DesignWidth="900"
     mc:Ignorable="d">
     <!--
-        Fade editor (DataContext: FadeEditorViewModel): a dense property form, no headings (the editor header already
-        names the function type).
+        Fade editor (DataContext: FadeEditorViewModel). Two panels side by side, each the chosen scene (big swatch,
+        name, its lights as colour dots) over a searchable scene list; a swap button between them; then the duration
+        with quick buttons, an on-screen colour strip, one plain sentence and inline notes.
 
-        From      [(whatever is playing) ▾]
-        To        [Blue ▾]
-        Time (s)  [3.00]  Red → Blue over 3 s, then holds the target
+        ┌ From  where the lights start ──┐  →   ┌ To  where the lights end up ───┐
+        │ [██] Warm red                  │ [⇄]  │ [██] Deep blue                 │
+        │      4 lights  ● ● ● ●         │      │      4 lights  ● ● ● ●         │
+        │ [⌕ Find scene             ]    │      │ [⌕ Find scene             ]    │
+        │  ◌ Current look   lights now   │      │  ■ Deep blue        4 lights   │
+        │  ■ Warm red       4 lights  ◀  │      │  ■ Green            2 lights   │
+        └────────────────────────────────┘      └────────────────────────────────┘
+        Duration [3.00] s   [1 s] [3 s] [5 s] [10 s]
+        [████████████████ red → blue ████████████████]
+        Warm red                3 s              Deep blue
+        The lights start on "Warm red" and move smoothly to "Deep blue" over 3 s, then stay …
+        (i) 1 light is only in To (PAR 5): it fades in from what it shows now.
+
+        No scenes in the project: an empty state replaces everything.
+        Keyboard: Tab From search → From list → Swap → To search → To list → duration → presets; Down in a search box
+        moves into its list.
     -->
-    <Border Style="{StaticResource PanelBorder}">
-        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-            <StackPanel
-                MaxWidth="640"
-                Margin="8,4"
-                HorizontalAlignment="Left">
-                <!-- No scenes to pick: say what to do (one line). -->
-                <Border
-                    Margin="0,0,0,4"
-                    Padding="6,2"
-                    Background="{DynamicResource ControlFillColorDefaultBrush}"
-                    BorderBrush="{DynamicResource SystemFillColorCautionBrush}"
-                    BorderThickness="3,0,0,0"
-                    ToolTip="A fade moves between two scenes. Create scenes first (New ▸ Scene), then pick them here."
-                    Visibility="{Binding HasNoScenes, Converter={StaticResource BoolToVisibility}}">
-                    <DockPanel>
-                        <c:DmxIcon
-                            Margin="0,0,6,0"
-                            VerticalAlignment="Center"
-                            Foreground="{DynamicResource SystemFillColorCautionBrush}"
-                            Kind="Warning"
-                            Size="{StaticResource Dmx.DenseIconSize}" />
-                        <TextBlock
-                            VerticalAlignment="Center"
-                            Text="No scenes yet: create scenes first (New ▸ Scene)."
-                            TextTrimming="CharacterEllipsis" />
-                    </DockPanel>
-                </Border>
+    <UserControl.Resources>
+        <!-- Search box in a panel: the form text box without its bottom margin, room on the left for the icon. -->
+        <Style
+            x:Key="FadeSearchBox"
+            BasedOn="{StaticResource FormTextBox}"
+            TargetType="ui:TextBox">
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="Padding" Value="26,4,8,0" />
+        </Style>
 
+        <!-- Quick duration button: outlined; the active one is filled with the accent and bold (not colour alone). -->
+        <Style
+            x:Key="FadePresetButton"
+            BasedOn="{StaticResource ToolbarLabelButton}"
+            TargetType="Button">
+            <Setter Property="MinWidth" Value="40" />
+            <Setter Property="Margin" Value="0,0,4,0" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+            <Setter Property="FontSize" Value="{StaticResource Dmx.FontSize.Small}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsActive}" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+                    <Setter Property="Foreground" Value="{DynamicResource TextOnAccentFillColorPrimaryBrush}" />
+                    <Setter Property="FontWeight" Value="SemiBold" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- One light of the chosen scene: a small colour dot (name in the tooltip). -->
+        <DataTemplate x:Key="FadeLightDot" DataType="{x:Type vm:PreviewLight}">
+            <Ellipse
+                Width="12"
+                Height="12"
+                Margin="0,0,3,3"
+                AutomationProperties.Name="{Binding ToolTip}"
+                Fill="{Binding Color}"
+                Stroke="{DynamicResource ControlStrokeColorDefaultBrush}"
+                StrokeThickness="1"
+                ToolTip="{Binding ToolTip}" />
+        </DataTemplate>
+
+        <!-- One row of a scene list: swatch (or icon), name, detail on the right. -->
+        <DataTemplate x:Key="FadeSceneRow" DataType="{x:Type ed:FadeSceneOption}">
+            <DockPanel ToolTip="{Binding AutomationName}">
+                <Grid
+                    Width="14"
+                    Height="14"
+                    Margin="0,0,6,0"
+                    VerticalAlignment="Center"
+                    DockPanel.Dock="Left">
+                    <Border
+                        x:Name="Swatch"
+                        Background="{Binding Swatch}"
+                        BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                        BorderThickness="1"
+                        CornerRadius="2" />
+                    <c:DmxIcon
+                        x:Name="Icon"
+                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                        Kind="Live"
+                        Size="{StaticResource Dmx.DenseIconSize}"
+                        Visibility="Collapsed" />
+                </Grid>
+                <TextBlock
+                    Margin="8,0,0,0"
+                    VerticalAlignment="Center"
+                    DockPanel.Dock="Right"
+                    FontSize="{StaticResource Dmx.FontSize.Small}"
+                    Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                    Text="{Binding Detail}" />
+                <TextBlock
+                    x:Name="Name"
+                    VerticalAlignment="Center"
+                    Text="{Binding Name}"
+                    TextTrimming="CharacterEllipsis" />
+            </DockPanel>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsCurrentLook}" Value="True">
+                    <Setter TargetName="Swatch" Property="Visibility" Value="Collapsed" />
+                    <Setter TargetName="Icon" Property="Visibility" Value="Visible" />
+                    <Setter TargetName="Name" Property="FontStyle" Value="Italic" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsMissing}" Value="True">
+                    <Setter TargetName="Swatch" Property="Visibility" Value="Collapsed" />
+                    <Setter TargetName="Icon" Property="Visibility" Value="Visible" />
+                    <Setter TargetName="Icon" Property="Kind" Value="Warning" />
+                    <Setter TargetName="Icon" Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
+        <!-- One side (From or To): header, the chosen scene, search, scene list. -->
+        <DataTemplate x:Key="FadeSidePanel" DataType="{x:Type ed:FadeSideViewModel}">
+            <Border
+                x:Name="Frame"
+                BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="{StaticResource Dmx.CornerRadius}">
+                <DockPanel>
+                    <Border DockPanel.Dock="Top" Style="{StaticResource PanelHeader}">
+                        <TextBlock VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
+                            <Run
+                                FontSize="{StaticResource Dmx.FontSize.Body}"
+                                FontWeight="SemiBold"
+                                Text="{Binding Title, Mode=OneWay}" />
+                            <Run
+                                FontSize="{StaticResource Dmx.FontSize.Small}"
+                                Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                Text="{Binding Subtitle, Mode=OneWay}" />
+                        </TextBlock>
+                    </Border>
+
+                    <!-- The chosen scene: big swatch (or icon), name, meaning, its lights as dots. -->
+                    <Grid Margin="6,6,6,4" DockPanel.Dock="Top">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid
+                            Width="32"
+                            Height="32"
+                            Margin="0,0,8,0"
+                            VerticalAlignment="Top">
+                            <Border
+                                x:Name="BigSwatch"
+                                Background="{Binding DisplaySwatch}"
+                                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                BorderThickness="1"
+                                CornerRadius="{StaticResource Dmx.CornerRadius}" />
+                            <c:DmxIcon
+                                x:Name="BigIcon"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                Kind="Live"
+                                Size="{StaticResource Dmx.ButtonIconSize}"
+                                Visibility="Collapsed" />
+                        </Grid>
+                        <StackPanel Grid.Column="1">
+                            <TextBlock
+                                x:Name="BigName"
+                                AutomationProperties.Name="{Binding DisplayName}"
+                                FontSize="{StaticResource Dmx.FontSize.Title}"
+                                FontWeight="SemiBold"
+                                Text="{Binding DisplayName}"
+                                TextTrimming="CharacterEllipsis"
+                                ToolTip="{Binding DisplayName}" />
+                            <TextBlock
+                                FontSize="{StaticResource Dmx.FontSize.Small}"
+                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                Text="{Binding DisplayDetail}"
+                                TextTrimming="CharacterEllipsis"
+                                ToolTip="{Binding DisplayDetail}" />
+                            <DockPanel Margin="0,4,0,0" Visibility="{Binding HasLights, Converter={StaticResource BoolToVisibility}}">
+                                <TextBlock
+                                    Margin="4,0,0,3"
+                                    VerticalAlignment="Bottom"
+                                    DockPanel.Dock="Right"
+                                    FontSize="{StaticResource Dmx.FontSize.Caption}"
+                                    Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                    Text="{Binding MoreLightsText}"
+                                    Visibility="{Binding MoreLightsText, Converter={StaticResource NullToVisibility}}" />
+                                <ItemsControl
+                                    MaxHeight="30"
+                                    AutomationProperties.Name="Lights of this scene and their colours"
+                                    ClipToBounds="True"
+                                    Focusable="False"
+                                    IsTabStop="False"
+                                    ItemTemplate="{StaticResource FadeLightDot}"
+                                    ItemsSource="{Binding Lights}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
+                            </DockPanel>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Search -->
+                    <Grid Margin="6,0,6,4" DockPanel.Dock="Top">
+                        <ui:TextBox
+                            AutomationProperties.Name="{Binding SearchAutomationName}"
+                            PlaceholderText="Find scene"
+                            PreviewKeyDown="OnSearchPreviewKeyDown"
+                            Style="{StaticResource FadeSearchBox}"
+                            Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                            ToolTip="Type part of a scene name · Down arrow moves into the list" />
+                        <c:DmxIcon
+                            Margin="7,0,0,0"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center"
+                            Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                            IsHitTestVisible="False"
+                            Kind="Search"
+                            Size="{StaticResource Dmx.DenseIconSize}" />
+                    </Grid>
+
+                    <!-- Scene list: clicking (or arrow keys) picks the scene. -->
+                    <Grid>
+                        <ListBox
+                            MinHeight="66"
+                            Margin="2,0,2,2"
+                            AutomationProperties.Name="{Binding ListAutomationName}"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            ItemTemplate="{StaticResource FadeSceneRow}"
+                            ItemsSource="{Binding Options}"
+                            SelectedItem="{Binding SelectedOption}"
+                            SelectionMode="Single">
+                            <ListBox.ItemContainerStyle>
+                                <Style BasedOn="{StaticResource {x:Type ListBoxItem}}" TargetType="ListBoxItem">
+                                    <Setter Property="Padding" Value="6,0" />
+                                    <Setter Property="Margin" Value="0" />
+                                    <Setter Property="MinHeight" Value="{StaticResource Dmx.ListRowMinHeight}" />
+                                    <Setter Property="AutomationProperties.Name" Value="{Binding AutomationName}" />
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                        </ListBox>
+                        <TextBlock
+                            Margin="8,4"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Top"
+                            Style="{StaticResource HintText}"
+                            Text="{Binding NoMatchText}"
+                            Visibility="{Binding HasNoMatches, Converter={StaticResource BoolToVisibility}}" />
+                    </Grid>
+                </DockPanel>
+            </Border>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsCurrentLook}" Value="True">
+                    <Setter TargetName="BigSwatch" Property="BorderBrush" Value="{DynamicResource ControlStrongStrokeColorDefaultBrush}" />
+                    <Setter TargetName="BigIcon" Property="Visibility" Value="Visible" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding NeedsAttention}" Value="True">
+                    <Setter TargetName="BigIcon" Property="Visibility" Value="Visible" />
+                    <Setter TargetName="BigIcon" Property="Kind" Value="Warning" />
+                    <Setter TargetName="BigIcon" Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
+                    <Setter TargetName="BigSwatch" Property="BorderBrush" Value="{DynamicResource SystemFillColorCautionBrush}" />
+                    <Setter TargetName="BigName" Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Border Style="{StaticResource PanelBorder}">
+        <Grid>
+            <!-- ═════════════ Empty state: no scenes in the project ═════════════ -->
+            <StackPanel Style="{StaticResource EmptyStatePanel}" Visibility="{Binding HasNoScenes, Converter={StaticResource BoolToVisibility}}">
+                <c:DmxIcon Kind="Fade" Style="{StaticResource EmptyStateIcon}" />
+                <TextBlock Style="{StaticResource EmptyStateTitle}" Text="No scenes to fade between" />
+                <TextBlock Style="{StaticResource EmptyStateText}" Text="A fade moves the lights smoothly from one scene to another. Create a scene or two first (New ▸ Scene), then pick them here." />
+            </StackPanel>
+
+            <!-- ═════════════ Editor ═════════════ -->
+            <Grid Margin="6" Visibility="{Binding HasScenes, Converter={StaticResource BoolToVisibility}}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" MinHeight="170" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- From → [⇄] → To -->
                 <Grid>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="{StaticResource Dmx.FormLabelColumnWidth}" />
-                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" MinWidth="200" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" MinWidth="200" />
                     </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <TextBlock Style="{StaticResource FormLabel}" Text="From" />
-                    <ComboBox
-                        Grid.Column="1"
-                        MinWidth="220"
-                        HorizontalAlignment="Left"
-                        AutomationProperties.Name="From scene"
-                        DisplayMemberPath="Label"
-                        ItemsSource="{Binding FromOptions}"
-                        SelectedValue="{Binding FromSceneId}"
-                        SelectedValuePath="Value"
-                        Style="{StaticResource FormComboBox}"
-                        ToolTip="The look to start from; 'whatever is playing' starts from the current light state" />
 
-                    <TextBlock
-                        Grid.Row="1"
-                        Style="{StaticResource FormLabel}"
-                        Text="To" />
+                    <ContentControl
+                        AutomationProperties.Name="From: where the lights start"
+                        Content="{Binding From}"
+                        ContentTemplate="{StaticResource FadeSidePanel}"
+                        Focusable="False"
+                        IsTabStop="False" />
+
                     <StackPanel
-                        Grid.Row="1"
                         Grid.Column="1"
-                        Orientation="Horizontal">
-                        <ComboBox
-                            MinWidth="220"
-                            AutomationProperties.Name="To scene"
-                            DisplayMemberPath="Label"
-                            ItemsSource="{Binding ToOptions}"
-                            SelectedValue="{Binding ToSceneId}"
-                            SelectedValuePath="Value"
-                            Style="{StaticResource FormComboBox}"
-                            ToolTip="The look to end at; the fade then holds it until stopped" />
-                        <c:DmxIcon
-                            Margin="6,0,0,4"
-                            VerticalAlignment="Center"
-                            AutomationProperties.Name="Pick a target scene; until then this fade shows nothing"
-                            Foreground="{DynamicResource SystemFillColorCautionBrush}"
-                            Kind="Warning"
-                            Size="{StaticResource Dmx.DenseIconSize}"
-                            ToolTip="Pick a target scene; until then this fade shows nothing"
-                            Visibility="{Binding HasNoTarget, Converter={StaticResource BoolToVisibility}}" />
+                        Margin="4,0"
+                        VerticalAlignment="Center">
+                        <ui:SymbolIcon
+                            Margin="0,0,0,4"
+                            HorizontalAlignment="Center"
+                            AutomationProperties.Name="moves to"
+                            FontSize="16"
+                            Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                            Symbol="ArrowRight24" />
+                        <Button
+                            AutomationProperties.Name="Swap From and To"
+                            Command="{Binding SwapCommand}"
+                            Style="{StaticResource ToolbarButton}"
+                            ToolTip="Swap From and To (fade the other way round). Needs a scene on both sides.">
+                            <ui:SymbolIcon FontSize="16" Symbol="ArrowSwap24" />
+                        </Button>
                     </StackPanel>
 
-                    <TextBlock
-                        Grid.Row="2"
-                        Style="{StaticResource FormLabel}"
-                        Text="Time (s)" />
-                    <StackPanel
-                        Grid.Row="2"
-                        Grid.Column="1"
-                        Orientation="Horizontal">
+                    <ContentControl
+                        Grid.Column="2"
+                        AutomationProperties.Name="To: where the lights end up"
+                        Content="{Binding To}"
+                        ContentTemplate="{StaticResource FadeSidePanel}"
+                        Focusable="False"
+                        IsTabStop="False" />
+                </Grid>
+
+                <!-- Duration, colour strip, explanation, notes -->
+                <StackPanel Grid.Row="1" Margin="2,6,2,2">
+                    <DockPanel>
+                        <TextBlock
+                            Margin="0,0,8,0"
+                            VerticalAlignment="Center"
+                            DockPanel.Dock="Left"
+                            FontWeight="SemiBold"
+                            Text="Duration" />
                         <ui:NumberBox
-                            Width="112"
-                            AutomationProperties.Name="Duration, seconds"
+                            Width="104"
+                            Margin="0"
+                            VerticalAlignment="Center"
+                            AutomationProperties.Name="Duration in seconds"
+                            DockPanel.Dock="Left"
                             LargeChange="1"
                             MaxDecimalPlaces="2"
                             Maximum="3600"
                             Minimum="0"
-                            SmallChange="0.1"
+                            SmallChange="0.5"
                             Style="{StaticResource FormNumberBox}"
-                            ToolTip="How long the move from the first scene to the second takes"
+                            ToolTip="How long the lights take to get from From to To, in seconds (0 = jump straight to To)"
                             Value="{Binding DurationSeconds, Mode=TwoWay}" />
                         <TextBlock
-                            Margin="8,0,0,4"
+                            Margin="4,0,12,0"
                             VerticalAlignment="Center"
-                            Style="{StaticResource StatusText}"
-                            Text="{Binding SummaryText}"
+                            DockPanel.Dock="Left"
+                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                            Text="seconds" />
+                        <ItemsControl
+                            VerticalAlignment="Center"
+                            AutomationProperties.Name="Quick durations"
+                            Focusable="False"
+                            IsTabStop="False"
+                            ItemsSource="{Binding DurationPresets}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type ed:FadeDurationPreset}">
+                                    <Button
+                                        AutomationProperties.Name="{Binding AutomationName}"
+                                        Command="{Binding DataContext.SetDurationCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                        CommandParameter="{Binding}"
+                                        Content="{Binding Label}"
+                                        Style="{StaticResource FadePresetButton}"
+                                        ToolTip="{Binding AutomationName}" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </DockPanel>
+
+                    <!-- On-screen colour strip From → To (display only; the real lights follow the editor preview). -->
+                    <Grid Margin="0,8,0,0" Visibility="{Binding HasGradient, Converter={StaticResource BoolToVisibility}}">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border
+                            Grid.ColumnSpan="3"
+                            Height="18"
+                            AutomationProperties.Name="{Binding GradientAutomationName}"
+                            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                            BorderThickness="1"
+                            CornerRadius="{StaticResource Dmx.CornerRadius}"
+                            ToolTip="On-screen colour hint only: roughly how the colour changes over the fade">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                    <GradientStop Offset="0" Color="{Binding GradientStart}" />
+                                    <GradientStop Offset="1" Color="{Binding GradientEnd}" />
+                                </LinearGradientBrush>
+                            </Border.Background>
+                        </Border>
+                        <TextBlock
+                            Grid.Row="1"
+                            Margin="0,2,8,0"
+                            HorizontalAlignment="Left"
+                            FontSize="{StaticResource Dmx.FontSize.Small}"
+                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                            Text="{Binding GradientStartLabel}"
                             TextTrimming="CharacterEllipsis" />
-                    </StackPanel>
-                </Grid>
-            </StackPanel>
-        </ScrollViewer>
+                        <TextBlock
+                            Grid.Row="1"
+                            Grid.Column="1"
+                            Margin="0,2,0,0"
+                            FontSize="{StaticResource Dmx.FontSize.Small}"
+                            Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                            Text="{Binding DurationLabel, StringFormat='— {0} —'}" />
+                        <TextBlock
+                            Grid.Row="1"
+                            Grid.Column="2"
+                            Margin="8,2,0,0"
+                            HorizontalAlignment="Right"
+                            FontSize="{StaticResource Dmx.FontSize.Small}"
+                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                            Text="{Binding GradientEndLabel}"
+                            TextTrimming="CharacterEllipsis" />
+                    </Grid>
+
+                    <!-- What will happen, in one sentence. -->
+                    <TextBlock
+                        Margin="0,6,0,0"
+                        Text="{Binding SummaryText}"
+                        TextWrapping="Wrap" />
+
+                    <!-- Notes and warnings (icon + text, never colour alone). -->
+                    <ItemsControl
+                        Margin="0,4,0,0"
+                        Focusable="False"
+                        IsTabStop="False"
+                        ItemsSource="{Binding Notices}"
+                        Visibility="{Binding HasNotices, Converter={StaticResource BoolToVisibility}}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type ed:FadeNotice}">
+                                <Border
+                                    x:Name="Bar"
+                                    Margin="0,0,0,2"
+                                    Padding="6,2"
+                                    AutomationProperties.Name="{Binding AutomationName}"
+                                    Background="{DynamicResource ControlFillColorDefaultBrush}"
+                                    BorderBrush="{DynamicResource AccentFillColorDefaultBrush}"
+                                    BorderThickness="3,0,0,0">
+                                    <DockPanel>
+                                        <c:DmxIcon
+                                            x:Name="NoticeIcon"
+                                            Margin="0,1,6,0"
+                                            VerticalAlignment="Top"
+                                            DockPanel.Dock="Left"
+                                            Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"
+                                            Kind="{Binding IconKind}"
+                                            Size="{StaticResource Dmx.DenseIconSize}" />
+                                        <TextBlock
+                                            FontSize="{StaticResource Dmx.FontSize.Small}"
+                                            Text="{Binding Text}"
+                                            TextWrapping="Wrap" />
+                                    </DockPanel>
+                                </Border>
+                                <DataTemplate.Triggers>
+                                    <DataTrigger Binding="{Binding IsWarning}" Value="True">
+                                        <Setter TargetName="Bar" Property="BorderBrush" Value="{DynamicResource SystemFillColorCautionBrush}" />
+                                        <Setter TargetName="NoticeIcon" Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
+                                    </DataTrigger>
+                                </DataTemplate.Triggers>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Grid>
+        </Grid>
     </Border>
 </UserControl>
