@@ -28,14 +28,42 @@ public static class SequenceMigration
                 continue;
             }
 
-            var (chaser, scenes) = Convert(sequence);
-            project.Functions[i] = chaser;
-            project.Functions.InsertRange(i + 1, scenes);
-            i += scenes.Count;
+            i += ReplaceAt(project, i, sequence);
             converted++;
         }
 
         return converted;
+    }
+
+    /// <summary>
+    /// Converts one <paramref name="sequence"/> exactly like <see cref="Migrate"/> does: the chaser takes the sequence's
+    /// place in <see cref="Project.Functions"/> and its step scenes are inserted right after it. A sequence that is not in
+    /// the project (it only reached an editor) is appended, followed by its scenes. Null steps and values are skipped.
+    /// </summary>
+    /// <returns>The chaser that replaced the sequence (same id).</returns>
+    public static ChaserFunction ConvertInPlace(Project project, SequenceFunction sequence)
+    {
+        ArgumentNullException.ThrowIfNull(project);
+        ArgumentNullException.ThrowIfNull(sequence);
+        var index = project.Functions.IndexOf(sequence);
+        if (index < 0)
+        {
+            project.Functions.Add(sequence);
+            index = project.Functions.Count - 1;
+        }
+
+        ReplaceAt(project, index, sequence);
+        return (ChaserFunction)project.Functions[index];
+    }
+
+    /// <summary>Swaps the sequence at <paramref name="index"/> for its chaser and inserts the scenes after it.</summary>
+    /// <returns>The number of scenes inserted.</returns>
+    private static int ReplaceAt(Project project, int index, SequenceFunction sequence)
+    {
+        var (chaser, scenes) = Convert(sequence);
+        project.Functions[index] = chaser;
+        project.Functions.InsertRange(index + 1, scenes);
+        return scenes.Count;
     }
 
     private static (ChaserFunction Chaser, List<LightFunction> Scenes) Convert(SequenceFunction sequence)
