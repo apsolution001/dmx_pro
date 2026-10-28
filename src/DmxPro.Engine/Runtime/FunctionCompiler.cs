@@ -1,7 +1,4 @@
-using System.Runtime.InteropServices;
 using DmxPro.Core.Functions;
-using DmxPro.Core.Patching;
-using DmxPro.Core.Profiles;
 using DmxPro.Core.Projects;
 using Microsoft.Extensions.Logging;
 
@@ -9,8 +6,9 @@ namespace DmxPro.Engine.Runtime;
 
 /// <summary>
 /// Compiles the project's functions into <see cref="FunctionProgram"/>s against a resolved patch. Functions that
-/// reference others (chaser steps, fade scenes) are compiled on demand and shared; a reference back to a function that
-/// is still being compiled (a loop) is skipped and logged. Runs off the engine thread (allocates freely).
+/// reference others (chaser steps) are compiled on demand and shared; a reference back to a function that
+/// is still being compiled (a loop) is skipped and logged. Only scenes, chasers and legacy sequences compile; any other
+/// (removed) function type compiles to nothing. Runs off the engine thread (allocates freely).
 /// </summary>
 internal sealed class FunctionCompiler
 {
@@ -20,12 +18,8 @@ internal sealed class FunctionCompiler
     private readonly Dictionary<Guid, LightFunction> _byId = [];
     private readonly Dictionary<Guid, FunctionProgram?> _compiled = [];
     private readonly HashSet<Guid> _compiling = [];
-    private readonly Dictionary<Guid, EffectFixture?> _fixtures = [];
     private readonly ArrayInterner<int> _channelArrays = new();
     private readonly ArrayInterner<byte> _valueArrays = new();
-    private readonly Dictionary<List<Guid>, EffectFixture[]> _fixtureLists = new(GuidListComparer.Instance);
-    private readonly Dictionary<List<Guid>, EffectFixture[]> _colorFixtureLists = new(GuidListComparer.Instance);
-    private Dictionary<Guid, Fixture>? _fixturesById;
     private int[] _scratchChannels = [];
     private byte[] _scratchLevels = [];
 
@@ -80,12 +74,6 @@ internal sealed class FunctionCompiler
         if (_draft is null)
         {
             return null;
-        }
-
-        // Preview of a flash = the button is held while the editor is open, whatever its duration.
-        if (_draft is FlashFunction flash)
-        {
-            return new FlashProgram(flash.Id, Fixtures(flash, colorOnly: false), flash.Color, 0, flash.UseWhiteChannel);
         }
 
         return Compile(_draft.Id);
@@ -156,46 +144,10 @@ internal sealed class FunctionCompiler
 
                 return new StepProgram(sequence.Id, sequenceSteps, sequence.RunOrder, sequence.Direction);
 
-            case FadeFunction fade:
-                return CompileFade(fade);
-
-            case ColorCycleFunction cycle:
-                // Spec §4: only fixtures with compatible colour channels take part.
-                return new ColorCycleProgram(
-                    cycle.Id,
-                    Fixtures(cycle, colorOnly: true),
-                    cycle.Colors,
-                    cycle.HoldSeconds,
-                    cycle.FadeSeconds,
-                    cycle.FixtureOffsetSeconds,
-                    cycle.UseWhiteChannel);
-
-            case PulseFunction pulse:
-                return new PulseProgram(
-                    pulse.Id,
-                    Fixtures(pulse, colorOnly: false),
-                    pulse.Color,
-                    pulse.Shape,
-                    pulse.PeriodSeconds,
-                    pulse.MinLevel,
-                    pulse.MaxLevel,
-                    pulse.UseWhiteChannel);
-
-            case FlashFunction flash:
-                return new FlashProgram(flash.Id, Fixtures(flash, colorOnly: false), flash.Color, flash.DurationSeconds, flash.UseWhiteChannel);
-
-            case StrobeFunction strobe:
-                return new StrobeProgram(
-                    strobe.Id,
-                    Fixtures(strobe, colorOnly: false),
-                    strobe.Mode,
-                    strobe.RateHz,
-                    strobe.DutyCycle,
-                    strobe.Color,
-                    strobe.HardwareValue,
-                    strobe.UseWhiteChannel);
-
             default:
+                // Colour cycle, fade, pulse, flash and strobe were removed (2026-10-28); project load converts them to
+                // scenes and chasers, so one reaching the engine is a leftover: it plays nothing instead of failing.
+                _logger.LogWarning("Function {Function} has a type the engine no longer plays; it is skipped", function.Name);
                 return null;
         }
     }
@@ -241,173 +193,5 @@ internal sealed class FunctionCompiler
             fadeOut,
             _channelArrays.Intern(channels.AsSpan(0, count)),
             _valueArrays.Intern(levels.AsSpan(0, count)));
-    }
-
-    private FadeProgram CompileFade(FadeFunction fade)
-    {
-        var order = new List<int>();
-        var from = new Dictionary<int, short>();
-        var to = new Dictionary<int, short>();
-        Collect(fade.FromSceneId, from);
-        Collect(fade.ToSceneId, to);
-
-        var fromValues = new short[order.Count];
-        var toValues = new short[order.Count];
-        for (var i = 0; i < order.Count; i++)
-        {
-            fromValues[i] = from.TryGetValue(order[i], out var f) ? f : FadeProgram.Absent;
-            toValues[i] = to.TryGetValue(order[i], out var t) ? t : FadeProgram.Absent;
-        }
-
-        return new FadeProgram(fade.Id, [.. order], fromValues, toValues, fade.DurationSeconds);
-
-        void Collect(Guid? sceneId, Dictionary<int, short> target)
-        {
-            if (sceneId is not { } id)
-            {
-                return;
-            }
-
-            if (!_byId.TryGetValue(id, out var function) || function is not SceneFunction scene)
-            {
-                _logger.LogWarning("Fade {Fade} uses a scene that does not exist; that side is left empty", fade.Name);
-                return;
-            }
-
-            foreach (var value in scene.Values)
-            {
-                if (_patch.TryGetFlat(value.FixtureId, value.ChannelKey, out var flat))
-                {
-                    if (!from.ContainsKey(flat) && !to.ContainsKey(flat))
-                    {
-                        order.Add(flat);
-                    }
-
-                    target[flat] = value.Value;
-                }
-            }
-        }
-    }
-
-    /// <summary>
-    /// The effect's fixtures that exist, are patched and have something to light (with colour when required). Show
-    /// copies of one effect have equal fixture lists, so results are shared by list content (the project is not edited
-    /// while compiling, so the lists can serve as keys).
-    /// </summary>
-    private EffectFixture[] Fixtures(FixtureEffectFunction effect, bool colorOnly)
-    {
-        var cache = colorOnly ? _colorFixtureLists : _fixtureLists;
-        if (cache.TryGetValue(effect.FixtureIds, out var shared))
-        {
-            return shared;
-        }
-
-        var result = new List<EffectFixture>(effect.FixtureIds.Count);
-        var seen = new HashSet<Guid>();
-        foreach (var fixtureId in effect.FixtureIds)
-        {
-            if (seen.Add(fixtureId) && Resolve(fixtureId) is { } fixture && (colorOnly ? fixture.HasColor : !fixture.IsEmpty))
-            {
-                result.Add(fixture);
-            }
-        }
-
-        EffectFixture[] fixtures = [.. result];
-        cache[effect.FixtureIds] = fixtures;
-        return fixtures;
-    }
-
-    /// <summary>Resolves a fixture's effect channels by channel type through its profile mode (cached per fixture).</summary>
-    private EffectFixture? Resolve(Guid fixtureId)
-    {
-        if (_fixtures.TryGetValue(fixtureId, out var cached))
-        {
-            return cached;
-        }
-
-        EffectFixture? result = null;
-        _fixturesById ??= BuildFixtureLookup(_project);
-        var fixture = _fixturesById.GetValueOrDefault(fixtureId);
-        var profile = fixture is null ? null : _project.FindProfile(fixture.ProfileId);
-        var mode = profile?.FindMode(fixture!.ModeName);
-        if (profile is not null && mode is not null)
-        {
-            List<int> dimmer = [], red = [], green = [], blue = [], white = [], amber = [], uv = [], strobe = [];
-            List<short> strobeActive = [];
-            foreach (var channel in profile.ResolveChannels(mode))
-            {
-                if (!_patch.TryGetFlat(fixtureId, channel.Key, out var flat))
-                {
-                    continue;
-                }
-
-                switch (channel.Type)
-                {
-                    case ChannelType.Dimmer: dimmer.Add(flat); break;
-                    case ChannelType.Red: red.Add(flat); break;
-                    case ChannelType.Green: green.Add(flat); break;
-                    case ChannelType.Blue: blue.Add(flat); break;
-                    case ChannelType.White: white.Add(flat); break;
-                    case ChannelType.Amber: amber.Add(flat); break;
-                    case ChannelType.UV: uv.Add(flat); break;
-                    case ChannelType.Strobe:
-                        strobe.Add(flat);
-                        strobeActive.Add(FirstStrobingValue(channel));
-                        break;
-                }
-            }
-
-            result = new EffectFixture([.. dimmer], [.. red], [.. green], [.. blue], [.. white], [.. amber], [.. uv], [.. strobe], [.. strobeActive]);
-        }
-
-        _fixtures[fixtureId] = result;
-        return result;
-    }
-
-    /// <summary>Fixtures by id; the first one wins on a duplicate id, like <see cref="Project.FindFixture"/>.</summary>
-    private static Dictionary<Guid, Fixture> BuildFixtureLookup(Project project)
-    {
-        var result = new Dictionary<Guid, Fixture>(project.Fixtures.Count);
-        foreach (var fixture in project.Fixtures)
-        {
-            result.TryAdd(fixture.Id, fixture);
-        }
-
-        return result;
-    }
-
-    /// <summary>
-    /// Start of the first range the shared <see cref="StrobeCapabilityClassifier"/> recognises as strobing, or -1 when the
-    /// profile documents none: steady, closed and unrecognised ranges are skipped, and an undocumented strobe channel's
-    /// values are never guessed (safety rule 7).
-    /// </summary>
-    private static short FirstStrobingValue(ChannelDefinition channel)
-    {
-        foreach (var capability in channel.Capabilities)
-        {
-            if (StrobeCapabilityClassifier.Classify(capability) == StrobeRangeKind.Strobing)
-            {
-                return (short)Math.Clamp(capability.Min, 0, 255);
-            }
-        }
-
-        return -1;
-    }
-
-    /// <summary>Compares fixture id lists by content (order matters: it sets the effect's fixture order).</summary>
-    private sealed class GuidListComparer : IEqualityComparer<List<Guid>>
-    {
-        public static readonly GuidListComparer Instance = new();
-
-        public bool Equals(List<Guid>? x, List<Guid>? y) =>
-            ReferenceEquals(x, y)
-            || (x is not null && y is not null && CollectionsMarshal.AsSpan(x).SequenceEqual(CollectionsMarshal.AsSpan(y)));
-
-        public int GetHashCode(List<Guid> obj)
-        {
-            var hash = default(HashCode);
-            hash.AddBytes(MemoryMarshal.AsBytes(CollectionsMarshal.AsSpan(obj)));
-            return hash.ToHashCode();
-        }
     }
 }

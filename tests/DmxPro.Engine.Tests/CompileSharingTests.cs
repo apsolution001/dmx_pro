@@ -81,28 +81,6 @@ public class CompileSharingTests
     }
 
     [Fact]
-    public void Compile_ColorCycleAndFlashWithEqualFixtureLists_KeepTheirOwnFixtureRules()
-    {
-        // The compiler shares resolved fixture lists by content; colour-only (cycle) and any-fixture (flash) must not
-        // share one: the dimmer-only light takes part in the flash but not in the colour cycle.
-        var rig = new TestRig();
-        var dimmer = rig.AddDimmer(100);
-        var cycle = rig.Add(new ColorCycleFunction { Name = "Cycle", FixtureIds = [rig.Fixture.Id, dimmer.Id], Colors = [new RgbColor(255, 0, 0)] });
-        var flash = rig.Add(new FlashFunction { Name = "Flash", FixtureIds = [rig.Fixture.Id, dimmer.Id], Color = new RgbColor(255, 255, 255) });
-        rig.Load();
-
-        rig.Engine.StartFunction(cycle.Id, EngineLayer.Console);
-        rig.Tick();
-        Assert.Equal(255, rig.At(TestRig.Red));
-        Assert.Equal(0, rig.At(100));
-
-        rig.Engine.StopFunction(cycle.Id, EngineLayer.Console);
-        rig.Engine.StartFunction(flash.Id, EngineLayer.Console);
-        rig.Tick();
-        Assert.Equal(255, rig.At(100));
-    }
-
-    [Fact]
     public void Compile_SceneCopiesWithEqualAndDifferentValues_EachPlaysItsOwnValues()
     {
         var rig = new TestRig();

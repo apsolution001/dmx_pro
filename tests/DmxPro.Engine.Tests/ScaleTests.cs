@@ -147,14 +147,24 @@ public class ScaleTests
         chaser.AddStep(blue.Id, 0.5, 0.1, 0.2);
         project.Functions.Add(chaser);
 
-        var cycle = new ColorCycleFunction { Name = "Cycle", FixtureIds = [.. fixtures], FixtureOffsetSeconds = 0.01, HoldSeconds = 0.2, FadeSeconds = 0.3 };
-        var pulse = new PulseFunction { Name = "Pulse", FixtureIds = [.. fixtures], PeriodSeconds = 0.7 };
-        var strobe = new StrobeFunction { Name = "Strobe", FixtureIds = [.. fixtures.Take(64)], RateHz = 8 };
-        project.Functions.Add(cycle);
-        project.Functions.Add(pulse);
-        project.Functions.Add(strobe);
+        // Steps far below the speed limit: played stretched (safety rule 8).
+        var fast = new ChaserFunction { Name = "Fast" };
+        fast.AddStep(red.Id, 0.01);
+        fast.AddStep(green.Id, 0.01);
+        fast.AddStep(blue.Id, 0.01);
+        var nested = new ChaserFunction { Name = "Nested", RunOrder = RunOrder.PingPong };
+        nested.AddStep(chaser.Id, 0.7, 0.1, 0.1);
+        nested.AddStep(fast.Id, 0.5);
+        nested.AddStep(green.Id, 0.3);
+        var pingPong = new ChaserFunction { Name = "PingPong", RunOrder = RunOrder.PingPong };
+        pingPong.AddStep(red.Id, 0.2, 0.05, 0.05);
+        pingPong.AddStep(green.Id, 0.2, 0.05, 0.05);
+        pingPong.AddStep(blue.Id, 0.2, 0.05, 0.05);
+        project.Functions.Add(fast);
+        project.Functions.Add(nested);
+        project.Functions.Add(pingPong);
 
-        LightFunction[] sources = [red, blue, green, chaser, cycle, pulse];
+        LightFunction[] sources = [red, blue, green, chaser, fast, nested];
         var shows = new Guid[ShowCount];
         for (var s = 0; s < ShowCount; s++)
         {
@@ -178,7 +188,7 @@ public class ScaleTests
             shows[s] = show.Id;
         }
 
-        return (new DmxEngine(), project, shows, [chaser.Id, cycle.Id, pulse.Id, strobe.Id]);
+        return (new DmxEngine(), project, shows, [chaser.Id, fast.Id, nested.Id, pingPong.Id]);
     }
 
     private static SceneFunction AllFixturesScene(Project project, List<Guid> fixtures, string name, string key)

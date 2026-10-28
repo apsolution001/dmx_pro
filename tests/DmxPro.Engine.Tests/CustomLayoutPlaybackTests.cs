@@ -31,19 +31,22 @@ public class CustomLayoutPlaybackTests
     private static byte[] Frame(DmxEngine engine) => engine.GetSnapshot()!.GetUniverse(1).ToArray();
 
     [Fact]
-    public void StartFunction_FlashRedOnCustomLayout_WritesRedOnChannel3()
+    public void StartFunction_RedSceneOnCustomLayout_WritesRedOnChannel3()
     {
         var (project, fixture, engine) = Rig();
-        var flash = new FlashFunction { Name = "Red", FixtureIds = [fixture.Id], Color = new RgbColor(255, 0, 0) };
-        project.Functions.Add(flash);
+        var profile = project.FindProfile(fixture.ProfileId)!;
+        var redKey = profile.Channels.Single(c => c.Type == ChannelType.Red).Key;
+        var scene = new SceneFunction { Name = "Red" };
+        scene.SetValue(fixture.Id, redKey, 255);
+        project.Functions.Add(scene);
         engine.LoadProject(project);
         engine.Tick(TimeSpan.Zero);
 
-        engine.StartFunction(flash.Id, EngineLayer.Console);
+        engine.StartFunction(scene.Id, EngineLayer.Console);
         engine.Tick(TimeSpan.FromSeconds(0.025));
 
         var expected = new byte[DmxAddress.UniverseSize];
-        expected[DmxAddress.ToIndex(2)] = 255; // dimmer carries the level
+        expected[DmxAddress.ToIndex(2)] = 255; // dimmer at its layout default
         expected[DmxAddress.ToIndex(3)] = 255; // red
         Assert.Equal(expected, Frame(engine));
     }

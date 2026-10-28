@@ -50,7 +50,7 @@ public sealed class EngineSnapshot
 
     /// <summary>
     /// Strobe limits active in this frame over all running functions and show items (safety rule 8): show it so the
-    /// operator knows why a strobe is steady or slower than programmed.
+    /// operator knows why a chaser plays slower than programmed.
     /// </summary>
     public StrobeLimit StrobeLimit { get; }
 

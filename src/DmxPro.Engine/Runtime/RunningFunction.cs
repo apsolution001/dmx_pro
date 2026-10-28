@@ -39,13 +39,15 @@ internal sealed class RunningFunction
 
     /// <summary>
     /// Advances the fade by <paramref name="dt"/> seconds and the function time by <paramref name="dt"/> × speed.
-    /// Returns false once fully faded out, or when the function has finished by itself (single-shot chaser, timed
-    /// flash: its content has already ended, so it is released at once).
+    /// Returns false once fully faded out, or when the function has finished by itself (single-shot chaser: its content
+    /// has already ended, so it is released at once). <paramref name="context"/> carries the frame's strobe settings;
+    /// its <see cref="RenderContext.Speed"/> is set to this function's speed.
     /// </summary>
-    public bool Advance(double dt)
+    public bool Advance(double dt, RenderContext context)
     {
         ElapsedSeconds += dt * Speed;
-        if (!Stopping && ElapsedSeconds >= Program.DurationSeconds)
+        context.Speed = Speed;
+        if (!Stopping && Program.HasEnded(ElapsedSeconds, context))
         {
             return false;
         }

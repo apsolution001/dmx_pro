@@ -323,60 +323,18 @@ public class PreviewDraftTests
     }
 
     [Fact]
-    public void SetPreviewFunction_TimedFlash_PreviewsAsHeld()
-    {
-        var rig = new TestRig();
-        var flash = rig.Add(new FlashFunction { Name = "Flash", FixtureIds = [rig.Fixture.Id], Color = new RgbColor(255, 0, 0), DurationSeconds = 0.5 });
-        rig.Load();
-
-        rig.Engine.SetPreviewFunction(rig.Project, DraftOf(flash));
-        rig.Tick(2);
-
-        Assert.Equal(255, rig.At(TestRig.Red));
-    }
-
-    [Fact]
-    public void SetPreviewFunction_StrobeNotAllowed_SteadyLight()
-    {
-        var rig = new TestRig();
-        var strobe = rig.Add(new StrobeFunction { Name = "Strobe", FixtureIds = [rig.Fixture.Id], RateHz = 5 });
-        rig.Load();
-
-        rig.Engine.SetPreviewFunction(rig.Project, DraftOf(strobe));
-        for (var i = 0; i < 20; i++)
-        {
-            rig.Tick();
-            Assert.Equal(255, rig.At(TestRig.Dimmer));
-        }
-
-        Assert.Equal(StrobeLimit.Suppressed, PreviewInfo(rig).StrobeLimit);
-    }
-
-    [Fact]
-    public void SetPreviewFunction_StrobeAboveMaximumRate_IsCapped()
-    {
-        var rig = new TestRig();
-        var strobe = rig.Add(new StrobeFunction { Name = "Strobe", FixtureIds = [rig.Fixture.Id], RateHz = 5 });
-        rig.Load();
-        rig.Engine.AllowStrobe = true;
-        rig.Engine.MaxStrobeRateHz = 10;
-        var draft = DraftOf(strobe);
-        draft.RateHz = 20; // edited in the draft above the limit
-
-        rig.Engine.SetPreviewFunction(rig.Project, draft);
-        rig.Tick(0.07); // at 10 Hz: phase 0.7 → off (at 20 Hz it would be phase 0.4 → on)
-
-        Assert.Equal(0, rig.At(TestRig.Dimmer));
-        Assert.Equal(StrobeLimit.RateLimited, PreviewInfo(rig).StrobeLimit);
-    }
-
-    [Fact]
     public void Tick_DraftPreviewRunning_AllocatesNothing()
     {
         var rig = new TestRig();
-        var cycle = rig.Add(new ColorCycleFunction { Name = "Cycle", FixtureIds = [rig.Fixture.Id] });
+        var red = rig.Scene("Red", ("r", 255));
+        var green = rig.Scene("Green", ("g", 255));
+        var chaser = rig.Add(new ChaserFunction { Name = "Chase" });
+        chaser.AddStep(red.Id, 0.01, 0.005, 0.02); // stretched by the speed limit
+        chaser.AddStep(green.Id, 0.3, 0.1, 0.1);
         rig.Load();
-        rig.Engine.SetPreviewFunction(rig.Project, DraftOf(cycle));
+        Assert.True(rig.Engine.SetPreviewFunction(rig.Project, DraftOf(chaser)));
+        rig.Tick();
+        Assert.Single(rig.Engine.GetSnapshot()!.ActiveFunctions);
         Assert.Equal(0, AllocationProbe.Measure(_ => rig.Tick()));
     }
 }

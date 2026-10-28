@@ -7,7 +7,7 @@ namespace DmxPro.Engine;
 /// <param name="Intensity">Function intensity 0..1.</param>
 /// <param name="IsStopping">True while it fades out after a stop.</param>
 /// <param name="Speed">Speed factor of the function's own time (1 = as programmed).</param>
-/// <param name="StrobeLimit">Why a strobe in this function is not flashing as programmed (safety rule 8).</param>
+/// <param name="StrobeLimit">Why this function plays slower than programmed (chaser speed limit, safety rule 8).</param>
 public readonly record struct ActiveFunctionInfo(
     Guid FunctionId,
     EngineLayer Layer,

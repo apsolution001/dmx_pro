@@ -75,9 +75,7 @@ public class AllocationTests
     public void Tick_EveryFunctionTypeInConsoleAndShow_AllocatesNothing()
     {
         var rig = new TestRig();
-        var bars = rig.Project.AddFixtures(TestRig.Profile(), "8ch", 10, 1, 100, "Bar");
-        var grb = rig.AddGrb(400);
-        List<Guid> fixtures = [rig.Fixture.Id, grb.Id, .. bars.Select(b => b.Id)];
+        rig.Project.AddFixtures(TestRig.Profile(), "8ch", 10, 1, 100, "Bar");
         var red = rig.Scene("Red", ("r", 255), ("macro", 10));
         var blue = rig.Scene("Blue", ("b", 255), ("macro", 30));
         var chaser = rig.Add(new ChaserFunction { Name = "Chaser", RunOrder = RunOrder.PingPong });
@@ -92,20 +90,18 @@ public class AllocationTests
             sequence.Steps.Add(step);
         }
 
-        var cycle = rig.Add(new ColorCycleFunction { Name = "Cycle", FixtureIds = fixtures, FixtureOffsetSeconds = 0.1, HoldSeconds = 0.2, FadeSeconds = 0.3 });
-        var fade = rig.Add(new FadeFunction { Name = "Fade", FromSceneId = red.Id, ToSceneId = blue.Id, DurationSeconds = 10 });
-        var pulse = rig.Add(new PulseFunction { Name = "Pulse", FixtureIds = fixtures, PeriodSeconds = 0.7 });
-        var flash = rig.Add(new FlashFunction { Name = "Flash", FixtureIds = fixtures, UseWhiteChannel = true });
-        var strobe = rig.Add(new StrobeFunction { Name = "Strobe", FixtureIds = fixtures, RateHz = 25 });
-        var hardware = rig.Add(new StrobeFunction { Name = "HW", FixtureIds = fixtures, Mode = StrobeMode.Hardware });
+        // Steps far below every speed limit: always played stretched, re-timed whenever the limit changes.
+        var fast = rig.Add(new ChaserFunction { Name = "Fast" });
+        fast.AddStep(red.Id, 0.01);
+        fast.AddStep(blue.Id, 0.01);
         var nested = rig.Add(new ChaserFunction { Name = "Nested" });
         nested.AddStep(chaser.Id, 1, 0, 0.5);
-        nested.AddStep(strobe.Id, 0.5);
-        nested.AddStep(cycle.Id, 0.5);
+        nested.AddStep(fast.Id, 0.5);
+        nested.AddStep(sequence.Id, 0.5);
 
         var timeline = rig.Project.CreateShow("Timeline");
         timeline.LengthSeconds = 1000;
-        LightFunction[] all = [chaser, sequence, cycle, fade, pulse, flash, strobe, hardware, nested];
+        LightFunction[] all = [red, chaser, sequence, fast, nested];
         foreach (var function in all)
         {
             rig.Project.PlaceFunctionInShow(timeline.Id, timeline.Tracks[0].Id, function.Id, 0, 900);
@@ -124,7 +120,9 @@ public class AllocationTests
         void Cycle(int i)
         {
             rig.Engine.SetFunctionSpeed(chaser.Id, EngineLayer.Console, 1 + (i % 3));
+            rig.Engine.SetFunctionSpeed(fast.Id, EngineLayer.Console, 0.5 + (i % 4));
             rig.Engine.AllowStrobe = i % 50 < 40;
+            rig.Engine.MaxStrobeRateHz = 2 + (i % 7);
             rig.Tick();
         }
 

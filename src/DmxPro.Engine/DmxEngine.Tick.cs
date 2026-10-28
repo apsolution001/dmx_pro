@@ -560,9 +560,13 @@ public sealed partial class DmxEngine
 
     private void AdvanceFunctions(double dt)
     {
+        // The strobe settings decide how long a speed-limited single-shot chaser plays (safety rule 8).
+        var context = _context;
+        context.AllowStrobe = _allowStrobe;
+        context.MaxStrobeRateHz = MaxStrobeRateHz;
         foreach (var function in _functions)
         {
-            if (function.InUse && !function.Advance(dt))
+            if (function.InUse && !function.Advance(dt, context))
             {
                 function.InUse = false;
             }

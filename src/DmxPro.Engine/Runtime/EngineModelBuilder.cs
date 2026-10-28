@@ -100,9 +100,9 @@ internal static class EngineModelBuilder
 
     /// <summary>
     /// Compiles one (possibly unsaved) function against an already built model's patch, for the preview layer. Functions
-    /// the draft references (chaser steps, fade scenes) are resolved from <paramref name="project"/> as saved; the draft
-    /// replaces the project's function with the same id. A timed flash is compiled as held (the editor is open, so the
-    /// "button" is down). Returns null for types the engine cannot play. Runs on the caller's thread; the project must
+    /// the draft references (chaser steps) are resolved from <paramref name="project"/> as saved; the draft replaces the
+    /// project's function with the same id. Returns null for types the engine cannot play (including the removed legacy
+    /// effect types, which are skipped without error). Runs on the caller's thread; the project must
     /// not be modified concurrently. <paramref name="draftFunctions"/> (optional) are further unsaved functions the draft
     /// plays (e.g. a chaser draft's own step scenes): they replace (or add to) the project's functions with the same id.
     /// </summary>
