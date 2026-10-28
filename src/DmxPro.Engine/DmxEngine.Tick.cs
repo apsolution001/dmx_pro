@@ -268,7 +268,7 @@ public sealed partial class DmxEngine
             instance.FunctionId = functionId;
             instance.Layer = layer;
             instance.Level = 0f;
-            instance.ElapsedSeconds = 0;
+            instance.ResetTime(_now);
             instance.Speed = 1f;
             instance.StrobeLimit = StrobeLimit.None;
             instance.IsDraft = false;
@@ -327,7 +327,9 @@ public sealed partial class DmxEngine
 
         if (instance is not null && !instance.Stopping)
         {
-            instance.Program = program;
+            // An edited chaser draft continues at the step it shows (re-timed to the new step times), not at the step the
+            // new times have at the old elapsed time.
+            instance.SwapProgram(program);
             _snapshotDue = true;
             return;
         }
@@ -345,7 +347,7 @@ public sealed partial class DmxEngine
         instance.FunctionId = command.Id;
         instance.Layer = EngineLayer.Preview;
         instance.Level = 1f;
-        instance.ElapsedSeconds = 0;
+        instance.ResetTime(_now);
         instance.Speed = 1f;
         instance.StrobeLimit = StrobeLimit.None;
         instance.IsDraft = true;
@@ -493,7 +495,7 @@ public sealed partial class DmxEngine
                 }
                 else if (model.Functions.TryGetValue(function.FunctionId, out var program))
                 {
-                    function.Program = program;
+                    function.SwapProgram(program);
                 }
                 else
                 {
@@ -612,6 +614,7 @@ public sealed partial class DmxEngine
         context.AllowStrobe = _allowStrobe;
         context.MaxStrobeRateHz = MaxStrobeRateHz;
         var frameLimit = StrobeLimit.None;
+        var minStepRealSeconds = ChaserSpeedLimit.MinStepSeconds(_allowStrobe, MaxStrobeRateHz);
 
         var showLayer = layers[(int)EngineLayer.Show];
         foreach (var show in _shows)
@@ -637,7 +640,9 @@ public sealed partial class DmxEngine
                 if (level > 0f)
                 {
                     var sinceStart = position - item.Start;
+                    // Show items play on the show's clock (seekable, speed 1): pure function of the position.
                     context.Speed = 1;
+                    context.LimitSeconds = minStepRealSeconds;
                     context.StrobeLimit = StrobeLimit.None;
                     item.Function.Render(sinceStart, level, showLayer, _now - sinceStart, show.Seq, context);
                     frameLimit |= context.StrobeLimit;
@@ -656,11 +661,15 @@ public sealed partial class DmxEngine
 
             var weight = function.Level * function.Intensity;
             function.StrobeLimit = StrobeLimit.None;
+            context.Speed = function.Speed;
+            context.LimitSeconds = function.RenderLimit;
+
+            // Checked even while invisible (intensity 0), so a step change held back here is not shown at once later.
+            var elapsed = function.GuardStepChange(_now, minStepRealSeconds, context);
             if (weight > 0f)
             {
-                context.Speed = function.Speed;
                 context.StrobeLimit = StrobeLimit.None;
-                function.Program.Render(function.ElapsedSeconds, weight, layers[(int)function.Layer], function.Stamp, function.Seq, context);
+                function.Program.Render(elapsed, weight, layers[(int)function.Layer], function.Stamp, function.Seq, context);
                 function.StrobeLimit = context.StrobeLimit;
                 frameLimit |= context.StrobeLimit;
             }

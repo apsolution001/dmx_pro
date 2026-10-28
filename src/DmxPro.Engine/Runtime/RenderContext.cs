@@ -21,10 +21,17 @@ internal sealed class RenderContext
     /// <summary>
     /// Shortest step a chaser may play, in function time (safety rule 8): the real-time minimum from
     /// <see cref="ChaserSpeedLimit.MinStepSeconds"/> × <see cref="Speed"/>. NaN while the speed is 0 or invalid (the
-    /// function is paused and nothing changes, so the timeline in use is kept).
+    /// function is paused and nothing changes, so the instance keeps the limit it had).
     /// </summary>
     public double MinStepSeconds =>
         Speed > 0 && double.IsFinite(Speed) ? ChaserSpeedLimit.MinStepSeconds(AllowStrobe, MaxStrobeRateHz) * Speed : double.NaN;
+
+    /// <summary>
+    /// Shortest step, in function time, the program being advanced or rendered plays with (set by the engine before each
+    /// <see cref="FunctionProgram.HasEnded"/>/<see cref="FunctionProgram.Render"/>): <see cref="MinStepSeconds"/> for show
+    /// items, the instance's current limit for running functions (kept while paused). 0 = no stretching.
+    /// </summary>
+    public double LimitSeconds { get; set; }
 
     /// <summary>Limits reported by programs during the current render call (reset by the engine).</summary>
     public StrobeLimit StrobeLimit { get; set; }
