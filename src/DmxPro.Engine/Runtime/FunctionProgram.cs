@@ -25,10 +25,13 @@ internal abstract class FunctionProgram
     public double FadeOutSeconds { get; }
 
     /// <summary>
-    /// Function time after which it has finished by itself (single-shot chaser, timed flash); a running instance is then
-    /// released. <see cref="double.PositiveInfinity"/> = runs until stopped.
+    /// True once the function has finished by itself at function time <paramref name="elapsedSeconds"/> (single-shot
+    /// chaser, whose length depends on the speed limit in <paramref name="context"/>); a running instance is then
+    /// released. The default runs until stopped. Allocation-free (engine thread).
     /// </summary>
-    public virtual double DurationSeconds => double.PositiveInfinity;
+    /// <param name="elapsedSeconds">Function time since it started (already scaled by its speed).</param>
+    /// <param name="context">Frame settings (strobe safety, speed).</param>
+    public virtual bool HasEnded(double elapsedSeconds, RenderContext context) => false;
 
     /// <summary>Writes this function's values into <paramref name="layer"/>.</summary>
     /// <param name="elapsedSeconds">Function time since it started (already scaled by its speed).</param>
@@ -48,15 +51,4 @@ internal abstract class FunctionProgram
     /// <summary>Finite and ≥ 0, else 0; capped at <see cref="MaxSeconds"/>.</summary>
     protected static double SanitizeSeconds(double seconds) =>
         double.IsFinite(seconds) && seconds > 0 ? Math.Min(seconds, MaxSeconds) : 0;
-
-    /// <summary>Finite, else <paramref name="fallback"/>; then clamped to 0..1.</summary>
-    protected static double SanitizeLevel(double level, double fallback) =>
-        Math.Clamp(double.IsFinite(level) ? level : fallback, 0, 1);
-
-    /// <summary>Non-negative remainder of <paramref name="value"/> / <paramref name="period"/> (period &gt; 0).</summary>
-    protected static double Wrap(double value, double period)
-    {
-        var result = value % period;
-        return result < 0 ? result + period : result;
-    }
 }

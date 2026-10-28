@@ -8,11 +8,6 @@ public class FunctionCompileTests
     [InlineData(FunctionType.Scene)]
     [InlineData(FunctionType.Chaser)]
     [InlineData(FunctionType.Sequence)]
-    [InlineData(FunctionType.ColorCycle)]
-    [InlineData(FunctionType.Fade)]
-    [InlineData(FunctionType.Pulse)]
-    [InlineData(FunctionType.Flash)]
-    [InlineData(FunctionType.Strobe)]
     public void CanPlay_EveryFunctionType_IsPlayable(FunctionType type)
     {
         var rig = new TestRig();
@@ -25,11 +20,6 @@ public class FunctionCompileTests
     [Theory]
     [InlineData(FunctionType.Chaser)]
     [InlineData(FunctionType.Sequence)]
-    [InlineData(FunctionType.ColorCycle)]
-    [InlineData(FunctionType.Fade)]
-    [InlineData(FunctionType.Pulse)]
-    [InlineData(FunctionType.Flash)]
-    [InlineData(FunctionType.Strobe)]
     public void StartFunction_EmptyNewFunction_OutputsDefaults(FunctionType type)
     {
         var rig = new TestRig();

@@ -51,28 +51,6 @@ public class BugHuntShowRenderTests
     }
 
     [Fact]
-    public void StartFunction_HardwareStrobeOnQxfStyleChannel_SendsAStrobingValue()
-    {
-        // As imported from .qxf (QxfImporter never sets Safe): 0–9 "No function", 10–255 strobe.
-        var rig = new TestRig();
-        var strobeChannel = rig.Project.FindProfile("test-rgbw")!.FindChannel("strobe")!;
-        strobeChannel.Capabilities =
-        [
-            new() { Min = 0, Max = 9, Label = "No function" },
-            new() { Min = 10, Max = 255, Label = "Strobe slow to fast" },
-        ];
-        var strobe = rig.Add(new StrobeFunction { Name = "Strobe", FixtureIds = [rig.Fixture.Id], RateHz = 5, Mode = StrobeMode.Hardware });
-        rig.Load();
-        rig.Engine.AllowStrobe = true;
-        rig.Engine.StartFunction(strobe.Id, EngineLayer.Console);
-
-        rig.Tick(0.15);
-
-        // 0 ("No function") does not strobe: the hardware strobe would silently show a steady light.
-        Assert.True(rig.At(TestRig.Strobe) >= 10, $"Strobe channel = {rig.At(TestRig.Strobe)}");
-    }
-
-    [Fact]
     public void Refresh_EditOneOfTwoEqualSceneCopies_OtherCopyKeepsItsValues()
     {
         var rig = new TestRig();

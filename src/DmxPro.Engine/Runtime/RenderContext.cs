@@ -13,11 +13,19 @@ internal sealed class RenderContext
     public double MaxStrobeRateHz { get; set; }
 
     /// <summary>
-    /// Speed factor of the function being rendered (its time already runs this much faster). Programs that must cap a
-    /// real-time rate (strobe) use it to convert back to real time. 1 for show items.
+    /// Speed factor of the function being rendered (its time already runs this much faster). Used to convert real-time
+    /// limits (the chaser speed limit) to function time. 1 for show items.
     /// </summary>
     public double Speed { get; set; } = 1;
 
-    /// <summary>Limits reported by strobe programs during the current render call (reset by the engine).</summary>
+    /// <summary>
+    /// Shortest step a chaser may play, in function time (safety rule 8): the real-time minimum from
+    /// <see cref="ChaserSpeedLimit.MinStepSeconds"/> × <see cref="Speed"/>. NaN while the speed is 0 or invalid (the
+    /// function is paused and nothing changes, so the timeline in use is kept).
+    /// </summary>
+    public double MinStepSeconds =>
+        Speed > 0 && double.IsFinite(Speed) ? ChaserSpeedLimit.MinStepSeconds(AllowStrobe, MaxStrobeRateHz) * Speed : double.NaN;
+
+    /// <summary>Limits reported by programs during the current render call (reset by the engine).</summary>
     public StrobeLimit StrobeLimit { get; set; }
 }

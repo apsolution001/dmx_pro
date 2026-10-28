@@ -65,7 +65,8 @@ public class PreviewDraftEdgeTests
     /// during the compile) is queued BEFORE the draft, so the draft appears after the release. The app's
     /// "check ReleaseGeneration, then SetPreviewFunction" is check-then-act and cannot close this window; the engine
     /// has to drop a draft whose call started before a release that was applied ahead of it. Simulated
-    /// deterministically: the compile logs a warning (fade with a deleted scene) and the logger triggers the release.
+    /// deterministically: the compile logs a warning (a chaser step that plays the chaser itself) and the logger
+    /// triggers the release.
     /// </summary>
     [Fact]
     public void SetPreviewFunction_ReleaseAllQueuedDuringCompile_DraftNotShownAfterRelease()
@@ -80,8 +81,8 @@ public class PreviewDraftEdgeTests
         engine.LoadProject(project);
         engine.Tick(TimeSpan.Zero);
 
-        // Fade from a deleted scene to red: compiling it logs "uses a scene that does not exist".
-        var draft = new FadeFunction { Name = "Fade", FromSceneId = Guid.NewGuid(), ToSceneId = red.Id, DurationSeconds = 0 };
+        // Compiling the draft logs "plays itself through its steps".
+        var draft = SelfLoopingDraft(red);
         var generationBefore = engine.ReleaseGeneration;
         logger.OnWarning = () =>
         {
@@ -101,7 +102,7 @@ public class PreviewDraftEdgeTests
     {
         var logger = new CallbackLogger();
         var (engine, project, red) = DeletedSceneRig(logger);
-        var draft = new FadeFunction { Name = "Fade", FromSceneId = Guid.NewGuid(), ToSceneId = red.Id, DurationSeconds = 0 };
+        var draft = SelfLoopingDraft(red);
         logger.OnWarning = () =>
         {
             logger.OnWarning = null;
@@ -121,7 +122,7 @@ public class PreviewDraftEdgeTests
         // Clearing overrides does not remove the preview, so it must not drop a draft compiled meanwhile either.
         var logger = new CallbackLogger();
         var (engine, project, red) = DeletedSceneRig(logger);
-        var draft = new FadeFunction { Name = "Fade", FromSceneId = Guid.NewGuid(), ToSceneId = red.Id, DurationSeconds = 0 };
+        var draft = SelfLoopingDraft(red);
         logger.OnWarning = () =>
         {
             logger.OnWarning = null;
@@ -238,28 +239,6 @@ public class PreviewDraftEdgeTests
         Assert.Equal(0, rig.At(TestRig.Blue));
     }
 
-    [Fact]
-    public void StartFunction_ColorCycleHugeOffsetAndTimes_RendersWithoutThrowing()
-    {
-        var rig = new TestRig();
-        var cycle = rig.Add(new ColorCycleFunction
-        {
-            Name = "Damaged",
-            HoldSeconds = 1e308,
-            FadeSeconds = 1e308,
-            FixtureOffsetSeconds = 1e308,
-        });
-        cycle.FixtureIds.Add(rig.Fixture.Id);
-        cycle.FixtureIds.Add(rig.Project.AddFixtures(TestRig.Profile(), "8ch", 1, 1, 100, "Par 2")[0].Id);
-        cycle.Colors = [new RgbColor(255, 0, 0), new RgbColor(0, 255, 0)];
-        rig.Load();
-
-        rig.Engine.StartFunction(cycle.Id, EngineLayer.Console);
-        rig.Tick();
-
-        Assert.Equal(255, rig.At(TestRig.Red));
-    }
-
     // ---- Regression tests for interleavings that work -----------------------------------------------------------------
 
     [Fact]
@@ -363,22 +342,6 @@ public class PreviewDraftEdgeTests
     }
 
     [Fact]
-    public void SetPreviewFunction_FadeFromDeletedScene_FadesInTargetOnly()
-    {
-        var rig = new TestRig();
-        var green = rig.Scene("Green", ("g", 200));
-        rig.Load();
-        var draft = new FadeFunction { Name = "Fade", FromSceneId = Guid.NewGuid(), ToSceneId = green.Id, DurationSeconds = 2 };
-
-        Assert.True(rig.Engine.SetPreviewFunction(rig.Project, draft));
-        rig.Tick(1);
-        Assert.Equal(100, rig.At(TestRig.Green));
-        rig.Tick(1.5);
-
-        Assert.Equal(200, rig.At(TestRig.Green));
-    }
-
-    [Fact]
     public void RefreshPatch_FixtureDisabledDuringDraft_DropsDraft()
     {
         var rig = new TestRig();
@@ -462,6 +425,16 @@ public class PreviewDraftEdgeTests
     private const double FunctionEditingMax = FunctionEditing.MaxSeconds;
 
     /// <summary>An engine on a fresh project with a red scene; compiling a fade from a deleted scene logs a warning.</summary>
+    /// <summary>A chaser draft showing <paramref name="red"/> first; its second step plays the draft itself, so
+    /// compiling it logs a warning (used to run code in the middle of a compile).</summary>
+    private static ChaserFunction SelfLoopingDraft(SceneFunction red)
+    {
+        var draft = new ChaserFunction { Name = "Loop" };
+        draft.AddStep(red.Id, 1);
+        draft.AddStep(draft.Id, 1);
+        return draft;
+    }
+
     private static (DmxEngine Engine, Project Project, SceneFunction Red) DeletedSceneRig(CallbackLogger logger)
     {
         var engine = new DmxEngine(logger) { SnapshotInterval = TimeSpan.Zero };

@@ -1,15 +1,21 @@
 namespace DmxPro.Engine;
 
-/// <summary>Why a strobe effect is not flashing as programmed (safety rule 8). Reported in snapshots.</summary>
+/// <summary>Why a function is not playing as fast as programmed (safety rule 8). Reported in snapshots.</summary>
 [Flags]
 public enum StrobeLimit
 {
-    /// <summary>Strobing as programmed (or not a strobe).</summary>
+    /// <summary>Playing as programmed.</summary>
     None = 0,
 
-    /// <summary>"Allow strobe" is off (or the maximum strobe rate is 0): the effect shows steady light instead.</summary>
+    /// <summary>
+    /// "Allow strobe" is off and a strobe effect shows steady light instead. Kept for compatibility: no engine program
+    /// reports it since the strobe function was removed (2026-10-28).
+    /// </summary>
     Suppressed = 1,
 
-    /// <summary>The requested rate (× speed) is above the maximum strobe rate and plays at the maximum instead.</summary>
+    /// <summary>
+    /// A chaser's steps (× speed) are shorter than <see cref="ChaserSpeedLimit.MinStepSeconds"/> allows and play
+    /// stretched to that minimum.
+    /// </summary>
     RateLimited = 2,
 }

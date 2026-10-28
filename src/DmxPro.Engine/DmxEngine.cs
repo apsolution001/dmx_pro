@@ -117,9 +117,10 @@ public sealed partial class DmxEngine
     }
 
     /// <summary>
-    /// Maximum strobe rate in Hz (safety rule 8), enforced on software strobe functions: their real flash rate
-    /// (rate × speed) is capped to it and <see cref="StrobeLimit.RateLimited"/> is reported; 0 means no strobing at all
-    /// (steady light, <see cref="StrobeLimit.Suppressed"/>). Hardware strobe channels cannot be limited because profiles
+    /// Maximum strobe rate in Hz (safety rule 8), enforced on chasers: a step lasts at least 1 / (2 × rate) seconds of
+    /// real time (see <see cref="ChaserSpeedLimit"/>; while <see cref="AllowStrobe"/> is off the lower
+    /// <see cref="ChaserSpeedLimit.SafeFlashRateHz"/> applies) and <see cref="StrobeLimit.RateLimited"/> is reported.
+    /// 0 means no strobing at all (the safe rate applies). Hardware strobe channels cannot be limited because profiles
     /// carry no value → Hz calibration, so they are governed by <see cref="AllowStrobe"/> only. Values below 0 or NaN are
     /// treated as 0.
     /// </summary>
@@ -230,10 +231,10 @@ public sealed partial class DmxEngine
         _queue.Enqueue(new EngineCommand(EngineCommandKind.SetIntensity, functionId, ValidLayer(layer), (float)Clamp01(intensity)));
 
     /// <summary>
-    /// Changes the speed factor of a running function: its own time (chaser steps, colour cycle, pulse, strobe rate)
-    /// runs <paramref name="speed"/> times as fast; fades in/out on start/stop stay real time. Clamped to
-    /// 0..<see cref="MaxSpeed"/>; NaN is treated as 1. A new start resets the speed to 1. The strobe cap applies to the
-    /// sped-up rate.
+    /// Changes the speed factor of a running function: its own time (chaser steps) runs <paramref name="speed"/> times
+    /// as fast; fades in/out on start/stop stay real time. Clamped to 0..<see cref="MaxSpeed"/>; NaN is treated as 1. A
+    /// new start resets the speed to 1. The chaser speed limit (<see cref="ChaserSpeedLimit"/>) applies to the sped-up
+    /// real-time step length.
     /// </summary>
     /// <param name="functionId">Running function.</param>
     /// <param name="layer">Layer it runs in.</param>
@@ -260,7 +261,7 @@ public sealed partial class DmxEngine
     /// references are taken from <paramref name="project"/> as saved); the tick only swaps the compiled program in, so
     /// call this on every (debounced) draft change. While a draft with the same id is previewed, its program is replaced
     /// in place: elapsed time and level are kept, so effects keep running smoothly while the user edits. Anything else
-    /// in the preview layer is replaced. Draft previews start and stop without fades. A timed flash previews as held.
+    /// in the preview layer is replaced. Draft previews start and stop without fades.
     /// Ignored (and false returned when known here) while live mode is on, or when the type cannot be played. Call with
     /// the project not being edited concurrently (normally the UI thread).
     /// </summary>
