@@ -110,7 +110,7 @@ focused list decides what they act on); the others work anywhere in the window. 
 | | Auto-patch selected | | Re-address the selected fixtures one after another; disabled without a selection | ✅ |
 | | Import fixture profile (.qxf / .json)… | | Into the fixture library | ✅ |
 | | New fixture profile… | | Channel layout editor for a new layout (as *New layout…* in Add fixture) | ✅ |
-| **Functions** | New scene / chaser / color cycle / fade / pulse / flash / strobe | | Opens the Functions page with the new function in its editor | ✅ |
+| **Functions** | New scene / chaser (only these two types) | | Opens the Functions page with the new function in its editor | ✅ |
 | | Create starter scenes | | Blackout, Red, Green, Blue, White, Cyan, Magenta, Yellow | Coming soon |
 | | Stop all functions | Shift+Esc | Same as Output ▸ Release all (also toolbar *Stop all*) | ✅ |
 | **Show** | New show | | Opens the Shows page with a new show | ✅ |
@@ -187,10 +187,10 @@ table (Ch, Name, Type, Default, Ranges). The profile editor was replaced by the 
 │                               │ │ Speed [1.0×]   Targets: Front, Stage L PAR                        │
 └───────────────────────────────┘ └──────────────────────────────────────────────────────────────────┘
 ```
-Types: Scene, Chaser, Color cycle, Fade, Pulse, Flash, Strobe. Copy/paste and duplicate everywhere.
+Types: Scene, Chaser (the New menu offers only these; the other types were removed 2026-10-28). Copy/paste and duplicate everywhere.
 
-> **Status 2026-10-18:** the engine and the Core model support all eight types; the Functions page has the scene editor
-> (§3.4). Every other type has its own editor in the same panel (`Views/Editors/`, `ViewModels/Editors/`): the chaser step grid, colour cycle, fade, pulse, flash and strobe forms. Since 2026-10-22 the open editor previews its draft on the lights automatically (below).
+> **Status 2026-10-18:** the engine and the Core model supported eight types; since 2026-10-28 only Scene and Chaser remain. The Functions page has the scene editor
+> (§3.4) and the chaser step grid (`Views/Editors/`, `ViewModels/Editors/`). Since 2026-10-22 the open editor previews its draft on the lights automatically (below).
 
 **Chaser editor (rebuilt 2026-10-27, owner: "simple and obvious"):** one page, no tabs (only a handful of settings).
 `Views/Editors/ChaserEditorView.xaml`, `ChaserEditorViewModel`, list logic in `ChaserStepListEditing` (unit-tested).
@@ -228,39 +228,15 @@ Types: Scene, Chaser, Color cycle, Fade, Pulse, Flash, Strobe. Copy/paste and du
   0). *Apply to selected (n)* and *Apply to all steps* copy them onto existing steps ("same time for all steps").
 - Empty state: "No steps yet — Add scenes to play them one after another." with an **Add steps…** button.
 
-**Colour cycle editor** (reworked 2026-10-27, owner: "proper, like the Scene editor", simple for non-experts). Three
-docked panels with splitters:
-
-```
-┌ Fixtures ─────────┐║┌ Colours · 3 colours [+][⧉][−][↑][↓] ┐║┌ Change colour 2 · Green ─────────────────┐
-│ 1 PAR 1 U1 · 1–4  │║│ Fill with: [Rainbow][Warm][Cool]     │║│ presets · swatch · #RRGGBB · R/G/B        │
-│ 2 PAR 2 U1 · 5–8  │║│ 1 [██] Red      #FF0000              │║│ Timing: Each colour stays [1] s           │
-│                   │║│ 2 [██] Green    #00FF00              │║│         then blends over [1] s            │
-│                   │║│ 3 [██] Blue     #0000FF              │║│ One round: 6 s (3 colours × 2 s) …       │
-│                   │║│ Add a colour: (●Red)(●Green)…        │║│ Spread across lights   Same ──●── Rainbow │
-│                   │║│ [+ Custom colour…]                   │║│ Preview: [███▒▒███▒▒███▒▒]  ●1 ●2 ●3     │
-└───────────────────┘║└──────────────────────────────────────┘║│ [ ] Use the lights' white channel         │
-```
-
-- **Colours** in play order, each with swatch, plain name ("Warm white", "Orange", "Dark blue") and hex — never colour
-  alone. One click on a scene-editor preset adds it after the selected colour; **Custom colour…** adds one to mix on the
-  right. Insert = add, Ctrl+D = duplicate, Delete = remove, Ctrl+Up/Down (or Alt+Up/Down) = move.
-- **Fill with Rainbow / Warm / Cool** replaces the list; an inline "Replaced 3 colours with Rainbow. [Undo]" follows
-  (forgotten at the next colour edit).
-- **Timing:** one hold and one fade for all colours (the model has no per-colour times); the round length is shown.
-- **Spread across lights** 0–100 % (slider, steps of 5): 0 % = all lights the same colour, 100 % = one round spread
-  evenly across all lights (a rainbow wave in light-list order). Saved as `FixtureOffsetSeconds` = % × round ÷ lights;
-  the percentage is kept when colours, times or lights change. Needs 2+ lights. An older, larger offset is kept as is.
-- **On-screen preview:** one round as a strip (hold, then blend) and the colour of each light (up to 24) at the start.
-  The real lights follow the draft as for every editor. No playback options: a colour cycle loops until stopped.
+**Colour cycle, Fade, Pulse, Flash and Strobe editors: removed (2026-10-28).** DMX Pro has only Scene and Chaser;
+old projects convert on load (decisions log 2026-10-28). Equivalents: a colour cycle = a chaser of colour steps with fades; a fade = a 2-step chaser; a flash = a scene on a VC flash button; a strobe = a scene using the strobe channel.
 
 **Sequence editor: merged into the Chaser editor (done 2026-10-28).** There is no Sequence type or editor any
 more; `New ▸ Sequence` is gone and old sequences open as chasers. The step-look panel below reuses the former Sequence
 editor's Colours / All channels views. Design: `docs/superpowers/specs/2026-10-27-chaser-steps-design.md`.
 
 **Chaser steps (built 2026-10-28; replaces the "Add steps…" picker above):** a step is either an **own look**
-(set right in the chaser, no function in the list) or a **function step** (a copy of a colour cycle / fade / pulse / flash /
-strobe / chaser). Both are owned by the chaser, hidden from the Functions list, and can be mixed and reordered.
+(set right in the chaser, no function in the list) or a **function step** (a copy of a chaser). Both are owned by the chaser, hidden from the Functions list, and can be mixed and reordered.
 - **Toolbar:** **Add step** (new own look; copies the selected step's look, or starts blank with the lights of the nearest
   own-look step above when a function step is selected), **Add blank step**, **Add from function…** (the searchable picker;
   a scene becomes an own-look step, other types a function step; always a copy, the original is never changed),
@@ -293,10 +269,8 @@ editor shows its draft on the lights automatically while not live):
 - **Live edit preview (owner decision 2026-10-22):** while a function editor is open (Functions page, and the same editor
   panel on the Shows page) and **Go live** is off, the function being edited is shown on the real lights automatically
   and follows every edit of the **unsaved draft** — there is no Preview button and no "Live on lights" switch. Edits are
-  throttled to one update per ~40 ms, so a dragged fader stays smooth. Effects (chaser, sequence, colour cycle, pulse,
-  strobe) run live; changing them keeps them running (no restart). A scene's fade-in is skipped (the draft shows at
-  once); the preview also ends without fade. A **Flash previews as held** while its editor is open, whatever its
-  duration. **Switching to another program keeps every preview on the lights, flashes included** (owner decision
+  throttled to one update per ~40 ms, so a dragged fader stays smooth. Chasers run live; changing them keeps them running (no restart). A scene's fade-in is skipped (the draft shows at
+  once); the preview also ends without fade. **Switching to another program keeps every preview on the lights, flashes included** (owner decision
   2026-10-22: the operator switches apps while the lights are set). A
   single-shot chaser plays once; the next edit plays it again.
 - **Preview stops** (deterministically) on: editor close / save-and-close / cancel, Esc closing the editor, another
@@ -322,52 +296,6 @@ editor shows its draft on the lights automatically while not live):
 - **Engine:** a dedicated preview layer after running functions and before manual overrides; the draft is compiled on
   the UI thread and swapped in by the engine (`docs/architecture.md` §4).
 - The Scene Creator (§3.4) follows the same rules.
-- **Function-type assumptions** (decided 2026-10-18, see decisions log): Strobe defaults to Software mode; Fade references
-  scenes; Flash duration 0 = while held; Pulse/Strobe/Color cycle drive the Dimmer channel when a fixture has one.
-- **Fade editor** (2026-10-27, owner: "proper, like the Scene editor", simple words for a non-expert):
-
-  ```
-  ┌ From  where the lights start ─┐  →   ┌ To  where the lights end up ──┐
-  │ [██] Warm red   4 lights ●●●● │ [⇄]  │ [██] Deep blue  4 lights ●●●● │
-  │ [⌕ Find scene            ]    │      │ [⌕ Find scene            ]    │
-  │  ◌ Current look               │      │  ■ Deep blue                  │
-  │  ■ Warm red                   │      │  ■ Green                      │
-  └───────────────────────────────┘      └───────────────────────────────┘
-  Duration [3] seconds  [1 s] [3 s] [5 s] [10 s]
-  [██████ colour strip From → To ██████]   Warm red — 3 s — Deep blue
-  The lights start on "Warm red" and move smoothly to "Deep blue" over 3 s, then stay on "Deep blue" until stopped.
-  (i) 1 light is only in To (PAR 5): it fades in from what it shows now.
-  ```
-
-  Each side shows the chosen scene (swatch, name, its lights as colour dots) over a searchable scene list (click or
-  arrow keys pick; Down in the search box moves into the list). From has **Current look** (no From scene: start from
-  whatever the lights show now); To starts as "Not chosen yet". **Swap** (⇄) needs a scene on both sides. Quick
-  durations 1 / 3 / 5 / 10 s (active one filled), 0 s = jump. The strip is an on-screen hint only (Current look = the
-  To colour growing from transparent). Inline notes follow the engine's fade: lights only in To fade in from what they
-  show now; lights only in From fade back to how they would look without the fade; deleted or empty scenes and From =
-  To are flagged. No scenes in the project → empty state "No scenes to fade between".
-
-- **Pulse, Flash and Strobe editors (2026-10-27, owner: "proper, like the Scene editor", simple words for a
-  non-expert):** two tabs in the editor's tab strip like the scene editor — **Lights** (the Fixtures panel with
-  *Add / choose lights…*, count on the tab) and the effect's own tab (**Pulse** / **Flash** / **Strobe**). The editor
-  opens on the effect tab when it already has lights, else on Lights; Ctrl+L opens Choose lights from either tab and an
-  empty effect shows "No lights chosen yet" with a **Choose lights…** button. The effect tab starts with a one-line
-  explanation, then small sections, and a docked **Preview (on screen)** panel on the right:
-  - *Colour* (all three): the scene presets (chosen one ringed + its name shown) and a foldable **Custom** part
-    (R/G/B + hex; opens by itself for a non-preset colour). Pulse also has **A colour / Brightness only** (dimmer only).
-  - *Pulse:* Speed **Slow 4 s / Medium 2 s / Fast 1 s** + exact "s per breath" ("= 30 times a minute"); Shape
-    **Smooth** (sine) / **Straight** (triangle) with small curve pictures; **Darkest / Brightest** sliders in %. Preview:
-    lamp + curve of two breaths with a moving marker (only when Windows animations are on and the breath is ≥ 0.5 s;
-    faster ones are a still picture).
-  - *Flash:* **While the button is held** or **For a set time: x s** (min 0.1 s; the time is remembered while "held" is
-    picked). Preview: lamp in the flash colour + what pressing / letting go does.
-  - *Strobe:* **How it flashes** (DMX Pro flashes the lights / the light's own strobe), Speed **Slow 2 / Medium 5 /
-    Fast 10** per second + exact value with "Settings limit: N per second", **Flash length Short 20 / Normal 50 /
-    Long 80 %** + exact %, and for the light's own strobe the channel value (from the profile or exact). Safety rule 8,
-    always visible and live with Settings: photosensitivity note, "Strobe is turned off in Settings" bar (also a ⚠ on
-    the tab), "Slowed down: Settings allow at most …" when above the limit, and for the light's own strobe that the
-    limit cannot be checked there. The preview is a **still** picture of one second as the lights will really do it
-    (steady when strobe is off, capped speed) — nothing flashes on screen.
 
 ### 3.4 Scenes — Scene Creator (phase 3)
 

@@ -35,7 +35,7 @@ has been tested or that any example channel map matches a particular light.
 | Order | Tab             | Main purpose                              | Typical actions                                         |
 |-------|-----------------|-------------------------------------------|---------------------------------------------------------|
 | 01    | Fixtures        | Define the lights and their DMX addresses | Add fixture, choose profile, patch address, create groups |
-| 02    | Functions       | Manage reusable lighting behaviors        | Create/edit chases, fades, color cycles, pulses, sequences |
+| 02    | Functions       | Manage reusable lighting behaviors        | Create/edit chases, ~~fades, color cycles, pulses~~, ~~sequences~~ (removed types: see decision 2026-10-28) |
 | 03    | Scene Creator   | Design and save static lighting looks     | Select fixtures, set RGBW values, fade times, save scene |
 | 04    | Virtual Console | Operate a show live                       | Trigger scenes, start chases, adjust master brightness  |
 | 05    | Test & Preview  | Verify configuration and troubleshoot     | Test RGB channels, inspect values, check patching       |
@@ -95,11 +95,11 @@ Purpose: reusable behaviors played from the Virtual Console. A function referenc
 |------------------------|-------------------------------------------------|-------------------------------------------------------|
 | Scene                  | Saved static look                               | Core; editable from Scene Creator                     |
 | Chaser                 | Plays scenes/steps in order                     | Step duration, fade, direction, loop settings         |
-| Color cycle            | Transitions through a set of colors             | Only on fixtures with compatible color capabilities   |
-| Fade / transition      | Moves from one set of values to another         | Profile-aware channels, configurable duration         |
-| Pulse                  | Repeating brightness rises and falls            | Needs a dimmer or safe RGB scaling                    |
-| Flash / temporary look | Activates a scene while held/triggered          | Define release behavior clearly                       |
-| Strobe effect          | Hardware strobe channel or software timing      | Hardware strobe only if profile supports it           |
+| ~~Color cycle~~ (removed 2026-10-28) | Transitions through a set of colors             | Only on fixtures with compatible color capabilities   |
+| ~~Fade / transition~~ (removed 2026-10-28) | Moves from one set of values to another         | Profile-aware channels, configurable duration         |
+| ~~Pulse~~ (removed 2026-10-28) | Repeating brightness rises and falls            | Needs a dimmer or safe RGB scaling                    |
+| ~~Flash / temporary look~~ (removed 2026-10-28; VC flash button stays) | Activates a scene while held/triggered          | Define release behavior clearly                       |
+| ~~Strobe effect~~ (removed 2026-10-28) | Hardware strobe channel or software timing      | Hardware strobe only if profile supports it           |
 | Sequence               | Ordered list of steps with timing and values    | May be the generalized engine used by chasers         |
 
 **Library controls:** create, edit, rename, duplicate, delete, search, organize; show type, duration, loop state,
@@ -108,6 +108,8 @@ functions control the same channels; stop, release, pause, resume, restart.
 
 **Timing:** a step has hold time and fade time. UI distinguishes ms/s from BPM. v1 time-based; beat sync later.
 
+> **Removed 2026-10-28** (only Scene and Chaser remain; see the decisions log in `product-requirements.md`).
+>
 > **Important:** a color cycle must not assume a color-wheel/macro channel. For RGB/RGBW it interpolates R, G, B and
 > optional W from the profile. Macro-only color modes need a separate profile-defined implementation.
 

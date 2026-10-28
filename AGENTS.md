@@ -8,7 +8,7 @@
 **DMX Pro** — a modern Windows DMX lighting controller (like QLC+, but easier) for RGB/RGBW fixtures.
 **Stack:** WPF, C#, .NET 8, WPF-UI (Fluent), CommunityToolkit.Mvvm, Microsoft.Extensions.Hosting/DI, System.Text.Json, NAudio, xUnit.
 
-Main features: Fixtures (profile-driven patch) · Functions (scene, chaser (sequence merged into it), color cycle, fade, pulse, flash, strobe) ·
+Main features: Fixtures (profile-driven patch) · Functions (scene and chaser only) ·
 Scene Creator · Virtual Console · Music Show (upload audio → auto light show) · Test & Preview · Input/Output (Art-Net, sACN, USB-DMX) ·
 Save/Load projects · Copy/paste functions.
 

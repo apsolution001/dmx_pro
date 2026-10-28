@@ -79,10 +79,8 @@ Details (`src/DmxPro.Engine/DmxEngine.cs`, `Runtime/`):
   **elapsed time** (not accumulated deltas), so a seek shows the correct step/fade level at once.
   `TryGetShowPlayback` returns a `ShowPlaybackInfo` (position, `IsPaused`, `IsMuted`) from the latest snapshot without
   copying universes (cheap for a 30 Hz UI timer).
-- **Function programs:** `FunctionCompiler` turns each Core function (scene, chaser, color cycle, fade, pulse,
-  flash, strobe) into a program (`SceneProgram`, `StepProgram`, `ColorCycleProgram`, `FadeProgram`, `PulseProgram`,
-  `FlashProgram`, `StrobeProgram`) when a project is loaded or refreshed. Effects write color via `EffectFixture`
-  (profile-resolved; the Dimmer channel carries the level when the fixture has one). Every program time (fades, holds,
+- **Function programs:** `FunctionCompiler` turns each Core function (scene, chaser) into a program (`SceneProgram`, `StepProgram`) when a project is loaded or refreshed. The colour cycle,
+  fade, pulse, flash and strobe programs were removed 2026-10-28. Every program time (fades, holds,
   durations, periods, offsets) is capped at `FunctionEditing.MaxSeconds` (1 h) when compiling, so damaged files cannot
   overflow a chaser's pass length to infinity; `ProjectSerializer` also clamps loaded function times to the editor
   range (`FunctionTimes.ClampTimes`).
@@ -116,14 +114,14 @@ Details (`src/DmxPro.Engine/DmxEngine.cs`, `Runtime/`):
 - **Speed:** `SetFunctionSpeed(id, layer, factor)` scales a running function's own time (0..8, a new start resets it
   to 1); fades on start/stop stay real time. The console Speed widget feeds it (per-function speed × global speed).
 - **Strobe enforcement (safety rule 8):** `AllowStrobe` (off = every Strobe channel forced to its safe value) and
-  `MaxStrobeRateHz` (caps software strobe rate × speed; 0 = steady light). Snapshots carry a `[Flags] StrobeLimit`
+  `MaxStrobeRateHz` (caps chaser step changes × speed to no faster than 1/(2×max rate) per step; 0 = steady light). Snapshots carry a `[Flags] StrobeLimit`
   (`RateLimited`, `Suppressed`) so the UI can show it. Hardware strobe channels cannot be rate-limited (profiles have no
   value → Hz calibration).
 - **Safe frame:** `CreateSafeFrame(universe, SafeFrameMode)` — profile defaults (strobe at its safe value), or
   blackout (intensity 0). Used on close.
-- **Core functions** (`src/DmxPro.Core/Functions`): `LightFunction` is polymorphic on `"type"` (Scene, Chaser, Sequence (legacy, load-only, see below),
-  ColorCycle, Fade, Pulse, Flash, Strobe); `FunctionFactory` creates them, `FunctionReferences` validates references
-  (`CHASER_MISSING_FUNCTION`, `FADE_MISSING_SCENE`, `FUNCTION_MISSING_FIXTURE`, `SEQUENCE_UNKNOWN_CHANNEL`,
+- **Core functions** (`src/DmxPro.Core/Functions`): `LightFunction` is polymorphic on `"type"` (only Scene and Chaser; legacy types are load-only, see below);
+  `FunctionFactory` creates them, `FunctionReferences` validates references
+  (`CHASER_MISSING_FUNCTION`, `FUNCTION_MISSING_FIXTURE`, `SEQUENCE_UNKNOWN_CHANNEL`,
   `FUNCTION_REFERENCE_LOOP`). `RgbColor` is saved as `"#RRGGBB"`.
 
 - **Function ownership (built 2026-10-28):** `LightFunction.OwnerShowId` (show copies) and
@@ -144,6 +142,12 @@ Details (`src/DmxPro.Engine/DmxEngine.cs`, `Runtime/`):
   Code: `src/DmxPro.Core/Projects/SequenceMigration.cs`. A new Sequence can no longer be created.
   References (VC widgets, show items, chaser steps, fades) keep working; output is frame-identical (engine test). Files
   are saved as chasers.
+- **Legacy function migration (2026-10-28):** `src/DmxPro.Core/Projects/LegacyFunctionMigration.cs` runs in
+  `ProjectSerializer.Deserialize` after `SequenceMigration`. It converts old functions in place (same id, name,
+  ownership): Colour cycle -> looping chaser, one step per colour; Fade -> chaser that plays once (From step, then To
+  step with fade in = duration); Pulse -> looping bright/dark chaser with fades; Flash -> scene (VC flash buttons stay
+  momentary); Strobe -> scene setting the light's own strobe channel if it has one, else a 2-step on/off chaser. Files are
+  saved as scenes/chasers only.
 
 ## 5. Project file
 

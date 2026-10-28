@@ -13,6 +13,6 @@ These come from spec §1 and §12. Code reviews must reject changes that violate
 7. Never present an unknown channel meaning as confirmed: channels without a known meaning (`Generic`) are shown as
    raw channels only. Checking a profile against the real light is the owner's job (done in QLC+ before patching), so
    the app shows no "unverified profile" warnings (decision 2026-10-22).
-8. Strobe: respect the global "allow strobe" setting and max strobe rate; auto-generated music shows default to no strobe.
+8. Strobe: respect the global "allow strobe" setting and max strobe rate (chasers are capped too: step changes never faster than 1/(2 x max rate)); auto-generated music shows default to no strobe.
 9. Values are always clamped to 0–255 before reaching any output.
 10. Hardware/network errors are shown visibly (status pill + message), never only logged.

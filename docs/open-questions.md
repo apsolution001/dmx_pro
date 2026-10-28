@@ -37,10 +37,10 @@
 18. Keyboard shortcuts on console widgets: only for the **active page**, or for all pages? (Current assumption: active page only.)
 
 ## Functions & shows (added 2026-10-18)
-19. ~~Chaser placed in a show~~ answered 2026-10-27 (decisions log): placing a chaser deep-copies the chaser and its owned step functions. **Still open:** a **fade** placed in a show copies only the fade; its From / To keep pointing at library scenes (validated by `FADE_MISSING_SCENE`). Should a fade also copy its scenes, and what happens when a referenced scene is deleted (block, warn, or break)?
-20. Strobe hardware rate: should profiles carry a value → Hz calibration for strobe channels so the max strobe rate can also limit hardware strobe? (Today only software strobe is rate-limited.)
-21. Should fast pulses and fast chasers count toward the strobe limit (a 10 Hz pulse is a strobe in effect)? (Today only Strobe functions and strobe channels do.)
-22. Should effects (pulse, strobe, colour cycle) be able to target a fixture **group** directly, or only lists of lights? (Today: lights.)
+19. ~~Chaser placed in a show~~ answered 2026-10-27 (decisions log): placing a chaser deep-copies the chaser and its owned step functions. (The fade part is void: fades were removed 2026-10-28.)
+20. Strobe hardware rate: should profiles carry a value → Hz calibration for strobe channels so the max strobe rate can also limit hardware strobe? (Today only chasers' step speed is rate-limited.)
+21. ~~Fast pulses/chasers and the strobe limit~~ answered 2026-10-28 (decisions log): chasers are capped by the max strobe rate.
+22. ~~Effects targeting a group~~ void: the effect types were removed 2026-10-28.
 23. Chaser / sequence run order "Random": needed? (Today: Loop, Single shot and Ping-pong, each Forward or Backward.)
 24. Art-Net per-universe Port-Address override: two nodes that both listen on Art-Net universe 0 are currently blocked (one Art-Net universe per project universe). Allow the same Art-Net universe on two outputs?
 
