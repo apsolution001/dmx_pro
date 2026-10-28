@@ -89,9 +89,9 @@ public sealed class ChaserEditorHostTests : IDisposable
     [Fact]
     public async Task Undo_WithStepEditorOpen_ReopensChaserWithoutStaleStepEditor()
     {
-        var pulse = new PulseFunction { Name = "Throb", FixtureIds = [_par1.Id], OwnerFunctionId = _chaser.Id };
-        Project.Functions.Add(pulse);
-        _chaser.AddStep(pulse.Id);
+        var sub = new ChaserFunction { Name = "Throb", OwnerFunctionId = _chaser.Id };
+        Project.Functions.Add(sub);
+        _chaser.AddStep(sub.Id);
         await CommitHistoryAsync();
         var functions = _rig.CreateFunctionsViewModel();
         var editor = await OpenChaserAsync(functions);
@@ -105,7 +105,7 @@ public sealed class ChaserEditorHostTests : IDisposable
 
         Assert.True(_rig.Projects.TryUndo(out _));
 
-        var restored = Project.FindFunction(pulse.Id)!;
+        var restored = Project.FindFunction(sub.Id)!;
         Assert.Equal("Throb", restored.Name);
         Assert.NotSame(inner.Original, restored);
         var reopened = Assert.IsType<ChaserEditorViewModel>(functions.Editor);

@@ -54,15 +54,15 @@ public sealed class FunctionsViewModelSearchTests : IDisposable
     }
 
     [Fact]
-    public void Search_MultiWordTypeName_MatchesColorCycle()
+    public void Search_TypeNameAndNameWords_MatchesChaser()
     {
         var vm = Create(project =>
         {
-            project.CreateFunction(FunctionType.ColorCycle, "Rainbow");
-            project.CreateFunction(FunctionType.Scene, "Colors");
+            project.CreateFunction(FunctionType.Chaser, "Rainbow");
+            project.CreateFunction(FunctionType.Scene, "Rainbow wash");
         });
 
-        vm.Search = "cycle color";
+        vm.Search = "rainbow chaser";
 
         Assert.Equal(["Rainbow"], Names(vm));
     }

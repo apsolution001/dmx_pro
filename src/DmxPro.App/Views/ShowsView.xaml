@@ -1405,7 +1405,7 @@
                                             ItemsSource="{Binding NewFunctionTypes}"
                                             SelectedItem="{Binding NewFunctionType}"
                                             Style="{StaticResource FormComboBox}"
-                                            ToolTip="Type of the new function: scene, chaser, color cycle, fade, pulse, flash or strobe" />
+                                            ToolTip="Type of the new function: scene or chaser" />
 
                                         <TextBlock
                                             Grid.Row="4"

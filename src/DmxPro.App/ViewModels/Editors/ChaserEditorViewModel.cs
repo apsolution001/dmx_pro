@@ -166,7 +166,7 @@ public sealed partial class ChaserEditorViewModel : FunctionEditorViewModel
     /// <summary>No step is selected: the right panel says how to start.</summary>
     public bool IsNoStepPanelVisible => _current is null;
 
-    /// <summary>"Step 3 · Red pulse".</summary>
+    /// <summary>"Step 3 · Red chase".</summary>
     public string CurrentStepTitle => _current is { } row ? $"Step {row.Number} · {row.FunctionName}" : "No step selected";
 
     /// <summary>Linked step: what happens on its first edit. Null for other steps.</summary>
@@ -516,7 +516,7 @@ public sealed partial class ChaserEditorViewModel : FunctionEditorViewModel
     /// <summary>
     /// "Add from function…": adds the picked functions (a single <see cref="ChaserPickerItem"/> or a list of them) as
     /// steps after the last selected step (or at the end). Each step gets the chaser's own copy: a scene becomes an own
-    /// look, anything else a function step. The originals are never changed. The new steps become the selection.
+    /// look, a chaser a function step. The originals are never changed. The new steps become the selection.
     /// </summary>
     [RelayCommand]
     private void AddSteps(object? parameter)
@@ -534,7 +534,7 @@ public sealed partial class ChaserEditorViewModel : FunctionEditorViewModel
             var index = ChaserStepListEditing.InsertIndex(Steps.Count, SelectedIndexes);
             foreach (var item in picked)
             {
-                if (!Project.CanPlayInChaser(Original.Id, item.Function))
+                if (!CanPick(item.Function))
                 {
                     continue;
                 }
@@ -1244,7 +1244,7 @@ public sealed partial class ChaserEditorViewModel : FunctionEditorViewModel
         var candidates = 0;
         foreach (var function in Project.FunctionListItems.OrderBy(f => f.Type).ThenBy(f => f.Name, StringComparer.CurrentCultureIgnoreCase))
         {
-            if (!Project.CanPlayInChaser(Original.Id, function))
+            if (!CanPick(function))
             {
                 continue;
             }
@@ -1264,6 +1264,10 @@ public sealed partial class ChaserEditorViewModel : FunctionEditorViewModel
         OnPropertyChanged(nameof(HasNoMatches));
         OnPropertyChanged(nameof(NoMatchesText));
     }
+
+    /// <summary>"Add from function…" offers scenes and chasers only (the two function types the app edits).</summary>
+    private bool CanPick(LightFunction function) =>
+        FunctionTypeOption.IsCreatable(function.Type) && Project.CanPlayInChaser(Original.Id, function);
 
     // ───────────────────────────── Step editor inside the chaser ─────────────────────────────
 

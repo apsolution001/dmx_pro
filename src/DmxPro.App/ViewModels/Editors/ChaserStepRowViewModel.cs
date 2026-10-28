@@ -74,7 +74,7 @@ public sealed class ChaserStepRowViewModel : StepTimingRowViewModel
 
     public string FunctionName => Function?.Name ?? "(deleted function)";
 
-    /// <summary>"Own look", "Pulse", "Scene · linked", "deleted, plays nothing".</summary>
+    /// <summary>"Own look", "Chaser", "Scene · linked", "deleted, plays nothing".</summary>
     public string TypeName => Kind switch
     {
         ChaserStepKind.Missing => "deleted, plays nothing",
@@ -165,9 +165,6 @@ public sealed class ChaserStepRowViewModel : StepTimingRowViewModel
             null => "Plays nothing.",
             SceneFunction scene => Count(scene.TargetFixtureIds().Count, "light", "lights"),
             ChaserFunction chaser => $"{Count(chaser.Steps.Count, "step", "steps")} · {EditorTiming.CycleText(chaser.Steps.Count, chaser.CycleSeconds(), chaser.RunOrder)}",
-            ColorCycleFunction cycle => $"{Count(cycle.FixtureIds.Count, "light", "lights")} · {Count(cycle.Colors.Count, "colour", "colours")}",
-            FixtureEffectFunction effect => Count(effect.FixtureIds.Count, "light", "lights"),
-            FadeFunction fade => $"Fade over {StepTimingRowViewModel.Format(fade.DurationSeconds)} s",
             _ => FunctionRowViewModel.TypeDisplayName(function.Type),
         };
     }

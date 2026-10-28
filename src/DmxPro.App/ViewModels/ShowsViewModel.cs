@@ -198,10 +198,7 @@ public sealed partial class ShowsViewModel : PageViewModel
         _uiContext = SynchronizationContext.Current;
         _music = music;
         Music = new ShowAudioViewModel(this, projects, dialogs, files, music);
-        NewFunctionTypes = Enum.GetValues<FunctionType>()
-            .Where(t => t != FunctionType.Sequence)
-            .Select(t => new FunctionTypeOption(t, FunctionRowViewModel.TypeDisplayName(t)))
-            .ToList();
+        NewFunctionTypes = FunctionTypeOption.Creatable();
         _newFunctionType = NewFunctionTypes[0];
         SnapOptions =
         [

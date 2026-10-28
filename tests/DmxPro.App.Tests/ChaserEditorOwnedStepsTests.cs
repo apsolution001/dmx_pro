@@ -63,9 +63,9 @@ public sealed class ChaserEditorOwnedStepsTests : IDisposable
     public void AddStep_AfterFunctionStep_StartsBlankWithNearestOwnLookLights()
     {
         AddOwnLook("Step 1", (_par1, "r", 255), (_par2, "g", 255));
-        var pulse = new PulseFunction { Name = "Pulse", OwnerFunctionId = _chaser.Id, FixtureIds = [_par3.Id] };
-        _project.Functions.Add(pulse);
-        _chaser.AddStep(pulse.Id);
+        var sub = new ChaserFunction { Name = "Inner", OwnerFunctionId = _chaser.Id };
+        _project.Functions.Add(sub);
+        _chaser.AddStep(sub.Id);
         var vm = Create();
         vm.Steps[1].IsSelected = true;
 
@@ -113,19 +113,19 @@ public sealed class ChaserEditorOwnedStepsTests : IDisposable
     }
 
     [Fact]
-    public void AddFromFunction_Pulse_BecomesFunctionStepCopy()
+    public void AddFromFunction_Chaser_BecomesFunctionStepCopy()
     {
-        var pulse = new PulseFunction { Name = "Throb", FixtureIds = [_par1.Id] };
-        _project.Functions.Add(pulse);
+        var sub = new ChaserFunction { Name = "Throb" };
+        _project.Functions.Add(sub);
         var vm = Create();
 
-        vm.AddStepsCommand.Execute(vm.PickerItems.Single(p => p.Function == pulse));
+        vm.AddStepsCommand.Execute(vm.PickerItems.Single(p => p.Function == sub));
 
         var row = vm.Steps.Single();
         Assert.True(row.IsFunctionStep);
         Assert.True(vm.IsFunctionPanelVisible);
-        var copy = Assert.IsType<PulseFunction>(row.Function);
-        Assert.NotEqual(pulse.Id, copy.Id);
+        var copy = Assert.IsType<ChaserFunction>(row.Function);
+        Assert.NotEqual(sub.Id, copy.Id);
         Assert.Equal(_chaser.Id, copy.OwnerFunctionId);
         Assert.Null(_project.FindFunction(copy.Id));
         Assert.True(vm.EditStepCommand.CanExecute(null));
@@ -293,17 +293,17 @@ public sealed class ChaserEditorOwnedStepsTests : IDisposable
     [Fact]
     public async Task EditStep_FunctionStep_UnsavedChaser_RequestsSave()
     {
-        var pulse = new PulseFunction { Name = "Throb", FixtureIds = [_par1.Id] };
-        _project.Functions.Add(pulse);
+        var sub = new ChaserFunction { Name = "Throb" };
+        _project.Functions.Add(sub);
         var vm = Create();
         vm.Dialogs = _rig.Dialogs;
         _rig.Dialogs.SaveChangesAnswer = SaveChangesChoice.Save;
-        vm.AddStepsCommand.Execute(vm.PickerItems.Single(p => p.Function == pulse));
+        vm.AddStepsCommand.Execute(vm.PickerItems.Single(p => p.Function == sub));
 
         await vm.EditStepCommand.ExecuteAsync(null);
 
         Assert.Equal(["Party"], _rig.Dialogs.Prompts);
-        var inner = Assert.IsType<PulseEditorViewModel>(vm.StepEditor);
+        var inner = Assert.IsType<ChaserEditorViewModel>(vm.StepEditor);
         Assert.True(vm.IsInnerEditorOpen);
         Assert.Same(_project.FindFunction(_chaser.Steps[0].FunctionId), inner.Original);
         Assert.Equal(_chaser.Id, inner.Original.OwnerFunctionId);
@@ -319,12 +319,12 @@ public sealed class ChaserEditorOwnedStepsTests : IDisposable
     [Fact]
     public async Task EditStep_Cancel_StaysOnChaserWithChanges()
     {
-        var pulse = new PulseFunction { Name = "Throb", FixtureIds = [_par1.Id] };
-        _project.Functions.Add(pulse);
+        var sub = new ChaserFunction { Name = "Throb" };
+        _project.Functions.Add(sub);
         var vm = Create();
         vm.Dialogs = _rig.Dialogs;
         _rig.Dialogs.SaveChangesAnswer = SaveChangesChoice.Cancel;
-        vm.AddStepsCommand.Execute(vm.PickerItems.Single(p => p.Function == pulse));
+        vm.AddStepsCommand.Execute(vm.PickerItems.Single(p => p.Function == sub));
 
         await vm.EditStepCommand.ExecuteAsync(null);
 
@@ -336,12 +336,12 @@ public sealed class ChaserEditorOwnedStepsTests : IDisposable
     [Fact]
     public async Task EditStep_DontSave_DropsNewStepAndOpensNothing()
     {
-        var pulse = new PulseFunction { Name = "Throb", FixtureIds = [_par1.Id] };
-        _project.Functions.Add(pulse);
+        var sub = new ChaserFunction { Name = "Throb" };
+        _project.Functions.Add(sub);
         var vm = Create();
         vm.Dialogs = _rig.Dialogs;
         _rig.Dialogs.SaveChangesAnswer = SaveChangesChoice.Discard;
-        vm.AddStepsCommand.Execute(vm.PickerItems.Single(p => p.Function == pulse));
+        vm.AddStepsCommand.Execute(vm.PickerItems.Single(p => p.Function == sub));
 
         await vm.EditStepCommand.ExecuteAsync(null);
 
@@ -353,9 +353,9 @@ public sealed class ChaserEditorOwnedStepsTests : IDisposable
     [Fact]
     public async Task EditStep_LinkedFunctionStep_EditsAnOwnCopyNotTheLibrary()
     {
-        var pulse = new PulseFunction { Name = "Throb", FixtureIds = [_par1.Id] };
-        _project.Functions.Add(pulse);
-        _chaser.AddStep(pulse.Id);
+        var sub = new ChaserFunction { Name = "Throb" };
+        _project.Functions.Add(sub);
+        _chaser.AddStep(sub.Id);
         var vm = Create();
         vm.Dialogs = _rig.Dialogs;
         _rig.Dialogs.SaveChangesAnswer = SaveChangesChoice.Save;
@@ -363,18 +363,18 @@ public sealed class ChaserEditorOwnedStepsTests : IDisposable
 
         await vm.EditStepCommand.ExecuteAsync(null);
 
-        var inner = Assert.IsType<PulseEditorViewModel>(vm.StepEditor);
-        Assert.NotSame(pulse, inner.Original);
-        Assert.Equal(pulse.Id, inner.Original.CopiedFromId);
-        Assert.NotEqual(pulse.Id, _chaser.Steps[0].FunctionId);
+        var inner = Assert.IsType<ChaserEditorViewModel>(vm.StepEditor);
+        Assert.NotSame(sub, inner.Original);
+        Assert.Equal(sub.Id, inner.Original.CopiedFromId);
+        Assert.NotEqual(sub.Id, _chaser.Steps[0].FunctionId);
     }
 
     [Fact]
     public async Task InnerEditor_DirtyMirroredAndPreviewDelegated()
     {
-        var pulse = new PulseFunction { Name = "Throb", FixtureIds = [_par1.Id], OwnerFunctionId = _chaser.Id };
-        _project.Functions.Add(pulse);
-        _chaser.AddStep(pulse.Id);
+        var sub = new ChaserFunction { Name = "Throb", OwnerFunctionId = _chaser.Id };
+        _project.Functions.Add(sub);
+        _chaser.AddStep(sub.Id);
         var vm = Create();
         vm.Dialogs = _rig.Dialogs;
         vm.Steps[0].IsSelected = true;
@@ -388,16 +388,16 @@ public sealed class ChaserEditorOwnedStepsTests : IDisposable
 
         vm.Save();
 
-        Assert.Equal("Throb 2", _project.FindFunction(pulse.Id)!.Name);
+        Assert.Equal("Throb 2", _project.FindFunction(sub.Id)!.Name);
         Assert.False(inner.IsDirty);
     }
 
     [Fact]
     public async Task EditStep_LinkedStep_Cancel_StaysLinkedAndDraftUnchanged()
     {
-        var pulse = new PulseFunction { Name = "Throb", FixtureIds = [_par1.Id] };
-        _project.Functions.Add(pulse);
-        _chaser.AddStep(pulse.Id);
+        var sub = new ChaserFunction { Name = "Throb" };
+        _project.Functions.Add(sub);
+        _chaser.AddStep(sub.Id);
         var vm = Create();
         vm.Dialogs = _rig.Dialogs;
         _rig.Dialogs.SaveChangesAnswer = SaveChangesChoice.Cancel;
@@ -409,19 +409,19 @@ public sealed class ChaserEditorOwnedStepsTests : IDisposable
         Assert.Equal(["Party"], _rig.Dialogs.Prompts);
         Assert.Null(vm.StepEditor);
         Assert.True(vm.Steps[0].IsLinked);
-        Assert.Equal(pulse.Id, vm.Steps[0].Step.FunctionId);
+        Assert.Equal(sub.Id, vm.Steps[0].Step.FunctionId);
         Assert.Null(vm.StepNote);
-        Assert.DoesNotContain(vm.PreviewFunctions, f => f.CopiedFromId == pulse.Id);
-        Assert.Equal(pulse.Id, _chaser.Steps[0].FunctionId);
+        Assert.DoesNotContain(vm.PreviewFunctions, f => f.CopiedFromId == sub.Id);
+        Assert.Equal(sub.Id, _chaser.Steps[0].FunctionId);
         Assert.True(vm.IsDirty);
     }
 
     [Fact]
     public async Task EditStep_LinkedStep_DirtyWithoutDialogs_DoesNothing()
     {
-        var pulse = new PulseFunction { Name = "Throb", FixtureIds = [_par1.Id] };
-        _project.Functions.Add(pulse);
-        _chaser.AddStep(pulse.Id);
+        var sub = new ChaserFunction { Name = "Throb" };
+        _project.Functions.Add(sub);
+        _chaser.AddStep(sub.Id);
         var vm = Create();
         vm.Steps[0].IsSelected = true;
         vm.IsPlayOnce = true;
@@ -430,16 +430,16 @@ public sealed class ChaserEditorOwnedStepsTests : IDisposable
 
         Assert.Null(vm.StepEditor);
         Assert.True(vm.Steps[0].IsLinked);
-        Assert.Equal(pulse.Id, vm.Steps[0].Step.FunctionId);
+        Assert.Equal(sub.Id, vm.Steps[0].Step.FunctionId);
         Assert.Empty(_project.OwnedFunctions(_chaser.Id));
     }
 
     [Fact]
     public async Task EditStep_LinkedStep_Clean_NoPromptCommitsOnlyTheCopy()
     {
-        var pulse = new PulseFunction { Name = "Throb", FixtureIds = [_par1.Id] };
-        _project.Functions.Add(pulse);
-        _chaser.AddStep(pulse.Id);
+        var sub = new ChaserFunction { Name = "Throb" };
+        _project.Functions.Add(sub);
+        _chaser.AddStep(sub.Id);
         var vm = Create();
         vm.Dialogs = _rig.Dialogs;
         vm.Steps[0].IsSelected = true;
@@ -447,18 +447,18 @@ public sealed class ChaserEditorOwnedStepsTests : IDisposable
         await vm.EditStepCommand.ExecuteAsync(null);
 
         Assert.Empty(_rig.Dialogs.Prompts);
-        var inner = Assert.IsType<PulseEditorViewModel>(vm.StepEditor);
-        Assert.Equal(pulse.Id, inner.Original.CopiedFromId);
+        var inner = Assert.IsType<ChaserEditorViewModel>(vm.StepEditor);
+        Assert.Equal(sub.Id, inner.Original.CopiedFromId);
         Assert.Equal(inner.Original.Id, _chaser.Steps[0].FunctionId);
-        Assert.Contains(pulse, _project.FunctionListItems);
+        Assert.Contains(sub, _project.FunctionListItems);
     }
 
     [Fact]
     public async Task Save_WhileStepEditorDirty_SavesBothAndRaisesSavedOnce()
     {
-        var pulse = new PulseFunction { Name = "Throb", FixtureIds = [_par1.Id], OwnerFunctionId = _chaser.Id };
-        _project.Functions.Add(pulse);
-        _chaser.AddStep(pulse.Id);
+        var sub = new ChaserFunction { Name = "Throb", OwnerFunctionId = _chaser.Id };
+        _project.Functions.Add(sub);
+        _chaser.AddStep(sub.Id);
         var vm = Create();
         vm.Dialogs = _rig.Dialogs;
         vm.Steps[0].IsSelected = true;
@@ -471,7 +471,7 @@ public sealed class ChaserEditorOwnedStepsTests : IDisposable
         vm.Save();
 
         Assert.Equal(1, saved);
-        Assert.Equal("Throb 2", _project.FindFunction(pulse.Id)!.Name);
+        Assert.Equal("Throb 2", _project.FindFunction(sub.Id)!.Name);
         Assert.False(inner.IsDirty);
         Assert.False(vm.IsDirty);
     }
@@ -479,9 +479,9 @@ public sealed class ChaserEditorOwnedStepsTests : IDisposable
     [Fact]
     public async Task StepEditorSave_OnItsOwn_RaisesChaserSaved()
     {
-        var pulse = new PulseFunction { Name = "Throb", FixtureIds = [_par1.Id], OwnerFunctionId = _chaser.Id };
-        _project.Functions.Add(pulse);
-        _chaser.AddStep(pulse.Id);
+        var sub = new ChaserFunction { Name = "Throb", OwnerFunctionId = _chaser.Id };
+        _project.Functions.Add(sub);
+        _chaser.AddStep(sub.Id);
         var vm = Create();
         vm.Dialogs = _rig.Dialogs;
         vm.Steps[0].IsSelected = true;
@@ -501,9 +501,9 @@ public sealed class ChaserEditorOwnedStepsTests : IDisposable
     [InlineData(SaveChangesChoice.Cancel, "Throb", true)]
     public async Task BackToChaser_DirtyStepEditor_FollowsTheAnswer(SaveChangesChoice answer, string storedName, bool staysOpen)
     {
-        var pulse = new PulseFunction { Name = "Throb", FixtureIds = [_par1.Id], OwnerFunctionId = _chaser.Id };
-        _project.Functions.Add(pulse);
-        _chaser.AddStep(pulse.Id);
+        var sub = new ChaserFunction { Name = "Throb", OwnerFunctionId = _chaser.Id };
+        _project.Functions.Add(sub);
+        _chaser.AddStep(sub.Id);
         var vm = Create();
         vm.Dialogs = _rig.Dialogs;
         vm.Steps[0].IsSelected = true;
@@ -515,7 +515,7 @@ public sealed class ChaserEditorOwnedStepsTests : IDisposable
         await vm.BackToChaserCommand.ExecuteAsync(null);
 
         Assert.Equal(["Throb"], _rig.Dialogs.Prompts);
-        Assert.Equal(storedName, _project.FindFunction(pulse.Id)!.Name);
+        Assert.Equal(storedName, _project.FindFunction(sub.Id)!.Name);
         if (staysOpen)
         {
             Assert.Same(inner, vm.StepEditor);

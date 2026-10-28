@@ -24,7 +24,7 @@ public sealed partial class GroupMemberViewModel : ObservableObject
 
     public Fixture Fixture { get; }
 
-    /// <summary>1-based position in the group (the order chasers and effects will step through).</summary>
+    /// <summary>1-based position in the group (the order chasers will step through).</summary>
     public int Position { get; }
 
     public string Name => Fixture.Name;

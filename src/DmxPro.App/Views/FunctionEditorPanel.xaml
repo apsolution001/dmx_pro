@@ -19,8 +19,8 @@
         The function editor host (DataContext: a FunctionEditorViewModel), shared by the Functions page (below the
         function tree) and the Shows page (a show's own copy). Toolbar row (save, revert, preview / live, show-in-list,
         name, close), the show-copy banner, then the editor of the function's type, picked by
-        the DataTemplates below: Scene = General / Channels tabs; Chaser, Color cycle, Fade, Pulse, Flash and Strobe =
-        their own views in Views/Editors (a Chaser can show a step's own editor inside it: then this toolbar hides). Esc anywhere in the editor = Close (asks when there are unsaved
+        the DataTemplates below: Scene = General / Channels tabs; Chaser = its own view in
+        Views/Editors; an old function type that is no longer supported = a short note (a Chaser can show a step's own editor inside it: then this toolbar hides). Esc anywhere in the editor = Close (asks when there are unsaved
         changes); controls that use Esc themselves (value boxes, lists, flyouts) handle it first.
 
         [✓][✕] | [▶ Preview] (Live on lights) | [ ] Show in function list | (icon) [name......] | Fade in [0] s  Fade out [0] s  Unsaved changes [Close]
@@ -354,20 +354,20 @@
                 <DataTemplate DataType="{x:Type ed:ChaserEditorViewModel}">
                     <edv:ChaserEditorView />
                 </DataTemplate>
-                <DataTemplate DataType="{x:Type ed:ColorCycleEditorViewModel}">
-                    <edv:ColorCycleEditorView />
-                </DataTemplate>
-                <DataTemplate DataType="{x:Type ed:FadeEditorViewModel}">
-                    <edv:FadeEditorView />
-                </DataTemplate>
-                <DataTemplate DataType="{x:Type ed:PulseEditorViewModel}">
-                    <edv:PulseEditorView />
-                </DataTemplate>
-                <DataTemplate DataType="{x:Type ed:FlashEditorViewModel}">
-                    <edv:FlashEditorView />
-                </DataTemplate>
-                <DataTemplate DataType="{x:Type ed:StrobeEditorViewModel}">
-                    <edv:StrobeEditorView />
+                <!-- A legacy function type (colour cycle, fade, pulse, flash, strobe): a short note instead of an editor. -->
+                <DataTemplate DataType="{x:Type ed:UnsupportedFunctionEditorViewModel}">
+                    <DockPanel Margin="12" VerticalAlignment="Top">
+                        <c:DmxIcon
+                            Margin="0,0,8,0"
+                            VerticalAlignment="Top"
+                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                            Kind="Info"
+                            Size="{StaticResource Dmx.SmallIconSize}" />
+                        <TextBlock
+                            AutomationProperties.Name="{Binding Message}"
+                            Text="{Binding Message}"
+                            TextWrapping="Wrap" />
+                    </DockPanel>
                 </DataTemplate>
             </ContentControl.Resources>
         </ContentControl>
