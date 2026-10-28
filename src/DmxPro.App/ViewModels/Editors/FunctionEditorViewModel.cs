@@ -181,6 +181,18 @@ public abstract partial class FunctionEditorViewModel : ObservableObject
     }
 
     /// <summary>
+    /// True when Undo / Redo replaced what this editor was loaded from, so its draft and <see cref="Original"/> no longer
+    /// match the project: the host then recreates the editor on the restored version. Restore keeps unchanged functions as
+    /// the same objects and makes changed ones new objects, so a reference check is enough. By default only
+    /// <see cref="Original"/> is checked; editors that load other project functions (a chaser's own steps) check those too.
+    /// </summary>
+    public virtual bool IsStale(Project project)
+    {
+        ArgumentNullException.ThrowIfNull(project);
+        return !ReferenceEquals(project.FindFunction(Original.Id), Original);
+    }
+
+    /// <summary>
     /// The project's fixtures or groups changed (e.g. a light was added while this editor was open): refresh the lists
     /// of lights and groups to choose from. The function's own selection is kept.
     /// </summary>

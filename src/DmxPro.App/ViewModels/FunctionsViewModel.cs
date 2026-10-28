@@ -558,8 +558,9 @@ public sealed partial class FunctionsViewModel : PageViewModel
     /// <summary>
     /// Undo / Redo put earlier content back: unchanged functions are the same objects (selection and an open editor,
     /// unsaved draft included, stay); a function whose content changed is a new object, so it is selected again by id and
-    /// its editor reopens on the restored version (its unsaved draft is dropped, no prompt: the user asked to undo). An
-    /// editor whose function no longer exists closes.
+    /// its editor reopens on the restored version (its unsaved draft is dropped, no prompt: the user asked to undo). So
+    /// does an editor that is otherwise stale (<see cref="FunctionEditorViewModel.IsStale"/>, e.g. a chaser whose own step
+    /// look changed). An editor whose function no longer exists closes.
     /// </summary>
     private void OnContentRestored()
     {
@@ -571,6 +572,13 @@ public sealed partial class FunctionsViewModel : PageViewModel
         if (SelectedRow is null && selectedId is { } id && Rows.FirstOrDefault(r => r.Function.Id == id) is { } row)
         {
             SelectSilently(row.Function);
+        }
+
+        // The function itself survived, but something the editor loaded (a chaser's own step functions, the step shown
+        // inside it) was replaced: reopen on the restored version, the same as when the function itself changed.
+        if (Editor is { } editor && editor.IsStale(project))
+        {
+            Editor = null;
         }
 
         if (Editor is null && editedId is { } functionId && project.FindFunction(functionId) is { } function)

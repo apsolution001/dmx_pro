@@ -1153,6 +1153,13 @@ public sealed partial class ShowsViewModel : PageViewModel
     {
         var editedId = Editor?.Original.Id;
         Reload(SelectedShow?.Id);
+
+        // Something the editor loaded besides its function (a chaser's own step functions) was replaced: reopen too.
+        if (Editor is { } editor && editor.IsStale(_projects.Current))
+        {
+            Editor = null;
+        }
+
         if (Editor is null && editedId is { } id && _projects.Current.FindFunction(id) is { } function)
         {
             Editor = FunctionEditorFactory.Create(_projects.Current, function, _settings, _clipboard);
