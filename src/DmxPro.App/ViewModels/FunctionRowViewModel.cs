@@ -90,7 +90,7 @@ public sealed partial class FunctionRowViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(Name));
         OnPropertyChanged(nameof(AutomationName));
-        IsHiddenFromList = Function.OwnerShowId is not null && !Function.ShowInFunctionList;
+        IsHiddenFromList = Function.IsHiddenFromList;
         ShowBadge = Function.OwnerShowId is { } showId
             ? $"in show: {project.FindShow(showId)?.Name ?? "(deleted show)"}" + (IsHiddenFromList ? " · hidden" : string.Empty)
             : null;
