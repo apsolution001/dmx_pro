@@ -70,6 +70,10 @@ public sealed class ProjectSerializer
         // the repaired timing. The next save writes chasers only.
         SequenceMigration.Migrate(project);
 
+        // Colour cycle, fade, pulse, flash and strobe were retired (2026-10-28): they become scenes and chasers with the
+        // same ids, so everything that points at them keeps working.
+        LegacyFunctionMigration.Migrate(project);
+
         foreach (var show in project.Shows)
         {
             show.NormalizeAudio();

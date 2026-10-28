@@ -5,6 +5,8 @@ namespace DmxPro.Core.Functions;
 /// <summary>
 /// Strobe effect. Safety rule 8: the engine plays it only while "allow strobe" is on and never faster than the global
 /// maximum strobe rate; otherwise the fixtures show steady light in <see cref="Color"/> and the engine reports why.
+/// <para>Legacy, load-only: converted on load by <see cref="Projects.LegacyFunctionMigration"/> (only Scene and Chaser
+/// remain, owner decision 2026-10-28). Kept so old project files still deserialize; nothing creates it any more.</para>
 /// </summary>
 public sealed class StrobeFunction : FixtureEffectFunction
 {

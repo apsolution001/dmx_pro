@@ -7,6 +7,11 @@ namespace DmxPro.Core.Functions;
 /// References between functions (chaser steps, fade scenes) and from functions to fixtures, plus the matching
 /// validation (missing references, reference loops, unknown channels).
 /// </summary>
+/// <remarks>
+/// The <see cref="FadeFunction"/>, <see cref="SequenceFunction"/> and effect cases only matter for legacy functions that
+/// have not been converted yet (a project being built in memory): every loaded project holds scenes and chasers only
+/// (<see cref="Projects.SequenceMigration"/>, <see cref="Projects.LegacyFunctionMigration"/>).
+/// </remarks>
 public static class FunctionReferences
 {
     /// <summary>Ids of the functions <paramref name="function"/> plays (chaser steps, fade from/to scenes), in order.</summary>

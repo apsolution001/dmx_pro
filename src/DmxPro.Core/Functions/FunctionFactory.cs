@@ -4,28 +4,30 @@ namespace DmxPro.Core.Functions;
 public static class FunctionFactory
 {
     /// <summary>
-    /// A new, empty function of <paramref name="type"/> (unnamed, library-owned). <see cref="FunctionType.Sequence"/>
-    /// creates a <see cref="ChaserFunction"/>: Sequence was merged into Chaser, the enum value only remains so old files
-    /// can still be read.
+    /// A new, empty function of <paramref name="type"/> (unnamed, library-owned). DMX Pro offers only Scene and Chaser
+    /// (owner decision 2026-10-28): every other type (Sequence, and the retired colour cycle, fade, pulse, flash and
+    /// strobe) creates a <see cref="ChaserFunction"/>. Those enum values only remain so old files can still be read.
     /// </summary>
     public static LightFunction Create(FunctionType type) => type switch
     {
         FunctionType.Scene => new SceneFunction(),
         FunctionType.Chaser => new ChaserFunction(),
         FunctionType.Sequence => new ChaserFunction(),
-        FunctionType.ColorCycle => new ColorCycleFunction(),
-        FunctionType.Fade => new FadeFunction(),
-        FunctionType.Pulse => new PulseFunction(),
-        FunctionType.Flash => new FlashFunction(),
-        FunctionType.Strobe => new StrobeFunction(),
+        FunctionType.ColorCycle => new ChaserFunction(),
+        FunctionType.Fade => new ChaserFunction(),
+        FunctionType.Pulse => new ChaserFunction(),
+        FunctionType.Flash => new ChaserFunction(),
+        FunctionType.Strobe => new ChaserFunction(),
         _ => throw new ArgumentOutOfRangeException(nameof(type), type, "Unknown function type."),
     };
 
-    /// <summary>Base of default names ("Chaser" → "Chaser 1", "Chaser 2", …).</summary>
+    /// <summary>
+    /// Base of default names ("Chaser" → "Chaser 1", "Chaser 2", …): "Scene" for scenes, "Chaser" for every type that
+    /// creates a chaser.
+    /// </summary>
     public static string DefaultBaseName(FunctionType type) => type switch
     {
-        FunctionType.ColorCycle => "Color cycle",
-        FunctionType.Sequence => "Chaser",
-        _ => type.ToString(),
+        FunctionType.Scene => "Scene",
+        _ => "Chaser",
     };
 }

@@ -181,8 +181,9 @@ public class ChaserStepsTests
     [Fact]
     public void CloneWithOwned_FadeOwnedByChaser_KeepsLibrarySceneReferences()
     {
-        var fade = (FadeFunction)_t.Project.CreateFunction(FunctionType.Fade, "Fade");
-        fade.ToSceneId = _t.Red.Id;
+        // Fades are legacy (converted on load), but an unconverted one must still copy correctly.
+        var fade = new FadeFunction { Name = "Fade", ToSceneId = _t.Red.Id };
+        _t.Project.Functions.Add(fade);
 
         var copy = Assert.IsType<FadeFunction>(Assert.Single(_t.Project.CloneWithOwned(fade)));
 
@@ -265,12 +266,12 @@ public class ChaserStepsTests
     }
 
     [Fact]
-    public void IsOwnLookStep_OwnedSceneAndOwnedPulse_OnlySceneIsOwnLook()
+    public void IsOwnLookStep_OwnedSceneAndOwnedChaser_OnlySceneIsOwnLook()
     {
         var chaser = _t.ChaserWithOwnLooks("Chase", 10);
-        var pulse = _t.Project.CreateFunction(FunctionType.Pulse, "Pulse");
+        var inner = _t.Project.CreateFunction(FunctionType.Chaser, "Inner");
         var draft = ChaserTestProject.Draft(chaser);
-        var copies = _t.Project.CopyForStep(chaser.Id, pulse);
+        var copies = _t.Project.CopyForStep(chaser.Id, inner);
         draft.AddStep(copies[0].Id);
         _t.Project.CommitChaser(draft, copies);
 

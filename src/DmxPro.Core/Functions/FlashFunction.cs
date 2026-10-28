@@ -6,6 +6,8 @@ namespace DmxPro.Core.Functions;
 /// A temporary look: the fixtures go to <see cref="Color"/> at full intensity, instantly, and release instantly when the
 /// function stops (no fades, so button-up is exact; safety rule 5). With <see cref="DurationSeconds"/> &gt; 0 a trigger
 /// also ends the flash by itself after that time; 0 means "while held / until stopped".
+/// <para>Legacy, load-only: converted on load by <see cref="Projects.LegacyFunctionMigration"/> (only Scene and Chaser
+/// remain, owner decision 2026-10-28). Kept so old project files still deserialize; nothing creates it any more.</para>
 /// </summary>
 public sealed class FlashFunction : FixtureEffectFunction
 {
