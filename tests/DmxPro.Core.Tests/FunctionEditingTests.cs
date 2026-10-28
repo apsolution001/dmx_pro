@@ -144,8 +144,8 @@ public class FunctionEditingTests
     {
         var red = _project.CreateScene("Red");
         var chaser = _project.CreateFunction(FunctionType.Chaser);
-        var fade = (FadeFunction)_project.CreateFunction(FunctionType.Fade);
-        fade.ToSceneId = red.Id;
+        var fade = new FadeFunction { Name = "Fade", ToSceneId = red.Id };
+        _project.Functions.Add(fade);
 
         Assert.True(_project.CanPlayInChaser(chaser.Id, fade));
     }

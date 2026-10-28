@@ -7,6 +7,8 @@ namespace DmxPro.Core.Functions;
 /// cycle every <see cref="PeriodSeconds"/>. With a <see cref="Color"/> the fixtures show that colour (on the Dimmer when
 /// the mode has one, else by scaling the colour channels). Without a colour only the Dimmer pulses and the colour comes
 /// from what plays underneath; fixtures without a Dimmer are then left alone (no safe way to scale an unknown colour).
+/// <para>Legacy, load-only: converted on load by <see cref="Projects.LegacyFunctionMigration"/> (only Scene and Chaser
+/// remain, owner decision 2026-10-28). Kept so old project files still deserialize; nothing creates it any more.</para>
 /// </summary>
 public sealed class PulseFunction : FixtureEffectFunction
 {

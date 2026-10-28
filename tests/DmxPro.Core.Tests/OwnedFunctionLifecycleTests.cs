@@ -327,8 +327,8 @@ public class OwnedFunctionLifecycleTests
     public void FunctionsReferencing_LibrarySceneUsedByOwnedFadeStep_ReportsOuterChaser()
     {
         var (_, outer) = NestedChasers();
-        var fade = (FadeFunction)Project.CreateFunction(FunctionType.Fade, "Fade");
-        fade.FromSceneId = _t.Red.Id;
+        var fade = new FadeFunction { Name = "Fade", FromSceneId = _t.Red.Id };
+        Project.Functions.Add(fade);
         var draft = ChaserTestProject.Draft(outer);
         var copies = Project.CopyForStep(outer.Id, fade);
         draft.AddStep(copies[0].Id);

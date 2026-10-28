@@ -6,6 +6,8 @@ namespace DmxPro.Core.Functions;
 /// Moves from one scene's values to another's over <see cref="DurationSeconds"/>, then holds the target until stopped.
 /// Channels in both scenes interpolate linearly; channels only in the target fade in from whatever is underneath; channels
 /// only in the source fade out to whatever is underneath. Without a source the target simply fades in from underneath.
+/// <para>Legacy, load-only: converted on load by <see cref="Projects.LegacyFunctionMigration"/> (only Scene and Chaser
+/// remain, owner decision 2026-10-28). Kept so old project files still deserialize; nothing creates it any more.</para>
 /// </summary>
 public sealed class FadeFunction : LightFunction
 {

@@ -27,17 +27,26 @@ public class FunctionTypesTests
     [Theory]
     [InlineData(FunctionType.Scene, typeof(SceneFunction))]
     [InlineData(FunctionType.Chaser, typeof(ChaserFunction))]
-    [InlineData(FunctionType.ColorCycle, typeof(ColorCycleFunction))]
-    [InlineData(FunctionType.Fade, typeof(FadeFunction))]
-    [InlineData(FunctionType.Pulse, typeof(PulseFunction))]
-    [InlineData(FunctionType.Flash, typeof(FlashFunction))]
-    [InlineData(FunctionType.Strobe, typeof(StrobeFunction))]
-    public void Create_EveryType_ReturnsMatchingModel(FunctionType type, Type expected)
+    public void Create_SceneOrChaser_ReturnsMatchingModel(FunctionType type, Type expected)
     {
         var function = FunctionFactory.Create(type);
 
         Assert.IsType(expected, function);
         Assert.Equal(type, function.Type);
+    }
+
+    [Theory]
+    [InlineData(FunctionType.ColorCycle)]
+    [InlineData(FunctionType.Fade)]
+    [InlineData(FunctionType.Pulse)]
+    [InlineData(FunctionType.Flash)]
+    [InlineData(FunctionType.Strobe)]
+    public void Create_RetiredType_ReturnsChaserNamedChaser(FunctionType type)
+    {
+        // Only Scene and Chaser remain (2026-10-28); the retired values only remain for old files.
+        Assert.IsType<ChaserFunction>(FunctionFactory.Create(type));
+        Assert.Equal("Chaser", FunctionFactory.DefaultBaseName(type));
+        Assert.IsType<ChaserFunction>(_project.CreateFunction(type));
     }
 
     [Fact]
@@ -51,12 +60,12 @@ public class FunctionTypesTests
     [Fact]
     public void CreateFunction_NoName_UsesTypeBaseNameAndNextNumber()
     {
-        var first = _project.CreateFunction(FunctionType.ColorCycle);
-        var second = _project.CreateFunction(FunctionType.ColorCycle);
+        var first = _project.CreateFunction(FunctionType.Scene);
+        var second = _project.CreateFunction(FunctionType.Scene);
         var chaser = _project.CreateFunction(FunctionType.Chaser, "  Party ");
 
-        Assert.Equal("Color cycle 1", first.Name);
-        Assert.Equal("Color cycle 2", second.Name);
+        Assert.Equal("Scene 1", first.Name);
+        Assert.Equal("Scene 2", second.Name);
         Assert.Equal("Party", chaser.Name);
         Assert.Null(first.OwnerShowId);
         Assert.Contains(chaser, _project.FunctionListItems);
@@ -147,23 +156,13 @@ public class FunctionTypesTests
         Assert.Equal(s.Id, stepScene.OwnerFunctionId);
         Assert.Equal((byte)77, stepScene.GetValue(_par.Id, "g"));
 
-        var cc = Assert.IsType<ColorCycleFunction>(loaded.FindFunction(cycle.Id));
-        Assert.Equal(cycle.Colors, cc.Colors);
-        Assert.Equal((2.0, 0.5, 0.25, true), (cc.HoldSeconds, cc.FadeSeconds, cc.FixtureOffsetSeconds, cc.UseWhiteChannel));
-        Assert.Equal([_par.Id], cc.FixtureIds);
-
-        var f = Assert.IsType<FadeFunction>(loaded.FindFunction(fade.Id));
-        Assert.Equal((_red.Id, _blue.Id, 12.0), (f.FromSceneId, f.ToSceneId, f.DurationSeconds));
-
-        var p = Assert.IsType<PulseFunction>(loaded.FindFunction(pulse.Id));
-        Assert.Null(p.Color);
-        Assert.Equal((PulseShape.Triangle, 4.0, 0.1, 0.9), (p.Shape, p.PeriodSeconds, p.MinLevel, p.MaxLevel));
-
-        var fl = Assert.IsType<FlashFunction>(loaded.FindFunction(flash.Id));
-        Assert.Equal((new RgbColor(0, 0, 255), 0.2), (fl.Color, fl.DurationSeconds));
-
-        var st = Assert.IsType<StrobeFunction>(loaded.FindFunction(strobe.Id));
-        Assert.Equal((StrobeMode.Hardware, 8.0, 0.3, new RgbColor(10, 20, 30), (byte?)180), (st.Mode, st.RateHz, st.DutyCycle, st.Color, st.HardwareValue));
+        // The retired types load as chasers / scenes with the same ids (LegacyFunctionMigrationTests checks the details).
+        Assert.IsType<ChaserFunction>(loaded.FindFunction(cycle.Id));
+        Assert.IsType<ChaserFunction>(loaded.FindFunction(fade.Id));
+        Assert.IsType<ChaserFunction>(loaded.FindFunction(pulse.Id));
+        Assert.IsType<ChaserFunction>(loaded.FindFunction(flash.Id));
+        Assert.IsType<SceneFunction>(loaded.FindFunction(strobe.Id));
+        Assert.DoesNotContain(loaded.Functions, LegacyFunctionMigration.IsLegacy);
 
         Assert.Empty(loaded.ValidateFunctionsAndShows());
     }
