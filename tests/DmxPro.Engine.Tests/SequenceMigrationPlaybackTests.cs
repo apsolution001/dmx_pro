@@ -1,10 +1,13 @@
 using DmxPro.Core.Functions;
+using DmxPro.Core.Projects;
+using DmxPro.Core.Shows;
+using DmxPro.Core.VirtualConsole;
 
 namespace DmxPro.Engine.Tests;
 
 /// <summary>
-/// Proves the engine plays a chaser whose steps point at hidden per-step scenes (what the sequence migration will
-/// produce) frame-for-frame like the original <see cref="SequenceFunction"/>.
+/// Proves the engine plays a chaser made by <see cref="SequenceMigration"/> (steps pointing at hidden per-step scenes)
+/// frame-for-frame like the original <see cref="SequenceFunction"/>, also after a save / load of an old file.
 /// </summary>
 public class SequenceMigrationPlaybackTests
 {
@@ -12,37 +15,20 @@ public class SequenceMigrationPlaybackTests
 
     private enum Start
     {
+        /// <summary>Started like a Virtual Console button (console layer) by the sequence's id.</summary>
         Console,
+
+        /// <summary>Placed in a show after the migration (a show copy of the migrated chaser).</summary>
         ShowItem,
-    }
 
-    /// <summary>Manual conversion: one scene per step (fades 0, step values), same id/run order/direction/timing.</summary>
-    private static (ChaserFunction Chaser, List<SceneFunction> Scenes) Convert(SequenceFunction sequence)
-    {
-        var chaser = new ChaserFunction
-        {
-            Id = sequence.Id,
-            Name = sequence.Name,
-            RunOrder = sequence.RunOrder,
-            Direction = sequence.Direction,
-        };
-        var scenes = new List<SceneFunction>();
-        var index = 1;
-        foreach (var step in sequence.Steps)
-        {
-            var scene = new SceneFunction
-            {
-                Name = string.IsNullOrEmpty(step.Name) ? $"Step {index}" : step.Name,
-                FadeInSeconds = 0,
-                FadeOutSeconds = 0,
-                Values = step.Values.Select(v => v.Clone()).ToList(),
-            };
-            scenes.Add(scene);
-            chaser.AddStep(scene.Id, step.HoldSeconds, step.FadeInSeconds, step.FadeOutSeconds);
-            index++;
-        }
+        /// <summary>
+        /// A console widget and a show item point at the sequence before the old file is saved; the migrated run loads
+        /// that file and plays what the widget targets.
+        /// </summary>
+        ConsoleWidgetFromFile,
 
-        return (chaser, scenes);
+        /// <summary>Like <see cref="ConsoleWidgetFromFile"/>, but the show (with its own sequence copy) is played.</summary>
+        ShowItemFromFile,
     }
 
     private static List<byte[]> Render(Action<TestRig, SequenceFunction> build, bool migrated, Start start)
@@ -52,26 +38,44 @@ public class SequenceMigrationPlaybackTests
         var sequence = rig.Add(new SequenceFunction { Name = "Seq", FixtureIds = [rig.Fixture.Id] });
         build(rig, sequence);
 
-        var playId = sequence.Id;
-        if (migrated)
-        {
-            var (chaser, scenes) = Convert(sequence);
-            rig.Project.Functions.Remove(sequence);
-            rig.Project.Functions.AddRange(scenes);
-            rig.Project.Functions.Add(chaser);
-        }
-
+        var project = rig.Project;
         Guid? showId = null;
-        if (start == Start.ShowItem)
+        var playId = sequence.Id;
+        if (start is Start.ConsoleWidgetFromFile or Start.ShowItemFromFile)
         {
-            var show = rig.Project.CreateShow("Show");
-            show.LengthSeconds = 60;
-            var item = rig.Project.PlaceFunctionInShow(show.Id, show.Tracks[0].Id, playId, 0, 60);
-            item.SetTiming(0, 60, 0, 0);
-            showId = show.Id;
+            // Old file: the widget and the show copy are made while the function is still a sequence.
+            var page = project.AddConsolePage("Main");
+            project.AddConsoleWidget(page.Id, new FunctionWidget { FunctionId = sequence.Id, Label = "Seq" });
+            var show = PlaceInShow(project, sequence.Id);
+            Assert.IsType<SequenceFunction>(project.FindFunction(show.Tracks[0].Items[0].FunctionId));
+            showId = start == Start.ShowItemFromFile ? show.Id : null;
+
+            if (migrated)
+            {
+                // The real load path: serialize the old project and read it back (that migrates).
+                var serializer = new ProjectSerializer();
+                project = serializer.Deserialize(serializer.Serialize(project)).Project;
+                Assert.DoesNotContain(project.Functions, f => f is SequenceFunction);
+                playId = project.ConsolePages[0].Widgets.OfType<FunctionWidget>().Single().FunctionId;
+                Assert.IsType<ChaserFunction>(project.FindFunction(playId));
+                Assert.IsType<ChaserFunction>(project.FindFunction(project.Shows[0].Tracks[0].Items[0].FunctionId));
+            }
+        }
+        else
+        {
+            if (migrated)
+            {
+                Assert.Equal(1, SequenceMigration.Migrate(project));
+            }
+
+            if (start == Start.ShowItem)
+            {
+                showId = PlaceInShow(project, playId).Id;
+            }
         }
 
-        rig.Load();
+        rig.Engine.LoadProject(project);
+        rig.Engine.Tick(TimeSpan.Zero);
         if (showId is { } id)
         {
             rig.Engine.StartShow(id);
@@ -89,6 +93,15 @@ public class SequenceMigrationPlaybackTests
         }
 
         return frames;
+    }
+
+    private static Show PlaceInShow(Project project, Guid functionId)
+    {
+        var show = project.CreateShow("Show");
+        show.LengthSeconds = 60;
+        var item = project.PlaceFunctionInShow(show.Id, show.Tracks[0].Id, functionId, 0, 60);
+        item.SetTiming(0, 60, 0, 0);
+        return show;
     }
 
     private static void AssertSame(Action<TestRig, SequenceFunction> build, Start start = Start.Console)
@@ -251,17 +264,39 @@ public class SequenceMigrationPlaybackTests
             Start.ShowItem);
 
     [Fact]
-    public void Convert_Sequence_KeepsIdRunOrderDirectionAndStepTiming()
+    public void Playback_MigratedSequence_ViaVirtualConsoleAndShowItem_StillPlays()
     {
+        AssertSame(ThreeColourSteps, Start.ConsoleWidgetFromFile);
+        AssertSame(ThreeColourSteps, Start.ShowItemFromFile);
+    }
+
+    [Fact]
+    public void Playback_MigratedSequence_LoadedFromFileShowItemPingPongBackward_FramesEqualOriginal() =>
+        AssertSame(
+            (rig, s) =>
+            {
+                ThreeColourSteps(rig, s);
+                s.RunOrder = RunOrder.PingPong;
+                s.Direction = RunDirection.Backward;
+            },
+            Start.ShowItemFromFile);
+
+    [Fact]
+    public void Migrate_Sequence_KeepsIdRunOrderDirectionAndStepTiming()
+    {
+        var project = new Project();
         var sequence = new SequenceFunction { Name = "S", RunOrder = RunOrder.PingPong, Direction = RunDirection.Backward };
         sequence.Steps.Add(new SequenceStep { FadeInSeconds = 1, HoldSeconds = 2, FadeOutSeconds = 3 });
+        project.Functions.Add(sequence);
 
-        var (chaser, scenes) = Convert(sequence);
+        SequenceMigration.Migrate(project);
 
-        Assert.Equal(sequence.Id, chaser.Id);
+        var chaser = Assert.IsType<ChaserFunction>(project.FindFunction(sequence.Id));
         Assert.Equal(RunOrder.PingPong, chaser.RunOrder);
         Assert.Equal(RunDirection.Backward, chaser.Direction);
-        Assert.Equal(scenes[0].Id, Assert.Single(chaser.Steps).FunctionId);
-        Assert.Equal((1, 2, 3), (chaser.Steps[0].FadeInSeconds, chaser.Steps[0].HoldSeconds, chaser.Steps[0].FadeOutSeconds));
+        var step = Assert.Single(chaser.Steps);
+        Assert.Equal((1d, 2d, 3d), (step.FadeInSeconds, step.HoldSeconds, step.FadeOutSeconds));
+        var scene = Assert.IsType<SceneFunction>(project.FindFunction(step.FunctionId));
+        Assert.Equal((0d, 0d), (scene.FadeInSeconds, scene.FadeOutSeconds));
     }
 }
