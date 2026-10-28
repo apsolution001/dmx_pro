@@ -160,13 +160,7 @@ public class OutputManagerTests
         var b = TestFrames.Filled(2);
         manager.Submit(1, a);
 
-        var before = GC.GetAllocatedBytesForCurrentThread();
-        for (var i = 0; i < 1000; i++)
-        {
-            manager.Submit(1, (i & 1) == 0 ? b : a);
-        }
-
-        Assert.Equal(0, GC.GetAllocatedBytesForCurrentThread() - before);
+        Assert.Equal(0, AllocationProbe.Measure(i => manager.Submit(1, (i & 1) == 0 ? b : a)));
     }
 
     [Fact]
@@ -189,16 +183,16 @@ public class OutputManagerTests
             manager.Submit(universe, a);
         }
 
-        var before = GC.GetAllocatedBytesForCurrentThread();
-        for (var frame = 0; frame < 200; frame++)
-        {
-            for (var universe = 1; universe <= 16; universe++)
+        Assert.Equal(0, AllocationProbe.Measure(
+            frame =>
             {
-                manager.Submit(universe, (frame & 1) == 0 ? b : a);
-            }
-        }
-
-        Assert.Equal(0, GC.GetAllocatedBytesForCurrentThread() - before);
+                for (var universe = 1; universe <= 16; universe++)
+                {
+                    manager.Submit(universe, (frame & 1) == 0 ? b : a);
+                }
+            },
+            iterations: 200,
+            warmupPerRound: 50));
 
         // Every universe reaches its output's send thread.
         var buffer = new byte[512];

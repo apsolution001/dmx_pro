@@ -106,17 +106,6 @@ public class RequestedValueTests
         rig.Engine.StartFunction(scene.Id, EngineLayer.Console);
         rig.Engine.GrandMaster = 0.5;
         rig.Engine.Blackout = true;
-        for (var i = 0; i < 50; i++)
-        {
-            rig.Tick();
-        }
-
-        var before = GC.GetAllocatedBytesForCurrentThread();
-        for (var i = 0; i < 200; i++)
-        {
-            rig.Tick();
-        }
-
-        Assert.Equal(0, GC.GetAllocatedBytesForCurrentThread() - before);
+        Assert.Equal(0, AllocationProbe.Measure(_ => rig.Tick()));
     }
 }

@@ -368,20 +368,11 @@ public class StageColorModelTests
         var universe = Universe(200, 255, 128, 64, 32, 16, 100);
         model.Evaluate(universe, Start, 0); // warm up / JIT
 
-        // Tiered JIT can promote the method mid-loop and that bookkeeping is counted on this thread, so one round can
-        // show a few bytes that are not ours. Real per-call allocations show up in every round; take the best round.
         var sum = 0f;
-        var allocated = long.MaxValue;
-        for (var round = 0; round < 3; round++)
-        {
-            var before = GC.GetAllocatedBytesForCurrentThread();
-            for (var i = 0; i < 10_000; i++)
-            {
-                sum += model.Evaluate(universe, Start, i * 0.001).Intensity;
-            }
-
-            allocated = Math.Min(allocated, GC.GetAllocatedBytesForCurrentThread() - before);
-        }
+        var allocated = AllocationProbe.Measure(
+            i => sum += model.Evaluate(universe, Start, i * 0.001).Intensity,
+            iterations: 10_000,
+            warmupPerRound: 1000);
 
         Assert.Equal(0, allocated);
         Assert.True(sum >= 0);

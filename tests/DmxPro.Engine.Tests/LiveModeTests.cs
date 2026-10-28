@@ -220,17 +220,6 @@ public class LiveModeTests
         var rig = s.Rig;
         rig.Engine.StartFunction(s.Console.Id, EngineLayer.Console);
         rig.Engine.SetLiveMode(true);
-        for (var i = 0; i < 100; i++)
-        {
-            rig.Tick();
-        }
-
-        var before = GC.GetAllocatedBytesForCurrentThread();
-        for (var i = 0; i < 1000; i++)
-        {
-            rig.Tick();
-        }
-
-        Assert.Equal(0, GC.GetAllocatedBytesForCurrentThread() - before);
+        Assert.Equal(0, AllocationProbe.Measure(_ => rig.Tick()));
     }
 }

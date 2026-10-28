@@ -39,12 +39,6 @@ public class EnttecProPacketTests
         var data = TestFrames.Ramp(512);
         EnttecProPacket.WriteSendDmx(packet, data);
 
-        var before = GC.GetAllocatedBytesForCurrentThread();
-        for (var i = 0; i < 1000; i++)
-        {
-            EnttecProPacket.WriteSendDmx(packet, data);
-        }
-
-        Assert.Equal(0, GC.GetAllocatedBytesForCurrentThread() - before);
+        Assert.Equal(0, AllocationProbe.Measure(_ => EnttecProPacket.WriteSendDmx(packet, data)));
     }
 }

@@ -113,12 +113,6 @@ public class VirtualOutputTests
         var b = TestFrames.Filled(2);
         output.Submit(2, a);
 
-        var before = GC.GetAllocatedBytesForCurrentThread();
-        for (var i = 0; i < 1000; i++)
-        {
-            output.Submit(2, (i & 1) == 0 ? b : a);
-        }
-
-        Assert.Equal(0, GC.GetAllocatedBytesForCurrentThread() - before);
+        Assert.Equal(0, AllocationProbe.Measure(i => output.Submit(2, (i & 1) == 0 ? b : a)));
     }
 }

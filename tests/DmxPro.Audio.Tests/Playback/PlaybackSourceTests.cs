@@ -189,22 +189,14 @@ public class PlaybackSourceTests
         source.Run(0, 1);
         source.SetVolume(0.5f);
         source.SetFadeOut(Rate * 500L, Rate);
-        for (int i = 0; i < 50; i++)
+        long allocated = AllocationProbe.Measure(i =>
         {
             source.Read(buffer, 0, buffer.Length);
-        }
-
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        for (int i = 0; i < 1000; i++)
-        {
-            source.Read(buffer, 0, buffer.Length);
-            if (i == 500)
+            if (i % 500 == 250)
             {
-                source.Run(Rate * 100L, 2); // a seek mid-run allocates nothing either
+                source.Run(Rate * 100L + i, 2); // a seek mid-run allocates nothing either
             }
-        }
-
-        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        });
         Assert.Equal(0, allocated);
     }
 }
