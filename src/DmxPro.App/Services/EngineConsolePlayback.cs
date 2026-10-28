@@ -376,6 +376,43 @@ public sealed class EngineConsolePlayback : IConsolePlayback, IDisposable
         }
     }
 
+    /// <summary>
+    /// Adds what the console plays right now (functions on, at a level or flashed, and every running or paused show) to
+    /// the sets. Returns true while a flash button is held down. Takes the playback lock; never call it from the engine tick.
+    /// </summary>
+    public bool CollectPlaying(ISet<Guid> functions, ISet<Guid> shows)
+    {
+        ArgumentNullException.ThrowIfNull(functions);
+        ArgumentNullException.ThrowIfNull(shows);
+        lock (_gate)
+        {
+            foreach (var (id, level) in _functionLevels)
+            {
+                if (level > 0)
+                {
+                    functions.Add(id);
+                }
+            }
+
+            foreach (var id in _sent.Keys)
+            {
+                functions.Add(id);
+            }
+
+            foreach (var id in _flashes)
+            {
+                functions.Add(id);
+            }
+
+            foreach (var id in _shows.Keys)
+            {
+                shows.Add(id);
+            }
+
+            return _flashes.Count > 0;
+        }
+    }
+
     public double GetFunctionLevel(Guid functionId)
     {
         lock (_gate)

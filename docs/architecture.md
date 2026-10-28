@@ -325,5 +325,41 @@ timers are posted back to it; reads are async, parsing runs on the thread pool).
   not applied yet) it does not overwrite it; with live reload on the reload flow runs instead, with it off a warning
   says so. Editor drafts are not part of the project, so they are not auto-saved. Success shows "Auto-saved 14:05"
   (auto-hides); failures are errors in the info bar (rule 10).
+- **Live protection (owner decision 2026-10-28):** while Go Live is on, the file is applied only in part.
+  - *What is protected* — `PlayingContentService` (App) unions what the console commanded
+    (`EngineConsolePlayback.CollectPlaying`: functions on / at a level / flashed, running or paused shows, "a flash is
+    held") with the latest `EngineSnapshot` (`ActiveFunctions` incl. ones fading out, `Shows`), and
+    `ProtectedContent.FromPlaying` (Core.History) turns it into: **frozen** items (keep their in-memory version) = every
+    playing function with its referenced functions and owned step functions (recursively), every playing show with its
+    items' functions and show-owned copies, the fixtures those functions drive (patch) and the fixtures' profiles;
+    **frozen widgets** = console function/show widgets whose function/show plays (the whole console while a flash is held:
+    any page change rebuilds the console and would end the flash); **page dependencies** = what a page refers to, kept
+    only if the file deleted it while the page itself has to stay whole. Groups do not affect output yet (group levels are
+    UI-only), the stage layout is view state: neither is frozen.
+  - *Partial apply* — `ExternalChangeMerge.PlanReload(current, disk, protection)` builds the snapshot to restore per item
+    (the `ProjectSnapshot` sections keyed by id): the file's version of everything, except frozen items (in-memory
+    version, also when the file deleted them), frozen widgets (kept inside the file's version of their page; a page with
+    playing widgets that the file deleted is kept whole) and dependencies of pages kept whole that the file deleted. Items
+    whose file version is held back are `Deferred` (`ProjectItemKey`: kind + id, widgets also name their page). It is
+    applied with `ProjectService.TryApplyExternalContent(buildTarget, …)` → `ProjectHistory.ApplyExternal(project,
+    buildTarget, …)`, the same in-place restore as Undo, one undo step "Reloaded from disk"; the project counts as saved
+    and `DiskContentHash` = the file (the file already holds the waiting versions, so they do not make it dirty).
+  - *Waiting changes* — the service keeps the file snapshot, its hash, the applied target and the deferred keys, and
+    shows an informational note. On Go Live changes, console state changes (`PlayingContentService.Changed`, posted to
+    the UI thread) and every `PendingRecheckInterval` (1 s; catches fade-outs and shows ending in the engine), it
+    recomputes the protection; if `ExternalChangeMerge.HasReleasable` (cheap, no capture), `PlanRelease` gives the
+    released items their file version (everything else, and in-app edits since, stays) as another undo step (saved
+    state kept only if the project was clean). A waiting item edited in the app since the apply keeps the app's version
+    and is dropped (`Discarded`, warning). Repeats until nothing waits. A newer file change runs a normal reload from
+    the newest content and replaces the waiting set; Keep mine, Save / Save As (the disk hash changes) and a project
+    open clear it.
+  - *Saving* — auto-save is postponed while changes wait (it would overwrite them with the playing versions);
+    `ConfirmSaveOverPendingAsync` (called by `ShellViewModel` before every save, the close prompt included) asks
+    "Save now will overwrite the newer file versions of N playing items" (Save / Cancel) when saving to the watched file.
+  - *Threading* — the protection is decided on the UI thread right before the apply, from the console state (immediate)
+    and the engine snapshot (up to one tick old). Something that starts playing in between (same dispatcher turn) can
+    still be changed; accepted (the console commands come from the same UI thread, so in practice only engine-side
+    starts could race).
 - **Tests:** `tests/DmxPro.App.Tests/ProjectFileSyncServiceTests.cs` (fake watcher + manual clock + temp files, and one
-  real `FileSystemWatcher` rename test), `tests/DmxPro.Core.Tests/ProjectHistoryApplyExternalTests.cs`.
+  real `FileSystemWatcher` rename test), `tests/DmxPro.App.Tests/ProjectFileSyncLiveTests.cs` (live protection),
+  `tests/DmxPro.Core.Tests/ProjectHistoryApplyExternalTests.cs`, `tests/DmxPro.Core.Tests/ExternalChangeMergeTests.cs`.

@@ -362,6 +362,12 @@ public sealed partial class ShellViewModel : ObservableObject
 
     private async Task<bool> SaveToAsync(string path)
     {
+        // While live, file changes to playing items may be waiting; saving now would overwrite them in the file.
+        if (!await _fileSync.ConfirmSaveOverPendingAsync(path))
+        {
+            return false;
+        }
+
         try
         {
             await _projects.SaveAsync(path);

@@ -36,6 +36,8 @@ public sealed class ProjectFileSyncServiceTests : IDisposable
             _infoBar,
             _rig.Settings,
             [_drafts],
+            _rig.LiveMode,
+            new PlayingContentService(_rig.Engine, _rig.Playback),
             _time,
             NullLogger<ProjectFileSyncService>.Instance)
         {
@@ -513,8 +515,8 @@ public sealed class ProjectFileSyncServiceTests : IDisposable
         _rig.Projects.MarkChanged();
         await _rig.Projects.SaveAsync(_path);
         using var sync = new ProjectFileSyncService(
-            _rig.Projects, _serializer, _rig.Dialogs, _infoBar, _rig.Settings, [_drafts], TimeProvider.System,
-            NullLogger<ProjectFileSyncService>.Instance)
+            _rig.Projects, _serializer, _rig.Dialogs, _infoBar, _rig.Settings, [_drafts], _rig.LiveMode,
+            new PlayingContentService(_rig.Engine, _rig.Playback), TimeProvider.System, NullLogger<ProjectFileSyncService>.Instance)
         {
             RetryDelay = TimeSpan.FromMilliseconds(50),
         };

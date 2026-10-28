@@ -185,20 +185,40 @@ public sealed class ProjectHistory
     /// </summary>
     public bool ApplyExternal(Project project, Project loaded, string description)
     {
-        ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(loaded);
+        return ApplyExternal(project, current => ProjectSnapshot.Capture(loaded, current), description, markSaved: true);
+    }
+
+    /// <summary>
+    /// Like <see cref="ApplyExternal(Project, Project, string)"/>, for content built from the project's current snapshot
+    /// (<paramref name="buildTarget"/> gets it right after a pending edit was captured; e.g. a file change applied only in
+    /// part while live, <see cref="ExternalChangeMerge"/>). <paramref name="markSaved"/>: the result counts as saved
+    /// (false keeps unsaved in-app edits unsaved). Returns false when the target equals the current content.
+    /// </summary>
+    public bool ApplyExternal(Project project, Func<ProjectSnapshot, ProjectSnapshot> buildTarget, string description, bool markSaved)
+    {
+        ArgumentNullException.ThrowIfNull(project);
+        ArgumentNullException.ThrowIfNull(buildTarget);
         var current = Capture(project);
-        var target = ProjectSnapshot.Capture(loaded, current);
+        var target = buildTarget(current);
         if (target.ContentEquals(current))
         {
-            _history.MarkSaved();
+            if (markSaved)
+            {
+                _history.MarkSaved();
+            }
+
             return false;
         }
 
         // Applies nothing when it throws, so the history is only changed after it succeeded.
         target.RestoreInto(project, current);
         _history.Commit(target, description);
-        _history.MarkSaved();
+        if (markSaved)
+        {
+            _history.MarkSaved();
+        }
+
         return true;
     }
 

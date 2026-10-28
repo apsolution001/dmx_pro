@@ -72,6 +72,7 @@ public partial class App : Application
             services.AddSingleton<InfoBarState>();
             services.AddSingleton<IUnsavedDraftSource>(sp => sp.GetRequiredService<FunctionsViewModel>());
             services.AddSingleton<IUnsavedDraftSource>(sp => sp.GetRequiredService<ShowsViewModel>());
+            services.AddSingleton<PlayingContentService>();
             services.AddSingleton<ProjectFileSyncService>();
             services.AddSingleton<ShellViewModel>();
             services.AddSingleton<MainWindow>();

@@ -78,6 +78,14 @@ Earlier web-style sketch (superseded look, same content):
   auto-hides). Output, live mode, running lights and the console stay as they are. With unsaved changes (or an unsaved
   editor draft) a prompt asks **Reload** / **Keep mine** (Esc = Keep mine); a file that cannot be read shows a warning
   that stays. Auto-save shows "Auto-saved 14:05" (auto-hides); an auto-save error stays as an error.
+  **While Go Live is on** (owner decision 2026-10-28) the file's version of whatever is on the lights is held back:
+  running functions (with their steps), playing shows (with their copies), the fixtures/profiles they drive, and active
+  console buttons (the whole console while a flash is held). Everything else appears at once. A note stays in the info
+  bar (informational): "N changes from the file are waiting — applied when the playing light/show stops (or Go Live is
+  off)". When the light/show stops or Go Live is turned off, the waiting changes appear (one undo step each time,
+  "Applied the waiting changes from …", auto-hides). Waiting items edited in the app meanwhile keep the app's version (a
+  warning says so). Auto-save waits while changes wait; Save (Ctrl+S, also from the close prompt) asks first: "Save now
+  will overwrite the newer file versions of N playing items." **Save** / **Cancel**.
 
 ## 2. Top menu bar
 

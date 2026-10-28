@@ -183,18 +183,37 @@ public sealed class ProjectService
     public bool TryApplyExternalContent(Project loaded, string contentHash, string description, out bool changed)
     {
         ArgumentNullException.ThrowIfNull(loaded);
+        return TryApplyExternalContent(
+            current => ProjectSnapshot.Capture(loaded, current), contentHash, description, markSaved: true, out changed);
+    }
+
+    /// <summary>
+    /// Like <see cref="TryApplyExternalContent(Project, string, string, out bool)"/>, for content built from the
+    /// project's current snapshot (<paramref name="buildTarget"/>; a file change applied only in part while live, see
+    /// <see cref="ExternalChangeMerge"/>). <paramref name="contentHash"/>: the file content it comes from (null keeps
+    /// <see cref="DiskContentHash"/>). <paramref name="markSaved"/>: the result counts as saved; false keeps the unsaved
+    /// state as it is.
+    /// </summary>
+    public bool TryApplyExternalContent(
+        Func<ProjectSnapshot, ProjectSnapshot> buildTarget,
+        string? contentHash,
+        string description,
+        bool markSaved,
+        out bool changed)
+    {
+        ArgumentNullException.ThrowIfNull(buildTarget);
         changed = false;
         try
         {
             if (_historyEnabled)
             {
-                changed = _history.ApplyExternal(Current, loaded, description);
+                changed = _history.ApplyExternal(Current, buildTarget, description, markSaved);
             }
             else
             {
                 // No undo for this project: still apply in place, so pages and the engine keep their objects.
                 var current = ProjectSnapshot.Capture(Current);
-                var target = ProjectSnapshot.Capture(loaded, current);
+                var target = buildTarget(current);
                 changed = !target.ContentEquals(current);
                 if (changed)
                 {
@@ -209,10 +228,24 @@ public sealed class ProjectService
             return false;
         }
 
-        DiskContentHash = contentHash;
-        if (IsDirty)
+        if (contentHash is not null)
         {
-            IsDirty = false;
+            DiskContentHash = contentHash;
+        }
+
+        bool dirty;
+        if (markSaved)
+        {
+            dirty = false;
+        }
+        else
+        {
+            dirty = _historyEnabled ? !_history.IsAtSavedState : IsDirty || changed;
+        }
+
+        if (dirty != IsDirty)
+        {
+            IsDirty = dirty;
             StateChanged?.Invoke(this, EventArgs.Empty);
         }
 

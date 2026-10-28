@@ -16,7 +16,7 @@ namespace DmxPro.Core.History;
 public sealed class ProjectSnapshot
 {
     // Same settings as the project file, without indentation (smaller, faster).
-    private static readonly JsonSerializerOptions Options = new(DmxJson.Options) { WriteIndented = false };
+    internal static readonly JsonSerializerOptions Options = new(DmxJson.Options) { WriteIndented = false };
 
     private ProjectSnapshot(
         int schemaVersion,
@@ -105,6 +105,43 @@ public sealed class ProjectSnapshot
             CaptureSection(project.Functions, previous?.Functions, f => f.Id.ToString(), f => f.Name, writer),
             CaptureSection(project.Shows, previous?.Shows, s => s.Id.ToString(), s => s.Name, writer),
             CaptureSection(project.ConsolePages, previous?.ConsolePages, p => p.Id.ToString(), p => p.Name, writer));
+    }
+
+    /// <summary>A snapshot assembled from sections of others (<see cref="ExternalChangeMerge"/>).</summary>
+    internal static ProjectSnapshot Create(
+        int schemaVersion,
+        Guid id,
+        string name,
+        SnapshotSection profiles,
+        SnapshotSection fixtures,
+        byte[] stage,
+        SnapshotSection groups,
+        SnapshotSection functions,
+        SnapshotSection shows,
+        SnapshotSection consolePages) =>
+        new(schemaVersion, id, name, profiles, fixtures, stage, groups, functions, shows, consolePages);
+
+    /// <summary>The section holding items of <paramref name="kind"/> (console widgets live in the pages).</summary>
+    internal SnapshotSection SectionOf(ProjectItemKind kind) => kind switch
+    {
+        ProjectItemKind.Profile => Profiles,
+        ProjectItemKind.Fixture => Fixtures,
+        ProjectItemKind.Group => Groups,
+        ProjectItemKind.Function => Functions,
+        ProjectItemKind.Show => Shows,
+        _ => ConsolePages,
+    };
+
+    /// <summary>True when this snapshot holds the item (for a console widget: its page holds it).</summary>
+    public bool Contains(ProjectItemKey key) => ExternalChangeMerge.ItemBytes(this, key) is not null;
+
+    /// <summary>True when both snapshots hold the item with the same content, or both do not hold it.</summary>
+    public bool ItemEquals(ProjectSnapshot other, ProjectItemKey key)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+        var mine = ExternalChangeMerge.ItemBytes(this, key);
+        var theirs = ExternalChangeMerge.ItemBytes(other, key);
+        return mine is null ? theirs is null : theirs is not null && SnapshotSection.SameBytes(mine, theirs);
     }
 
     /// <summary>True when both snapshots hold exactly the same project content.</summary>
