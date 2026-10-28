@@ -38,6 +38,13 @@ public sealed partial class ChaserEditorViewModel : FunctionEditorViewModel
     // Ids in _owned that are new or changed since the last load / save: what Save hands to CommitChaser.
     private readonly HashSet<Guid> _changedOwned = [];
 
+    // The project's own objects of OwnedFunctions(Original.Id) when _owned was last loaded or committed. Undo / Redo
+    // replaces a changed function with a new object, so a missing or different object means the draft is stale.
+    private readonly List<LightFunction> _ownedSources = [];
+
+    // Set while the chaser's Save also saves a dirty step editor: that save is part of this one (Saved is raised once).
+    private bool _savingInner;
+
     private double _newHoldSeconds = ChaserStep.DefaultHoldSeconds;
     private double _newFadeInSeconds;
     private double _newFadeOutSeconds;
@@ -326,6 +333,35 @@ public sealed partial class ChaserEditorViewModel : FunctionEditorViewModel
         base.Detach();
     }
 
+    /// <summary>
+    /// Also stale when Undo / Redo replaced, removed or added one of the chaser's own step functions (the draft holds
+    /// copies of them) or the function of the step editor shown inside this one.
+    /// </summary>
+    public override bool IsStale(Project project)
+    {
+        ArgumentNullException.ThrowIfNull(project);
+        if (base.IsStale(project) || (_stepEditor is { } inner && inner.IsStale(project)))
+        {
+            return true;
+        }
+
+        var current = project.OwnedFunctions(Original.Id);
+        if (current.Count != _ownedSources.Count)
+        {
+            return true;
+        }
+
+        foreach (var source in _ownedSources)
+        {
+            if (!ReferenceEquals(project.FindFunction(source.Id), source))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public override void RefreshPatch()
     {
         StepLook?.RefreshPatch();
@@ -342,7 +378,8 @@ public sealed partial class ChaserEditorViewModel : FunctionEditorViewModel
         CloseStepEditor(reload: false);
         _owned.Clear();
         _changedOwned.Clear();
-        foreach (var function in Project.OwnedFunctions(Original.Id))
+        RememberOwnedSources();
+        foreach (var function in _ownedSources)
         {
             _owned.Add(DraftCopy(function));
         }
@@ -402,7 +439,15 @@ public sealed partial class ChaserEditorViewModel : FunctionEditorViewModel
         // Saved through this editor's prompt while a step's own editor is shown: save that one.
         if (_stepEditor is { IsDirty: true } inner)
         {
-            inner.Save();
+            _savingInner = true;
+            try
+            {
+                inner.Save();
+            }
+            finally
+            {
+                _savingInner = false;
+            }
         }
 
         target.Steps = Steps.Select(s => s.Step.Clone()).ToList();
@@ -413,7 +458,8 @@ public sealed partial class ChaserEditorViewModel : FunctionEditorViewModel
         _changedOwned.Clear();
 
         // The project stores its own copies: keep the draft copies (same content), drop the ones the commit deleted.
-        var stillOwned = Project.OwnedFunctions(Original.Id).Select(f => f.Id).ToHashSet();
+        RememberOwnedSources();
+        var stillOwned = _ownedSources.Select(f => f.Id).ToHashSet();
         _owned.RemoveAll(f => !stillOwned.Contains(f.Id));
         UndoText = null;
         _removed = null;
@@ -656,12 +702,8 @@ public sealed partial class ChaserEditorViewModel : FunctionEditorViewModel
             return;
         }
 
+        // Ask first: Cancel (or no way to ask) must leave the draft exactly as it was.
         var index = Steps.IndexOf(row);
-        if (row.IsLinked)
-        {
-            MakeOwnCopy(row);
-        }
-
         var functionId = row.Step.FunctionId;
         if (IsDirty)
         {
@@ -681,6 +723,22 @@ public sealed partial class ChaserEditorViewModel : FunctionEditorViewModel
                     LoadFromOriginal();
                     break;
             }
+        }
+
+        // Don't save rebuilds the rows: find the step again (gone when it was new and unsaved).
+        if (index < 0 || index >= Steps.Count || Steps[index].Step.FunctionId != functionId)
+        {
+            return;
+        }
+
+        row = Steps[index];
+        if (row.IsLinked)
+        {
+            // A linked step becomes the chaser's own copy. The draft is clean here, so saving commits only that copy,
+            // which plays the same as the library function; the step's editor then edits the copy in the project.
+            MakeOwnCopy(row);
+            Save();
+            functionId = row.Step.FunctionId;
         }
 
         var saved = ((ChaserFunction)Original).Steps;
@@ -737,7 +795,7 @@ public sealed partial class ChaserEditorViewModel : FunctionEditorViewModel
             $"Adds a copy of step {row.Number} to the Functions list. The step keeps its own copy; changing one never changes the other.",
             Project.SuggestFunctionName(function.Name),
             showFades: false,
-            name => Project.FunctionListItems.Any(f => string.Equals(f.Name, name, StringComparison.CurrentCultureIgnoreCase)));
+            Project.IsFunctionNameTaken);
         if (Dialogs.ShowSaveFunction(dialog))
         {
             SaveStepAsFunction(dialog.TrimmedName);
@@ -1282,7 +1340,20 @@ public sealed partial class ChaserEditorViewModel : FunctionEditorViewModel
             }
         }
 
-        RaiseSaved();
+        // A step chaser's save may replace its own step functions in the project (they are ours too, recursively).
+        RememberOwnedSources();
+
+        // While this chaser's own Save saves the step editor, that Save raises Saved once for both.
+        if (!_savingInner)
+        {
+            RaiseSaved();
+        }
+    }
+
+    private void RememberOwnedSources()
+    {
+        _ownedSources.Clear();
+        _ownedSources.AddRange(Project.OwnedFunctions(Original.Id));
     }
 
     private void OnInnerCloseRequested(object? sender, EventArgs e) => _ = BackToChaserAsync();

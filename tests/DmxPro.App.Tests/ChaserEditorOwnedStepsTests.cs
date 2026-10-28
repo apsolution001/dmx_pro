@@ -392,6 +392,179 @@ public sealed class ChaserEditorOwnedStepsTests : IDisposable
         Assert.False(inner.IsDirty);
     }
 
+    [Fact]
+    public async Task EditStep_LinkedStep_Cancel_StaysLinkedAndDraftUnchanged()
+    {
+        var pulse = new PulseFunction { Name = "Throb", FixtureIds = [_par1.Id] };
+        _project.Functions.Add(pulse);
+        _chaser.AddStep(pulse.Id);
+        var vm = Create();
+        vm.Dialogs = _rig.Dialogs;
+        _rig.Dialogs.SaveChangesAnswer = SaveChangesChoice.Cancel;
+        vm.Steps[0].IsSelected = true;
+        vm.IsPlayOnce = true; // an unsaved chaser change, so Edit step has to ask
+
+        await vm.EditStepCommand.ExecuteAsync(null);
+
+        Assert.Equal(["Party"], _rig.Dialogs.Prompts);
+        Assert.Null(vm.StepEditor);
+        Assert.True(vm.Steps[0].IsLinked);
+        Assert.Equal(pulse.Id, vm.Steps[0].Step.FunctionId);
+        Assert.Null(vm.StepNote);
+        Assert.DoesNotContain(vm.PreviewFunctions, f => f.CopiedFromId == pulse.Id);
+        Assert.Equal(pulse.Id, _chaser.Steps[0].FunctionId);
+        Assert.True(vm.IsDirty);
+    }
+
+    [Fact]
+    public async Task EditStep_LinkedStep_DirtyWithoutDialogs_DoesNothing()
+    {
+        var pulse = new PulseFunction { Name = "Throb", FixtureIds = [_par1.Id] };
+        _project.Functions.Add(pulse);
+        _chaser.AddStep(pulse.Id);
+        var vm = Create();
+        vm.Steps[0].IsSelected = true;
+        vm.IsPlayOnce = true;
+
+        await vm.EditStepCommand.ExecuteAsync(null);
+
+        Assert.Null(vm.StepEditor);
+        Assert.True(vm.Steps[0].IsLinked);
+        Assert.Equal(pulse.Id, vm.Steps[0].Step.FunctionId);
+        Assert.Empty(_project.OwnedFunctions(_chaser.Id));
+    }
+
+    [Fact]
+    public async Task EditStep_LinkedStep_Clean_NoPromptCommitsOnlyTheCopy()
+    {
+        var pulse = new PulseFunction { Name = "Throb", FixtureIds = [_par1.Id] };
+        _project.Functions.Add(pulse);
+        _chaser.AddStep(pulse.Id);
+        var vm = Create();
+        vm.Dialogs = _rig.Dialogs;
+        vm.Steps[0].IsSelected = true;
+
+        await vm.EditStepCommand.ExecuteAsync(null);
+
+        Assert.Empty(_rig.Dialogs.Prompts);
+        var inner = Assert.IsType<PulseEditorViewModel>(vm.StepEditor);
+        Assert.Equal(pulse.Id, inner.Original.CopiedFromId);
+        Assert.Equal(inner.Original.Id, _chaser.Steps[0].FunctionId);
+        Assert.Contains(pulse, _project.FunctionListItems);
+    }
+
+    [Fact]
+    public async Task Save_WhileStepEditorDirty_SavesBothAndRaisesSavedOnce()
+    {
+        var pulse = new PulseFunction { Name = "Throb", FixtureIds = [_par1.Id], OwnerFunctionId = _chaser.Id };
+        _project.Functions.Add(pulse);
+        _chaser.AddStep(pulse.Id);
+        var vm = Create();
+        vm.Dialogs = _rig.Dialogs;
+        vm.Steps[0].IsSelected = true;
+        await vm.EditStepCommand.ExecuteAsync(null);
+        var inner = vm.StepEditor!;
+        inner.Name = "Throb 2";
+        var saved = 0;
+        vm.Saved += (_, _) => saved++;
+
+        vm.Save();
+
+        Assert.Equal(1, saved);
+        Assert.Equal("Throb 2", _project.FindFunction(pulse.Id)!.Name);
+        Assert.False(inner.IsDirty);
+        Assert.False(vm.IsDirty);
+    }
+
+    [Fact]
+    public async Task StepEditorSave_OnItsOwn_RaisesChaserSaved()
+    {
+        var pulse = new PulseFunction { Name = "Throb", FixtureIds = [_par1.Id], OwnerFunctionId = _chaser.Id };
+        _project.Functions.Add(pulse);
+        _chaser.AddStep(pulse.Id);
+        var vm = Create();
+        vm.Dialogs = _rig.Dialogs;
+        vm.Steps[0].IsSelected = true;
+        await vm.EditStepCommand.ExecuteAsync(null);
+        var saved = 0;
+        vm.Saved += (_, _) => saved++;
+        vm.StepEditor!.Name = "Throb 2";
+
+        vm.StepEditor.Save();
+
+        Assert.Equal(1, saved);
+    }
+
+    [Theory]
+    [InlineData(SaveChangesChoice.Save, "Throb 2", false)]
+    [InlineData(SaveChangesChoice.Discard, "Throb", false)]
+    [InlineData(SaveChangesChoice.Cancel, "Throb", true)]
+    public async Task BackToChaser_DirtyStepEditor_FollowsTheAnswer(SaveChangesChoice answer, string storedName, bool staysOpen)
+    {
+        var pulse = new PulseFunction { Name = "Throb", FixtureIds = [_par1.Id], OwnerFunctionId = _chaser.Id };
+        _project.Functions.Add(pulse);
+        _chaser.AddStep(pulse.Id);
+        var vm = Create();
+        vm.Dialogs = _rig.Dialogs;
+        vm.Steps[0].IsSelected = true;
+        await vm.EditStepCommand.ExecuteAsync(null);
+        var inner = vm.StepEditor!;
+        inner.Name = "Throb 2";
+        _rig.Dialogs.SaveChangesAnswer = answer;
+
+        await vm.BackToChaserCommand.ExecuteAsync(null);
+
+        Assert.Equal(["Throb"], _rig.Dialogs.Prompts);
+        Assert.Equal(storedName, _project.FindFunction(pulse.Id)!.Name);
+        if (staysOpen)
+        {
+            Assert.Same(inner, vm.StepEditor);
+            Assert.True(vm.IsDirty);
+            Assert.Equal("Throb 2", inner.Name);
+        }
+        else
+        {
+            Assert.Null(vm.StepEditor);
+            Assert.False(vm.IsDirty);
+            Assert.Equal(storedName, vm.Steps[0].FunctionName);
+            Assert.True(vm.Steps[0].IsSelected);
+        }
+    }
+
+    [Fact]
+    public void IsStale_FreshEditor_False()
+    {
+        AddOwnLook("Step 1", (_par1, "r", 10));
+        var vm = Create();
+
+        Assert.False(vm.IsStale(_project));
+    }
+
+    [Fact]
+    public void IsStale_OwnStepFunctionReplaced_True()
+    {
+        var look = AddOwnLook("Step 1", (_par1, "r", 10));
+        var vm = Create();
+        var replaced = look.CloneAsNew();
+        replaced.Id = look.Id;
+        _project.Functions[_project.Functions.IndexOf(look)] = replaced;
+
+        Assert.True(vm.IsStale(_project));
+    }
+
+    [Fact]
+    public void IsStale_AfterOwnSave_False()
+    {
+        AddOwnLook("Step 1", (_par1, "r", 10));
+        var vm = Create();
+        vm.Steps[0].IsSelected = true;
+        vm.StepLook!.ApplyPresetCommand.Execute(Preset("Blue"));
+
+        vm.Save(); // CommitChaser stores new objects for the changed step functions
+
+        Assert.False(vm.IsStale(_project));
+    }
+
     // ───────────────────────────── Preview ─────────────────────────────
 
     [Fact]
