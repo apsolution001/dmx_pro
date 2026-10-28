@@ -10,7 +10,7 @@ namespace DmxPro.App.ViewModels.Editors;
 /// <summary>
 /// Colour cycle editor, kept simple for people who are not lighting experts: the lights (ordered), the colours in
 /// play order (add from the scene presets or a custom colour, duplicate, remove, reorder, quick fills "Rainbow" /
-/// "Warm" / "Cool" with undo), one hold and one fade time for every colour, "Spread across lights" as 0–100 %, and an
+/// "Warm" / "Cool"; both a quick fill and a removal can be undone right away), one hold and one fade time for every colour, "Spread across lights" as 0–100 %, and an
 /// on-screen preview (one round as a strip, and the colour of each light at the start).
 /// </summary>
 /// <remarks>
@@ -31,7 +31,9 @@ public sealed partial class ColorCycleEditorViewModel : EffectEditorViewModel
     // saved offset is kept untouched until it can be turned into a percentage.
     private double? _spreadPercent;
     private int _lightCount;
-    private List<RgbColor>? _colorsBeforeFill;
+    // The colour list before the last quick fill or removal, for the inline "Undo"; null when there is nothing to undo.
+    private List<RgbColor>? _colorsBeforeChange;
+    private int _undoSelectIndex;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelectedColor), nameof(HasNoSelectedColor), nameof(SelectedColorTitle))]
@@ -39,8 +41,8 @@ public sealed partial class ColorCycleEditorViewModel : EffectEditorViewModel
     private ColorCycleEntryViewModel? _selectedColor;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CanUndoFill))]
-    private string? _fillMessage;
+    [NotifyPropertyChangedFor(nameof(CanUndo))]
+    private string? _undoMessage;
 
     public ColorCycleEditorViewModel(Project project, ColorCycleFunction cycle)
         : base(project, cycle)
@@ -60,6 +62,9 @@ public sealed partial class ColorCycleEditorViewModel : EffectEditorViewModel
 
     /// <summary>Quick fills that replace the colour list.</summary>
     public IReadOnlyList<ColorCyclePalette> Palettes => ColorCyclePalette.All;
+
+    /// <summary>The first quick fill (Rainbow), offered by the empty colour list.</summary>
+    public ColorCyclePalette RainbowPalette => ColorCyclePalette.All[0];
 
     /// <summary>One round as a strip, one slot per colour.</summary>
     public ObservableCollection<ColorCyclePreviewSlot> PreviewSlots { get; } = [];
@@ -81,7 +86,8 @@ public sealed partial class ColorCycleEditorViewModel : EffectEditorViewModel
     /// <summary>"Change colour 2 · Green".</summary>
     public string SelectedColorTitle => SelectedColor is { } c ? $"Change colour {c.Number} · {c.Name}" : "Change colour";
 
-    public bool CanUndoFill => _colorsBeforeFill is not null && FillMessage is not null;
+    /// <summary>True right after a quick fill or a removal: the inline strip shows <see cref="UndoMessage"/> and Undo.</summary>
+    public bool CanUndo => _colorsBeforeChange is not null && UndoMessage is not null;
 
     public double? HoldSeconds
     {
@@ -173,6 +179,22 @@ public sealed partial class ColorCycleEditorViewModel : EffectEditorViewModel
         }
     }
 
+    /// <summary>"6 s (3 colours × 2 s)" for the Cycle length row; "–" without colours.</summary>
+    public string CycleLengthText
+    {
+        get
+        {
+            if (Colors.Count == 0)
+            {
+                return "–";
+            }
+
+            var slot = ColorCycleTiming.SlotSeconds(_holdSeconds, _fadeSeconds);
+            var round = ColorCycleTiming.RoundSeconds(Colors.Count, _holdSeconds, _fadeSeconds);
+            return $"{EditorTiming.FormatDuration(round)} ({ColorCountText} × {EditorTiming.FormatDuration(slot)})";
+        }
+    }
+
     public bool HasPreviewLights => PreviewLights.Count > 0;
 
     /// <summary>"+ 6 more lights" when the preview is cut off; null otherwise.</summary>
@@ -198,8 +220,8 @@ public sealed partial class ColorCycleEditorViewModel : EffectEditorViewModel
         _fixtureOffsetSeconds = double.IsFinite(Cycle.FixtureOffsetSeconds) ? Math.Max(Cycle.FixtureOffsetSeconds, 0) : 0;
         _spreadPercent = null;
         _lightCount = Fixtures.FixtureIds.Count;
-        _colorsBeforeFill = null;
-        FillMessage = null;
+        _colorsBeforeChange = null;
+        UndoMessage = null;
         OnPropertyChanged(nameof(HoldSeconds));
         OnPropertyChanged(nameof(FadeSeconds));
         RebuildColors(Cycle.Colors, Cycle.Colors.Count > 0 ? 0 : -1);
@@ -253,9 +275,11 @@ public sealed partial class ColorCycleEditorViewModel : EffectEditorViewModel
         }
 
         var index = Colors.IndexOf(selected);
+        var before = CurrentColors();
         var colors = CurrentColors();
         colors.RemoveAt(index);
         CommitColors(colors, colors.Count == 0 ? -1 : Math.Min(index, colors.Count - 1));
+        OfferUndo(before, index, $"Removed 1 colour ({selected.Name}).");
     }
 
     [RelayCommand(CanExecute = nameof(CanMoveColorUp))]
@@ -264,7 +288,7 @@ public sealed partial class ColorCycleEditorViewModel : EffectEditorViewModel
     [RelayCommand(CanExecute = nameof(CanMoveColorDown))]
     private void MoveColorDown() => MoveColor(1);
 
-    /// <summary>Replaces the colours with a quick fill; <see cref="UndoFillCommand"/> brings the old ones back.</summary>
+    /// <summary>Replaces the colours with a quick fill; <see cref="UndoCommand"/> brings the old ones back.</summary>
     [RelayCommand]
     private void ApplyPalette(ColorCyclePalette? palette)
     {
@@ -282,22 +306,32 @@ public sealed partial class ColorCycleEditorViewModel : EffectEditorViewModel
         CommitColors([.. palette.Colors], 0);
         if (before.Count > 0)
         {
-            _colorsBeforeFill = before;
-            FillMessage = before.Count == 1
-                ? $"Replaced 1 colour with {palette.Name}."
-                : $"Replaced {before.Count} colours with {palette.Name}.";
+            OfferUndo(
+                before,
+                0,
+                before.Count == 1
+                    ? $"Replaced 1 colour with {palette.Name}."
+                    : $"Replaced {before.Count} colours with {palette.Name}.");
         }
     }
 
+    /// <summary>Brings back the colours from before the last quick fill or removal.</summary>
     [RelayCommand]
-    private void UndoFill()
+    private void Undo()
     {
-        if (_colorsBeforeFill is not { } before)
+        if (_colorsBeforeChange is not { } before)
         {
             return;
         }
 
-        CommitColors(before, before.Count > 0 ? 0 : -1);
+        CommitColors(before, before.Count == 0 ? -1 : Math.Clamp(_undoSelectIndex, 0, before.Count - 1));
+    }
+
+    private void OfferUndo(List<RgbColor> before, int selectIndex, string message)
+    {
+        _colorsBeforeChange = before;
+        _undoSelectIndex = selectIndex;
+        UndoMessage = message;
     }
 
     private bool CanMoveColorUp => SelectedColor is { } c && Colors.IndexOf(c) > 0;
@@ -326,11 +360,11 @@ public sealed partial class ColorCycleEditorViewModel : EffectEditorViewModel
         CommitColors(colors, index);
     }
 
-    /// <summary>A user edit of the colour list: rebuild, keep the spread, forget the quick-fill undo, mark changed.</summary>
+    /// <summary>A user edit of the colour list: rebuild, keep the spread, forget the pending undo, mark changed.</summary>
     private void CommitColors(IReadOnlyList<RgbColor> colors, int select)
     {
-        _colorsBeforeFill = null;
-        FillMessage = null;
+        _colorsBeforeChange = null;
+        UndoMessage = null;
         RebuildColors(colors, select);
         MarkDirty();
     }
@@ -417,6 +451,7 @@ public sealed partial class ColorCycleEditorViewModel : EffectEditorViewModel
     private void RefreshDerived()
     {
         OnPropertyChanged(nameof(RoundText));
+        OnPropertyChanged(nameof(CycleLengthText));
         OnPropertyChanged(nameof(CanSpread));
         OnPropertyChanged(nameof(SpreadPercent));
         OnPropertyChanged(nameof(SpreadText));
@@ -466,8 +501,8 @@ public sealed partial class ColorCycleEditorViewModel : EffectEditorViewModel
         if (SelectedColor is { } selected)
         {
             selected.Color = color;
-            _colorsBeforeFill = null;
-            FillMessage = null;
+            _colorsBeforeChange = null;
+            UndoMessage = null;
             MarkDirty();
             RefreshDerived();
         }

@@ -20,6 +20,7 @@ public sealed class ColorCycleEditorViewModelTests
         Assert.Equal(["Red", "Green", "Blue"], vm.Colors.Select(c => c.Name));
         Assert.Same(vm.Colors[0], vm.SelectedColor);
         Assert.Contains("6 s", vm.RoundText, StringComparison.Ordinal);
+        Assert.Equal("6 s (3 colours × 2 s)", vm.CycleLengthText);
         Assert.Equal(3, vm.PreviewSlots.Count);
         Assert.False(vm.IsDirty);
     }
@@ -73,6 +74,7 @@ public sealed class ColorCycleEditorViewModelTests
         Assert.Null(vm.SelectedColor);
         Assert.Empty(vm.PreviewSlots);
         Assert.Equal("Add at least one colour.", vm.RoundText);
+        Assert.Equal("–", vm.CycleLengthText);
     }
 
     [Fact]
@@ -84,13 +86,13 @@ public sealed class ColorCycleEditorViewModelTests
         vm.ApplyPaletteCommand.Execute(rainbow);
 
         Assert.Equal(7, vm.Colors.Count);
-        Assert.True(vm.CanUndoFill);
-        Assert.Equal("Replaced 3 colours with Rainbow.", vm.FillMessage);
+        Assert.True(vm.CanUndo);
+        Assert.Equal("Replaced 3 colours with Rainbow.", vm.UndoMessage);
 
-        vm.UndoFillCommand.Execute(null);
+        vm.UndoCommand.Execute(null);
 
         Assert.Equal(["Red", "Green", "Blue"], vm.Colors.Select(c => c.Name));
-        Assert.False(vm.CanUndoFill);
+        Assert.False(vm.CanUndo);
     }
 
     [Fact]
@@ -99,9 +101,54 @@ public sealed class ColorCycleEditorViewModelTests
         var vm = Create(lights: 0);
         vm.ApplyPaletteCommand.Execute(ColorCyclePalette.All[1]);
 
+        vm.AddColorCommand.Execute(null);
+
+        Assert.False(vm.CanUndo);
+        Assert.Null(vm.UndoMessage);
+    }
+
+    [Fact]
+    public void RemoveColor_OffersUndoThatRestoresColourAndSelection()
+    {
+        var vm = Create(lights: 0);
+        vm.SelectedColor = vm.Colors[1];
+
         vm.RemoveColorCommand.Execute(null);
 
-        Assert.False(vm.CanUndoFill);
+        Assert.Equal(["Red", "Blue"], vm.Colors.Select(c => c.Name));
+        Assert.True(vm.CanUndo);
+        Assert.Equal("Removed 1 colour (Green).", vm.UndoMessage);
+
+        vm.UndoCommand.Execute(null);
+
+        Assert.Equal(["Red", "Green", "Blue"], vm.Colors.Select(c => c.Name));
+        Assert.Equal("Green", vm.SelectedColor?.Name);
+        Assert.False(vm.CanUndo);
+    }
+
+    [Fact]
+    public void RemoveColor_ThenRemoveAgain_UndoBringsBackOnlyTheLast()
+    {
+        var vm = Create(lights: 0);
+        vm.SelectedColor = vm.Colors[0];
+
+        vm.RemoveColorCommand.Execute(null);
+        vm.RemoveColorCommand.Execute(null);
+        vm.UndoCommand.Execute(null);
+
+        Assert.Equal(["Green", "Blue"], vm.Colors.Select(c => c.Name));
+        Assert.Equal("Green", vm.SelectedColor?.Name);
+    }
+
+    [Fact]
+    public void RemoveColor_ThenEditColour_ForgetsUndo()
+    {
+        var vm = Create(lights: 0);
+        vm.RemoveColorCommand.Execute(null);
+
+        vm.ColorEditor.Red = 18;
+
+        Assert.False(vm.CanUndo);
     }
 
     [Fact]
@@ -112,7 +159,7 @@ public sealed class ColorCycleEditorViewModelTests
         vm.ApplyPaletteCommand.Execute(ColorCyclePalette.All[2]);
 
         Assert.Equal(4, vm.Colors.Count);
-        Assert.False(vm.CanUndoFill);
+        Assert.False(vm.CanUndo);
     }
 
     [Fact]
