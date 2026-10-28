@@ -26,7 +26,6 @@ public sealed class FlashEditorViewModel : EffectEditorViewModel
         ColorEditor = new ColorEditorViewModel(_ => MarkDirty()) { IsCustomOpen = false };
         ColorEditor.PropertyChanged += OnColorEditorPropertyChanged;
         LoadFromOriginal();
-        SelectStartTab();
     }
 
     public ColorEditorViewModel ColorEditor { get; }

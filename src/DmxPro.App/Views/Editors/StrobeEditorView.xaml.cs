@@ -8,6 +8,5 @@ public partial class StrobeEditorView : UserControl
     public StrobeEditorView()
     {
         InitializeComponent();
-        EffectEditorPicker.Attach(this);
     }
 }

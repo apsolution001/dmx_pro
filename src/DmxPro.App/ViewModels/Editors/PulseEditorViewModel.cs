@@ -50,7 +50,6 @@ public sealed partial class PulseEditorViewModel : EffectEditorViewModel
             ],
             v => Shape = v);
         LoadFromOriginal();
-        SelectStartTab();
     }
 
     public ColorEditorViewModel ColorEditor { get; }

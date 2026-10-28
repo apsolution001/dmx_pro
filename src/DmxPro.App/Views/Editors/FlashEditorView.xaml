@@ -10,23 +10,23 @@
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
     d:DataContext="{d:DesignInstance Type=ed:FlashEditorViewModel}"
     d:DesignHeight="360"
-    d:DesignWidth="1000"
+    d:DesignWidth="1100"
     mc:Ignorable="d">
     <!--
-        Flash editor (DataContext: FlashEditorViewModel), laid out like the scene editor: two tabs in the editor's tab
-        strip (EditorTabControl from FunctionEditorPanel). Opens on "Flash" when the flash has lights, else on "Lights".
-        Ctrl+L = Choose lights anywhere in the editor; Ctrl+Tab switches tabs.
+        Flash editor (DataContext: FlashEditorViewModel). Three docked panels like the colour cycle editor: the lights
+        at the left, the flash settings in the middle, the on-screen preview at the right; both GridSplitters resize.
+        Ctrl+L = Choose lights anywhere in the editor. "How long" uses round radio buttons because one choice carries
+        its own inline field (the set time).
 
-        [Lights 3] [Flash]
-        ┌──────────────────────────────────────────────────────────┬ Preview (on screen) ─────┐
-        │ ▌While you hold the button, the lights jump to …          │  (●) full red            │
-        │ Colour                                                   │  Press and hold: the     │
-        │  (●)(●)(●)… [██] Red [Custom ▾]                          │  lights jump to full red.│
-        │ How long                                                 │  Let go: they go back.   │
-        │  (•) While the button is held                            │                          │
-        │  ( ) For a set time  [1.00] s                            │                          │
-        │  [x] Use white channel                                   │                          │
-        └──────────────────────────────────────────────────────────┴──────────────────────────┘
+        ┌ Fixtures ─────────┐║┌ Flash ───────────────────────────────────────────┐║┌ Preview (on screen) ─┐
+        │ 1 PAR 1  U1 · 1–4 │║│ ▌While you hold the button, the lights jump to …  │║│ (●) Red              │
+        │ 2 PAR 2  U1 · 5–8 │║│ Colour                                            │║│ Press and hold: the  │
+        │                   │║│  (●)(●)(●)… [██] Red [Custom ▾]                   │║│ lights jump to full  │
+        │                   │║│ How long                                          │║│ red. Let go: back.   │
+        │                   │║│  (•) While the button is held                     │║│                      │
+        │                   │║│  ( ) For a set time: [1.00] s                     │║│                      │
+        │                   │║│  [x] Use white channel                            │║│                      │
+        └───────────────────┘║└───────────────────────────────────────────────────┘║└──────────────────────┘
     -->
     <UserControl.Resources>
         <ResourceDictionary>
@@ -40,178 +40,176 @@
         <KeyBinding Command="{Binding Fixtures.ChooseLightsCommand}" Gesture="Ctrl+L" />
     </UserControl.InputBindings>
 
-    <TabControl
-        AutomationProperties.Name="Flash editor tabs"
-        SelectedIndex="{Binding SelectedTabIndex, Mode=TwoWay}"
-        Style="{DynamicResource EditorTabControl}">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition
+                Width="260"
+                MinWidth="180"
+                MaxWidth="520" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" MinWidth="380" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition
+                Width="260"
+                MinWidth="200"
+                MaxWidth="480" />
+        </Grid.ColumnDefinitions>
 
         <!-- ═════════════ Lights ═════════════ -->
-        <TabItem AutomationProperties.Name="Lights">
-            <TabItem.Header>
-                <StackPanel Orientation="Horizontal">
-                    <c:DmxIcon
-                        Margin="0,0,4,0"
-                        VerticalAlignment="Center"
-                        Kind="Fixtures"
-                        Size="{StaticResource Dmx.DenseIconSize}" />
-                    <TextBlock VerticalAlignment="Center" Text="Lights" />
-                    <TextBlock
-                        Margin="4,0,0,0"
-                        VerticalAlignment="Center"
-                        FontSize="{StaticResource Dmx.FontSize.Small}"
-                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                        Text="{Binding Fixtures.Items.Count}" />
-                </StackPanel>
-            </TabItem.Header>
-            <edv:FixtureListPanel DataContext="{Binding Fixtures}" />
-        </TabItem>
+        <edv:FixtureListPanel DataContext="{Binding Fixtures}" />
+
+        <GridSplitter
+            Grid.Column="1"
+            AutomationProperties.Name="Resize the light list"
+            Style="{StaticResource VerticalSplitter}" />
 
         <!-- ═════════════ Flash settings ═════════════ -->
-        <TabItem AutomationProperties.Name="Flash settings">
-            <TabItem.Header>
-                <StackPanel Orientation="Horizontal">
-                    <c:DmxIcon
-                        Margin="0,0,4,0"
-                        VerticalAlignment="Center"
-                        Kind="Flash"
-                        Size="{StaticResource Dmx.DenseIconSize}" />
-                    <TextBlock VerticalAlignment="Center" Text="Flash" />
-                </StackPanel>
-            </TabItem.Header>
+        <Border
+            Grid.Column="2"
+            AutomationProperties.Name="Flash settings"
+            Style="{StaticResource PanelBorder}">
+            <DockPanel>
+                <Border DockPanel.Dock="Top" Style="{StaticResource PanelHeader}">
+                    <StackPanel Orientation="Horizontal">
+                        <c:DmxIcon
+                            Margin="0,0,6,0"
+                            VerticalAlignment="Center"
+                            Kind="Flash"
+                            Size="{StaticResource Dmx.DenseIconSize}" />
+                        <TextBlock Style="{StaticResource PanelTitle}" Text="Flash" />
+                    </StackPanel>
+                </Border>
 
-            <Border Style="{StaticResource PanelBorder}">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" MinWidth="380" />
-                        <ColumnDefinition Width="260" />
-                    </Grid.ColumnDefinitions>
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                    <StackPanel
+                        MaxWidth="620"
+                        Margin="8,6"
+                        HorizontalAlignment="Left">
 
-                    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-                        <StackPanel
-                            MaxWidth="620"
-                            Margin="8,6"
-                            HorizontalAlignment="Left">
-
-                            <Border Style="{StaticResource EffectExplanation}">
-                                <DockPanel>
-                                    <c:DmxIcon
-                                        Margin="0,0,6,0"
-                                        VerticalAlignment="Center"
-                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                        Kind="Flash"
-                                        Size="{StaticResource Dmx.SmallIconSize}" />
-                                    <TextBlock Text="While you hold the button, the lights jump to this colour at full brightness. Let go and they go straight back." TextWrapping="Wrap" />
-                                </DockPanel>
-                            </Border>
-
-                            <!-- Empty state: no lights yet. -->
-                            <Border Style="{StaticResource EffectNoLightsBar}" Visibility="{Binding HasNoFixtures, Converter={StaticResource BoolToVisibility}}">
-                                <DockPanel>
-                                    <Button
-                                        Margin="8,0,0,0"
-                                        AutomationProperties.Name="Choose lights"
-                                        Command="{Binding Fixtures.ChooseLightsCommand}"
-                                        DockPanel.Dock="Right"
-                                        Style="{StaticResource ToolbarLabelButton}"
-                                        ToolTip="Pick single lights or whole groups (Ctrl+L)">
-                                        <StackPanel Orientation="Horizontal">
-                                            <c:DmxIcon Kind="Add" Size="{StaticResource Dmx.DenseIconSize}" />
-                                            <TextBlock Style="{StaticResource ButtonLabel}" Text="Choose lights…" />
-                                        </StackPanel>
-                                    </Button>
-                                    <c:DmxIcon
-                                        VerticalAlignment="Center"
-                                        Kind="Info"
-                                        Style="{StaticResource CautionIcon}" />
-                                    <TextBlock
-                                        VerticalAlignment="Center"
-                                        Text="No lights chosen yet: this flash does nothing until you pick some."
-                                        TextWrapping="Wrap" />
-                                </DockPanel>
-                            </Border>
-
-                            <!-- ═════ Colour ═════ -->
-                            <TextBlock Style="{StaticResource EffectSection}" Text="Colour" />
-                            <edv:ColorEditorView DataContext="{Binding ColorEditor}" />
-
-                            <!-- ═════ How long ═════ -->
-                            <TextBlock Style="{StaticResource EffectSection}" Text="How long" />
-                            <RadioButton
-                                Margin="0,0,0,3"
-                                AutomationProperties.Name="On while the button is held"
-                                Content="While the button is held"
-                                GroupName="FlashLength"
-                                IsChecked="{Binding IsHeld, Mode=TwoWay}"
-                                ToolTip="On as long as you hold the button; off the moment you let go" />
-                            <StackPanel Orientation="Horizontal">
-                                <RadioButton
+                        <Border Style="{StaticResource EffectExplanation}">
+                            <DockPanel>
+                                <c:DmxIcon
+                                    Margin="0,0,6,0"
                                     VerticalAlignment="Center"
-                                    AutomationProperties.Name="On for a set time"
-                                    Content="For a set time:"
-                                    GroupName="FlashLength"
-                                    IsChecked="{Binding IsTimed, Mode=TwoWay}"
-                                    ToolTip="Goes off by itself after this time, or sooner if you let go" />
-                                <ui:NumberBox
-                                    AutomationProperties.Name="Set time, seconds"
-                                    IsEnabled="{Binding IsTimed}"
-                                    Maximum="3600"
-                                    Minimum="{x:Static ed:FlashEditorViewModel.MinTimedSeconds}"
-                                    Style="{StaticResource EffectSecondsBox}"
-                                    ToolTip="Seconds the flash stays on after a press (at least 0.1 s)"
-                                    Value="{Binding TimedSeconds, Mode=TwoWay}" />
-                                <TextBlock Style="{StaticResource EffectUnitText}" Text="s" />
-                            </StackPanel>
+                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                    Kind="Flash"
+                                    Size="{StaticResource Dmx.SmallIconSize}" />
+                                <TextBlock Text="While you hold the button, the lights jump to this colour at full brightness. Let go and they go straight back." TextWrapping="Wrap" />
+                            </DockPanel>
+                        </Border>
 
-                            <CheckBox
-                                Margin="0,8,0,0"
-                                AutomationProperties.Name="Use the white channel"
-                                Content="Use white channel"
-                                IsChecked="{Binding UseWhiteChannel}"
-                                ToolTip="On: the white part of the colour goes to the light's White channel. Off: white is mixed from red, green and blue." />
+                        <!-- Empty state: no lights yet (neutral, not a warning). -->
+                        <Border Style="{StaticResource EffectNoLightsBar}" Visibility="{Binding HasNoFixtures, Converter={StaticResource BoolToVisibility}}">
+                            <DockPanel>
+                                <Button
+                                    Margin="8,0,0,0"
+                                    AutomationProperties.Name="Choose lights"
+                                    Command="{Binding Fixtures.ChooseLightsCommand}"
+                                    DockPanel.Dock="Right"
+                                    Style="{StaticResource ToolbarLabelButton}"
+                                    ToolTip="Pick single lights or whole groups (Ctrl+L)">
+                                    <StackPanel Orientation="Horizontal">
+                                        <c:DmxIcon Kind="Add" Size="{StaticResource Dmx.DenseIconSize}" />
+                                        <TextBlock Style="{StaticResource ButtonLabel}" Text="Choose lights…" />
+                                    </StackPanel>
+                                </Button>
+                                <c:DmxIcon Kind="Info" Style="{StaticResource EffectNoLightsIcon}" />
+                                <TextBlock VerticalAlignment="Center" TextWrapping="Wrap">
+                                    <Run FontWeight="SemiBold" Text="No lights chosen yet." />
+                                    <Run Text="This flash does nothing until you pick some." />
+                                </TextBlock>
+                            </DockPanel>
+                        </Border>
+
+                        <!-- ═════ Colour ═════ -->
+                        <TextBlock Style="{StaticResource EffectSection}" Text="Colour" />
+                        <edv:ColorEditorView DataContext="{Binding ColorEditor}" />
+
+                        <!-- ═════ How long: round radios, the second one has an inline field ═════ -->
+                        <TextBlock Style="{StaticResource EffectSection}" Text="How long" />
+                        <RadioButton
+                            Margin="0,0,0,3"
+                            AutomationProperties.Name="On while the button is held"
+                            Content="While the button is held"
+                            GroupName="FlashLength"
+                            IsChecked="{Binding IsHeld, Mode=TwoWay}"
+                            ToolTip="On as long as you hold the button; off the moment you let go" />
+                        <StackPanel Orientation="Horizontal">
+                            <RadioButton
+                                VerticalAlignment="Center"
+                                AutomationProperties.Name="On for a set time"
+                                Content="For a set time:"
+                                GroupName="FlashLength"
+                                IsChecked="{Binding IsTimed, Mode=TwoWay}"
+                                ToolTip="Goes off by itself after this time, or sooner if you let go" />
+                            <ui:NumberBox
+                                AutomationProperties.Name="Set time, seconds"
+                                IsEnabled="{Binding IsTimed}"
+                                Maximum="3600"
+                                Minimum="{x:Static ed:FlashEditorViewModel.MinTimedSeconds}"
+                                Style="{StaticResource EffectSecondsBox}"
+                                ToolTip="Seconds the flash stays on after a press (at least 0.1 s)"
+                                Value="{Binding TimedSeconds, Mode=TwoWay}" />
+                            <TextBlock Style="{StaticResource EffectUnitText}" Text="s" />
                         </StackPanel>
-                    </ScrollViewer>
 
-                    <!-- ═════ On-screen preview (still: a lamp in the flash colour and what happens) ═════ -->
-                    <Border Grid.Column="1" Style="{StaticResource EffectPreviewPanel}">
-                        <DockPanel>
-                            <Border DockPanel.Dock="Top" Style="{StaticResource PanelHeader}">
-                                <TextBlock
-                                    Style="{StaticResource PanelTitle}"
-                                    Text="Preview (on screen)"
-                                    ToolTip="While this editor is open the real lights show the flash as if the button were held (see the editor toolbar)." />
-                            </Border>
-                            <StackPanel Margin="8,6">
-                                <StackPanel Orientation="Horizontal">
-                                    <!-- Real light colours: black = lamp off, the swatch = the flash colour. -->
-                                    <Grid Width="48" Height="48">
-                                        <Ellipse
-                                            Fill="#000000"
-                                            Stroke="{DynamicResource ControlStrokeColorDefaultBrush}" />
-                                        <Ellipse
-                                            Margin="2"
-                                            DataContext="{Binding ColorEditor}"
-                                            Fill="{Binding SwatchHex}" />
-                                    </Grid>
-                                    <TextBlock
-                                        Margin="8,0,0,0"
-                                        VerticalAlignment="Center"
-                                        FontWeight="SemiBold"
-                                        Text="{Binding ColorEditor.ColorName}" />
-                                </StackPanel>
-                                <TextBlock
-                                    Margin="0,6,0,0"
-                                    AutomationProperties.LiveSetting="Polite"
-                                    Style="{StaticResource HintText}"
-                                    Text="{Binding PreviewCaption}" />
-                                <TextBlock
-                                    Margin="0,6,0,0"
-                                    Style="{StaticResource HintText}"
-                                    Text="While this editor is open, the lights show the flash as if the button were held." />
-                            </StackPanel>
-                        </DockPanel>
-                    </Border>
-                </Grid>
-            </Border>
-        </TabItem>
-    </TabControl>
+                        <CheckBox
+                            Margin="0,8,0,0"
+                            AutomationProperties.Name="Use white channel"
+                            Content="Use white channel"
+                            IsChecked="{Binding UseWhiteChannel}"
+                            ToolTip="On: the white part of the colour goes to the light's White channel. Off: white is mixed from red, green and blue." />
+                    </StackPanel>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+
+        <GridSplitter
+            Grid.Column="3"
+            AutomationProperties.Name="Resize the preview"
+            Style="{StaticResource VerticalSplitter}" />
+
+        <!-- ═════════════ On-screen preview (still: a lamp in the flash colour and what happens) ═════════════ -->
+        <Border Grid.Column="4" Style="{StaticResource PanelBorder}">
+            <DockPanel>
+                <Border DockPanel.Dock="Top" Style="{StaticResource PanelHeader}">
+                    <TextBlock
+                        Style="{StaticResource PanelTitle}"
+                        Text="Preview (on screen)"
+                        ToolTip="While this editor is open the real lights show the flash as if the button were held (see the editor toolbar)." />
+                </Border>
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="8,6">
+                        <StackPanel Orientation="Horizontal">
+                            <!-- Real light colours: black = lamp off, the swatch = the flash colour. -->
+                            <Grid
+                                Width="48"
+                                Height="48"
+                                AutomationProperties.Name="{Binding ColorEditor.ColorName}">
+                                <Ellipse Fill="#000000" Stroke="{DynamicResource ControlStrokeColorDefaultBrush}" />
+                                <Ellipse
+                                    Margin="2"
+                                    DataContext="{Binding ColorEditor}"
+                                    Fill="{Binding SwatchHex}" />
+                            </Grid>
+                            <TextBlock
+                                Margin="8,0,0,0"
+                                VerticalAlignment="Center"
+                                FontWeight="SemiBold"
+                                Text="{Binding ColorEditor.ColorName}" />
+                        </StackPanel>
+                        <TextBlock
+                            Margin="0,6,0,0"
+                            AutomationProperties.LiveSetting="Polite"
+                            Style="{StaticResource HintText}"
+                            Text="{Binding PreviewCaption}" />
+                        <TextBlock
+                            Margin="0,6,0,0"
+                            Style="{StaticResource HintText}"
+                            Text="While this editor is open, the lights show the flash as if the button were held." />
+                    </StackPanel>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+    </Grid>
 </UserControl>

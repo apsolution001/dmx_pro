@@ -16,8 +16,15 @@ public sealed class EffectChoiceGroup<T>
         ArgumentNullException.ThrowIfNull(apply);
         _apply = apply;
         _matches = matches ?? EqualityComparer<T>.Default.Equals;
-        Choices = choices.Select(c => new EffectChoice<T>(c.Value, c.Label, c.ToolTip, Choose)).ToList();
+        GroupName = "EffectChoice-" + Guid.NewGuid().ToString("N");
+        Choices = choices.Select(c => new EffectChoice<T>(c.Value, c.Label, c.ToolTip, GroupName, Choose)).ToList();
     }
+
+    /// <summary>
+    /// Id shared by this group's buttons and no other group (a radio button GroupName), so the buttons of one row form
+    /// one group for keyboard navigation and screen readers even though each sits in its own item container.
+    /// </summary>
+    public string GroupName { get; }
 
     public IReadOnlyList<EffectChoice<T>> Choices { get; }
 

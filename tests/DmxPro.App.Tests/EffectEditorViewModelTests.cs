@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace DmxPro.App.Tests;
 
 /// <summary>
-/// Pulse, flash and strobe editors: presets, plain-language choices, start tab, colour presets and the strobe safety
+/// Pulse, flash and strobe editors: presets, plain-language choices, choice groups, colour presets and the strobe safety
 /// notes (rule 8). The editors work on a draft; only Save writes the function.
 /// </summary>
 public sealed class EffectEditorViewModelTests : IDisposable
@@ -55,15 +55,24 @@ public sealed class EffectEditorViewModelTests : IDisposable
     }
 
     [Fact]
-    public void Editor_NoLights_OpensOnLightsTab_WithLights_OnSettingsTab()
+    public void Editor_HasNoFixtures_FollowsTheLights()
     {
         var empty = new PulseEditorViewModel(new Project(), new PulseFunction());
         var withLights = new PulseEditorViewModel(new Project(), new PulseFunction { FixtureIds = [Guid.NewGuid()] });
 
-        Assert.Equal(EffectEditorViewModel.LightsTabIndex, empty.SelectedTabIndex);
         Assert.True(empty.HasNoFixtures);
-        Assert.Equal(EffectEditorViewModel.SettingsTabIndex, withLights.SelectedTabIndex);
         Assert.False(withLights.HasNoFixtures);
+    }
+
+    [Fact]
+    public void EffectChoiceGroup_GroupName_SharedInsideOneGroup_DifferentBetweenGroups()
+    {
+        var first = new EffectChoiceGroup<double>([(1, "A", ""), (2, "B", "")], _ => { });
+        var second = new EffectChoiceGroup<double>([(1, "A", ""), (2, "B", "")], _ => { });
+
+        Assert.False(string.IsNullOrEmpty(first.GroupName));
+        Assert.All(first.Choices, c => Assert.Equal(first.GroupName, c.GroupName));
+        Assert.NotEqual(first.GroupName, second.GroupName);
     }
 
     [Fact]
@@ -292,6 +301,31 @@ public sealed class EffectEditorViewModelTests : IDisposable
         Assert.Contains(nameof(StrobeEditorViewModel.IsStrobeDisabled), changed);
         Assert.Contains(nameof(StrobeEditorViewModel.PreviewPoints), changed);
         vm.Detach();
+    }
+
+    [Fact]
+    public void Strobe_AfterDetach_IgnoresSettingsChanges()
+    {
+        var settings = CreateSettings(allow: false, max: 10);
+        var vm = new StrobeEditorViewModel(new Project(), new StrobeFunction(), settings);
+        vm.Detach();
+        var changed = new List<string?>();
+        vm.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        settings.Update(s => s.AllowStrobe = true);
+
+        Assert.Empty(changed);
+    }
+
+    [Fact]
+    public void Strobe_SpeedText_SaysFlashesPerSecond()
+    {
+        var vm = new StrobeEditorViewModel(new Project(), new StrobeFunction(), CreateSettings(allow: true, max: 10));
+
+        vm.RateHz = 2;
+
+        Assert.StartsWith("= ", vm.SpeedText);
+        Assert.Contains("2", vm.SpeedText);
     }
 
     [Fact]

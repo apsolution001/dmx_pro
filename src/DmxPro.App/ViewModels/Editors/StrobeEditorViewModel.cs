@@ -68,7 +68,6 @@ public sealed partial class StrobeEditorViewModel : EffectEditorViewModel
             v => DutyPercent = v,
             EffectEditorFormat.NearlyEqual);
         LoadFromOriginal();
-        SelectStartTab();
     }
 
     public ColorEditorViewModel ColorEditor { get; }
@@ -204,7 +203,11 @@ public sealed partial class StrobeEditorViewModel : EffectEditorViewModel
 
     private StrobeFunction Strobe => (StrobeFunction)Target;
 
-    public override void Detach() => _settings.Changed -= OnSettingsChanged;
+    public override void Detach()
+    {
+        _settings.Changed -= OnSettingsChanged;
+        base.Detach();
+    }
 
     protected override void LoadEffect()
     {

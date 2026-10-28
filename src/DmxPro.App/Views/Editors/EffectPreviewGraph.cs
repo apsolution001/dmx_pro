@@ -1,9 +1,11 @@
 using System.Diagnostics;
 using System.Windows;
+using System.Windows.Automation.Peers;
 using System.Windows.Media;
 using System.Windows.Threading;
 using DmxPro.App.Controls;
 using DmxPro.App.ViewModels.Editors;
+using DmxPro.Core.Functions;
 
 namespace DmxPro.App.Views.Editors;
 
@@ -125,6 +127,9 @@ public sealed class EffectPreviewGraph : FrameworkElement
 
     private bool IsRunning => _timer.IsEnabled;
 
+    /// <summary>Screen readers see a picture; its name (the caption) comes from AutomationProperties.Name.</summary>
+    protected override AutomationPeer OnCreateAutomationPeer() => new PreviewAutomationPeer(this);
+
     protected override Size MeasureOverride(Size availableSize) => new(
         double.IsInfinity(availableSize.Width) ? 200 : availableSize.Width,
         double.IsInfinity(availableSize.Height) ? 64 : availableSize.Height);
@@ -216,10 +221,11 @@ public sealed class EffectPreviewGraph : FrameworkElement
     private static void OnLightColorChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var graph = (EffectPreviewGraph)d;
+        // Anything that is not "#RRGGBB" (null, empty, a typo) shows white instead of throwing during layout.
         var color = Colors.White;
-        if (e.NewValue is string hex && ColorConverter.ConvertFromString(hex) is Color parsed)
+        if (RgbColor.TryParseHex(e.NewValue as string, out var parsed))
         {
-            color = parsed;
+            color = Color.FromRgb(parsed.R, parsed.G, parsed.B);
         }
 
         graph._lightBrush = CreateFrozen(color);
@@ -270,5 +276,14 @@ public sealed class EffectPreviewGraph : FrameworkElement
         }
 
         InvalidateVisual();
+    }
+
+    private sealed class PreviewAutomationPeer(EffectPreviewGraph owner) : FrameworkElementAutomationPeer(owner)
+    {
+        protected override AutomationControlType GetAutomationControlTypeCore() => AutomationControlType.Image;
+
+        protected override string GetClassNameCore() => nameof(EffectPreviewGraph);
+
+        protected override bool IsContentElementCore() => true;
     }
 }

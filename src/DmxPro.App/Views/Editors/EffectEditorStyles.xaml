@@ -7,16 +7,23 @@
         Shared styles of the pulse, flash and strobe editors (merged by PulseEditorView, FlashEditorView and
         StrobeEditorView). Built on the app styles (ToolbarToggleButton, FormNumberBox, FormSection …).
 
+        Pick-one choices: segmented buttons (EffectChoiceButton inside an EffectChoicePanel / EffectChoiceRow) for every
+        plain pick-one-of-N. Round radio buttons only where one choice carries its own inline field (Flash "For a set
+        time: [1.00] s", Strobe "Exact value: ──●── [0]"). Every group has its own GroupName, so the buttons of one row
+        are one group for screen readers; Tab enters a row once, the arrow keys move inside it, Space picks.
+
         EffectChoiceButton     RadioButton  Segmented pick-one button (Slow / Medium / Fast …): outlined, accent fill when chosen.
-        EffectChoiceRow        ItemsControl Row of EffectChoiceButtons for an EffectChoiceGroup's Choices.
-        EffectExplanation      Border       One-line "what this effect does" strip at the top of the settings tab.
+        EffectChoicePanel      StackPanel   Row of hand-written EffectChoiceButtons (one Tab stop, arrow keys inside).
+        EffectChoiceRow        ItemsControl Row of EffectChoiceButtons for an EffectChoiceGroup's Choices (GroupName from the group).
+        EffectExplanation      Border       One-line "what this effect does" strip at the top of the settings panel.
         EffectSection          TextBlock    Small heading above a group of fields (Colour, Speed, Brightness …).
-        EffectSecondsBox       ui:NumberBox Exact number next to the presets (2 decimals).
+        EffectNumberBox        ui:NumberBox Number box of the effect editors (width 104).
+        EffectSecondsBox       ui:NumberBox Exact seconds / rate next to the presets (2 decimals).
+        EffectPercentBox       ui:NumberBox Whole percent (0 decimals).
         EffectPercentSlider    Slider       0–100 % slider.
         EffectUnitText         TextBlock    "s per breath", "%" after a box.
-        CautionBar / CautionIcon            Safety notes (strobe): caution stroke at the left + warning icon + text.
-        EffectNoLightsBar      Border       "No lights chosen yet" strip with a Choose lights button.
-        EffectPreviewPanel     Border       The on-screen preview panel at the right.
+        CautionBar / CautionIcon            Safety notes ONLY (strobe): caution stroke at the left + warning icon + text.
+        EffectNoLightsBar / EffectNoLightsIcon  Neutral info strip "No lights chosen yet" + Choose lights button.
     -->
 
     <Style
@@ -33,10 +40,19 @@
         <Setter Property="BorderThickness" Value="1" />
     </Style>
 
+    <Style x:Key="EffectChoicePanel" TargetType="StackPanel">
+        <Setter Property="Orientation" Value="Horizontal" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="KeyboardNavigation.DirectionalNavigation" Value="Cycle" />
+        <Setter Property="KeyboardNavigation.TabNavigation" Value="Once" />
+    </Style>
+
     <Style x:Key="EffectChoiceRow" TargetType="ItemsControl">
         <Setter Property="IsTabStop" Value="False" />
         <Setter Property="Focusable" Value="False" />
         <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="KeyboardNavigation.DirectionalNavigation" Value="Cycle" />
+        <Setter Property="KeyboardNavigation.TabNavigation" Value="Once" />
         <Setter Property="ItemsPanel">
             <Setter.Value>
                 <ItemsPanelTemplate>
@@ -51,6 +67,7 @@
                         AutomationProperties.HelpText="{Binding ToolTip}"
                         AutomationProperties.Name="{Binding Label}"
                         Content="{Binding Label}"
+                        GroupName="{Binding GroupName}"
                         IsChecked="{Binding IsSelected, Mode=TwoWay}"
                         Style="{StaticResource EffectChoiceButton}"
                         ToolTip="{Binding ToolTip}" />
@@ -75,16 +92,31 @@
     </Style>
 
     <Style
-        x:Key="EffectSecondsBox"
+        x:Key="EffectNumberBox"
         BasedOn="{StaticResource FormNumberBox}"
         TargetType="ui:NumberBox">
         <Setter Property="Width" Value="104" />
-        <Setter Property="Margin" Value="6,0,0,0" />
         <Setter Property="HorizontalAlignment" Value="Left" />
         <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style
+        x:Key="EffectSecondsBox"
+        BasedOn="{StaticResource EffectNumberBox}"
+        TargetType="ui:NumberBox">
+        <Setter Property="Margin" Value="6,0,0,0" />
         <Setter Property="LargeChange" Value="1" />
         <Setter Property="MaxDecimalPlaces" Value="2" />
         <Setter Property="SmallChange" Value="0.1" />
+    </Style>
+
+    <Style
+        x:Key="EffectPercentBox"
+        BasedOn="{StaticResource EffectNumberBox}"
+        TargetType="ui:NumberBox">
+        <Setter Property="LargeChange" Value="10" />
+        <Setter Property="MaxDecimalPlaces" Value="0" />
+        <Setter Property="SmallChange" Value="1" />
     </Style>
 
     <Style x:Key="EffectPercentSlider" TargetType="Slider">
@@ -104,6 +136,7 @@
         <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
     </Style>
 
+    <!-- Caution colour: safety notes only (photosensitivity, strobe off in Settings, speed limit). -->
     <Style x:Key="CautionBar" TargetType="Border">
         <Setter Property="Margin" Value="0,0,0,4" />
         <Setter Property="Padding" Value="6,3" />
@@ -119,17 +152,19 @@
         <Setter Property="Size" Value="{StaticResource Dmx.SmallIconSize}" />
     </Style>
 
-    <Style
-        x:Key="EffectNoLightsBar"
-        BasedOn="{StaticResource CautionBar}"
-        TargetType="Border">
+    <!-- Neutral "what to do next" strip: an empty state, not a warning, so no caution colour. -->
+    <Style x:Key="EffectNoLightsBar" TargetType="Border">
         <Setter Property="Margin" Value="0,0,0,6" />
+        <Setter Property="Padding" Value="6,4" />
+        <Setter Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
     </Style>
 
-    <Style x:Key="EffectPreviewPanel" TargetType="Border">
-        <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorDefaultBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource DividerStrokeColorDefaultBrush}" />
-        <Setter Property="BorderThickness" Value="1,0,0,0" />
-        <Setter Property="SnapsToDevicePixels" Value="True" />
+    <Style x:Key="EffectNoLightsIcon" TargetType="c:DmxIcon">
+        <Setter Property="Margin" Value="0,0,6,0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Foreground" Value="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+        <Setter Property="Size" Value="{StaticResource Dmx.SmallIconSize}" />
     </Style>
 </ResourceDictionary>
