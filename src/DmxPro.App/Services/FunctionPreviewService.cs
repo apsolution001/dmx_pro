@@ -194,7 +194,7 @@ public sealed class FunctionPreviewService
         var failed = false;
         try
         {
-            if (!_engine.SetPreviewFunction(_projects.Current, editor.BuildPreviewFunction()))
+            if (!_engine.SetPreviewFunction(_projects.Current, editor.BuildPreviewFunction(), editor.PreviewFunctions))
             {
                 _engine.ClearPreview();
             }

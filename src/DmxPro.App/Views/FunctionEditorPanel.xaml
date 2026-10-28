@@ -19,8 +19,8 @@
         The function editor host (DataContext: a FunctionEditorViewModel), shared by the Functions page (below the
         function tree) and the Shows page (a show's own copy). Toolbar row (save, revert, preview / live, show-in-list,
         name, close), the show-copy banner, then the editor of the function's type, picked by
-        the DataTemplates below: Scene = General / Channels tabs; Chaser, Sequence, Color cycle, Fade, Pulse, Flash and
-        Strobe = their own views in Views/Editors. Esc anywhere in the editor = Close (asks when there are unsaved
+        the DataTemplates below: Scene = General / Channels tabs; Chaser, Color cycle, Fade, Pulse, Flash and Strobe =
+        their own views in Views/Editors (a Chaser can show a step's own editor inside it: then this toolbar hides). Esc anywhere in the editor = Close (asks when there are unsaved
         changes); controls that use Esc themselves (value boxes, lists, flyouts) handle it first.
 
         [✓][✕] | [▶ Preview] (Live on lights) | [ ] Show in function list | (icon) [name......] | Fade in [0] s  Fade out [0] s  Unsaved changes [Close]
@@ -138,9 +138,17 @@
     </UserControl.Resources>
 
     <DockPanel>
-        <Border
-            DockPanel.Dock="Top"
-            Style="{StaticResource PageToolbar}">
+        <!-- Hidden while the editor shows another function's editor inside it (a chaser step's copy): that one has its own. -->
+        <Border DockPanel.Dock="Top">
+            <Border.Style>
+                <Style BasedOn="{StaticResource PageToolbar}" TargetType="Border">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsInnerEditorOpen}" Value="True">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
             <DockPanel LastChildFill="False">
                 <StackPanel
                     VerticalAlignment="Center"
@@ -345,9 +353,6 @@
                 </DataTemplate>
                 <DataTemplate DataType="{x:Type ed:ChaserEditorViewModel}">
                     <edv:ChaserEditorView />
-                </DataTemplate>
-                <DataTemplate DataType="{x:Type ed:SequenceEditorViewModel}">
-                    <edv:SequenceEditorView />
                 </DataTemplate>
                 <DataTemplate DataType="{x:Type ed:ColorCycleEditorViewModel}">
                     <edv:ColorCycleEditorView />

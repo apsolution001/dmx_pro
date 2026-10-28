@@ -5,43 +5,54 @@
     xmlns:c="clr-namespace:DmxPro.App.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:ed="clr-namespace:DmxPro.App.ViewModels.Editors"
+    xmlns:edv="clr-namespace:DmxPro.App.Views.Editors"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    xmlns:views="clr-namespace:DmxPro.App.Views"
+    x:Name="Root"
     d:DataContext="{d:DesignInstance Type=ed:ChaserEditorViewModel}"
-    d:DesignHeight="420"
-    d:DesignWidth="1000"
+    d:DesignHeight="460"
+    d:DesignWidth="1200"
     mc:Ignorable="d">
     <!--
-        Chaser editor (DataContext: ChaserEditorViewModel). One page, no tabs: the step list is the main panel, the
-        right panel holds the few settings (playback + step timing). Like the scene editor: toolbar strip on top of the
-        list, plain table, empty state with an action.
+        Chaser editor (DataContext: ChaserEditorViewModel). Steps on the left, the selected step on the right (its look,
+        or what function it plays), playback and step times at the far right.
 
-        ┌──────────────────────────────────────────────────────────────┐║┌ Playback ──────────────────┐
-        │ [+ Add steps…] │ [⧉][−][↑][↓]                 2 of 4 selected │║│ Run order  (•) Loop         │
-        │ Plays  [ 1 ][ 2 ][ 3 ][ 4 ]  then starts again                │║│            ( ) Play once    │
-        │ ⠿ #  ●  Scene              Hold (s)  Fade in (s)  Fade out (s)│║│            ( ) Back and forth│
-        │ ⠿ 1  ●  ◐ Red              [1]       [0]          [0]         │║│ Direction  (•) Forward      │
-        │ ⠿ 2  ●  ◐ Blue             [1]       [0.5]        [0]         │║│            ( ) Backward     │
-        │                                                              │║│ ◷ Cycle: 4 s                │
-        │                                                              │║│ Step timing                 │
-        │                                                              │║│ Hold (s)     [1     ]       │
-        │                                                              │║│ Fade in (s)  [0     ]       │
-        │                                                              │║│ Fade out (s) [0     ]       │
-        │                                                              │║│ [Apply to selected (2)]     │
-        │                                                              │║│ [Apply to all steps]        │
-        └──────────────────────────────────────────────────────────────┘║└─────────────────────────────┘
+        Plays its steps one after another; each step can have its own colours.
+        ┌─────────────────────────────────────────────┐║┌ Step 2 · Step 2 [Colours][All channels]  Lights show (•) This step ( ) Whole chaser ┐║┌ Playback ─────────────┐
+        │[+ Add step][Blank][From function… ▾]|⧉ − ↑ ↓ 💾 2 of 4 sel.│║│ (step-look panel: lights, colours, levels, all channels)              │║│ Run order (•) Loop     │
+        │ ⓘ Removed 2 steps.                    [Undo] │║│                                                                       │║│ Direction (•) Forward  │
+        │ Plays [1][2][3][4] then starts again         │║│   - or, for a function step -                                         │║│ ◷ Cycle: 4 s           │
+        │ ⠿ # ● Step              Hold Fade in Fade out│║│ (icon) Red pulse · Pulse                                              │║│ Times for new steps    │
+        │ ⠿ 1 ● ◐ Step 1          [1]  [0]     [0]     │║│ 3 lights                                                              │║│ Hold (s)     [1     ]  │
+        │ ⠿ 2 ● ∿ Red pulse       [1]  [0.5]   [0]     │║│ [✎ Edit step] [Save as function…]                                     │║│ Fade in (s)  [0     ]  │
+        │ ⠿ 3 ● ◐ Red wash linked [1]  [0]     [0]     │║│ ⓘ Linked: plays "Red wash" … first change makes an own copy           │║│ [Apply to selected (2)]│
+        └─────────────────────────────────────────────┘║└───────────────────────────────────────────────────────────────────────┘║│ [Apply to all steps]   │
 
-        Keys in the list: Ins add, Del remove, Ctrl+D duplicate, Ctrl+Up / Ctrl+Down (or Alt+arrows) move,
-        Ctrl+A select all; Ctrl / Shift + click selects several. The ⠿ grip drags the selected steps to a new place.
+        "Edit step" (function steps) shows that function's own editor in place of all this, with "← Back to chaser".
+        Keys in the list: Ins add step, Del remove, Ctrl+D duplicate, Ctrl+E edit step, Ctrl+Up / Ctrl+Down (or Alt+arrows)
+        move, Ctrl+A select all; Ctrl / Shift + click selects several. The grip drags the selected steps to a new place.
         Timing cells are text boxes: type seconds and press Enter or Tab; invalid text reverts.
     -->
     <UserControl.Resources>
-        <!-- Labelled toolbar toggle (Add steps), as high as the panel-header buttons. -->
+        <!-- Six-dot drag grip (24×24 box, drawn by DmxIcon). -->
+        <PathGeometry x:Key="ChaserGripGeometry" Figures="M7.4,6a1.6,1.6 0 1 0 3.2,0a1.6,1.6 0 1 0 -3.2,0Z M13.4,6a1.6,1.6 0 1 0 3.2,0a1.6,1.6 0 1 0 -3.2,0Z M7.4,12a1.6,1.6 0 1 0 3.2,0a1.6,1.6 0 1 0 -3.2,0Z M13.4,12a1.6,1.6 0 1 0 3.2,0a1.6,1.6 0 1 0 -3.2,0Z M7.4,18a1.6,1.6 0 1 0 3.2,0a1.6,1.6 0 1 0 -3.2,0Z M13.4,18a1.6,1.6 0 1 0 3.2,0a1.6,1.6 0 1 0 -3.2,0Z" />
+
+        <!-- Labelled toolbar toggle (Add from function), as high as the panel-header buttons. -->
         <Style
             x:Key="ChaserAddToggle"
             BasedOn="{StaticResource ToolbarToggleButton}"
             TargetType="ToggleButton">
             <Setter Property="Width" Value="NaN" />
+            <Setter Property="Height" Value="{StaticResource Dmx.PanelHeaderButtonSize}" />
+            <Setter Property="Padding" Value="6,0" />
+        </Style>
+
+        <!-- Labelled toolbar button of the step list, as high as the panel-header buttons. -->
+        <Style
+            x:Key="ChaserLabelButton"
+            BasedOn="{StaticResource ToolbarLabelButton}"
+            TargetType="Button">
             <Setter Property="Height" Value="{StaticResource Dmx.PanelHeaderButtonSize}" />
             <Setter Property="Padding" Value="6,0" />
         </Style>
@@ -60,12 +71,12 @@
             <Setter Property="VerticalContentAlignment" Value="Center" />
         </Style>
 
-        <!-- Seconds box of the "Step timing" form. -->
+        <!-- Seconds box of the "Times for new steps" form. -->
         <Style
             x:Key="ChaserSecondsBox"
             BasedOn="{StaticResource FormNumberBox}"
             TargetType="ui:NumberBox">
-            <Setter Property="Width" Value="112" />
+            <Setter Property="Width" Value="104" />
             <Setter Property="HorizontalAlignment" Value="Left" />
             <Setter Property="LargeChange" Value="1" />
             <Setter Property="MaxDecimalPlaces" Value="2" />
@@ -82,6 +93,23 @@
             <Setter Property="HorizontalAlignment" Value="Stretch" />
             <Setter Property="HorizontalContentAlignment" Value="Left" />
             <Setter Property="Margin" Value="0,0,0,4" />
+        </Style>
+
+        <!-- Search box of the picker: the form text box without its bottom margin, room on the left for the icon. -->
+        <Style
+            x:Key="ChaserSearchBox"
+            BasedOn="{StaticResource FormTextBox}"
+            TargetType="ui:TextBox">
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="Padding" Value="26,4,8,0" />
+        </Style>
+
+        <!-- One-line info strip (removed steps, linked step, own copy made). -->
+        <Style x:Key="ChaserInfoStrip" TargetType="Border">
+            <Setter Property="Padding" Value="6,3" />
+            <Setter Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource DividerStrokeColorDefaultBrush}" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
         </Style>
 
         <!-- Round colour swatch; a dashed empty ring when the step has no colour to show (not colour alone: tooltip). -->
@@ -101,638 +129,1012 @@
                     Visibility="{Binding HasColor, Converter={StaticResource BoolToVisibility}}" />
             </Grid>
         </DataTemplate>
+
+        <!--
+            "Lights show: This step / Whole chaser" (DataContext: the ChaserEditorViewModel). No GroupName: each copy of
+            this switch groups its two radios by their own panel.
+        -->
+        <DataTemplate x:Key="ChaserPreviewSwitch" DataType="{x:Type ed:ChaserEditorViewModel}">
+            <StackPanel
+                VerticalAlignment="Center"
+                AutomationProperties.Name="What the lights show"
+                Orientation="Horizontal"
+                ToolTip="What the lights show while this editor is open (only while DMX output is on and not in live mode)">
+                <TextBlock
+                    Margin="0,0,6,0"
+                    VerticalAlignment="Center"
+                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                    Text="Lights show" />
+                <RadioButton
+                    Margin="0,0,8,0"
+                    VerticalAlignment="Center"
+                    AutomationProperties.Name="Lights show the selected step"
+                    Content="This step"
+                    IsChecked="{Binding PreviewSelectedStep}"
+                    ToolTip="The lights show the selected step and stay on it while you edit" />
+                <RadioButton
+                    VerticalAlignment="Center"
+                    AutomationProperties.Name="Lights play the whole chaser"
+                    Content="Whole chaser"
+                    IsChecked="{Binding PreviewWholeChaser}"
+                    ToolTip="The lights play all steps with their timing, as the chaser will run" />
+            </StackPanel>
+        </DataTemplate>
+
+        <!-- The chaser content hides while a step's own editor is shown in its place. -->
+        <Style x:Key="ChaserContentPanel" TargetType="DockPanel">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsInnerEditorOpen}" Value="True">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
     </UserControl.Resources>
 
     <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" MinWidth="380" />
-            <ColumnDefinition Width="Auto" />
-            <ColumnDefinition
-                Width="232"
-                MinWidth="200"
-                MaxWidth="400" />
-        </Grid.ColumnDefinitions>
+        <DockPanel Style="{StaticResource ChaserContentPanel}">
+            <!-- One line saying what a chaser is. -->
+            <TextBlock
+                Margin="8,4"
+                DockPanel.Dock="Top"
+                Style="{StaticResource HintText}"
+                Text="Plays its steps one after another; each step can have its own colours."
+                TextTrimming="CharacterEllipsis"
+                TextWrapping="NoWrap" />
 
-        <!-- ═════════════ Steps ═════════════ -->
-        <Border Style="{StaticResource PanelBorder}">
-            <DockPanel>
-                <Border DockPanel.Dock="Top" Style="{StaticResource ToolbarStrip}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" MinWidth="360" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="1.3*" MinWidth="340" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition
+                        Width="232"
+                        MinWidth="200"
+                        MaxWidth="400" />
+                </Grid.ColumnDefinitions>
+
+                <!-- ═════════════ Steps ═════════════ -->
+                <Border Style="{StaticResource PanelBorder}">
                     <DockPanel>
-                        <ToggleButton
-                            x:Name="AddToggle"
-                            AutomationProperties.Name="Add steps"
-                            DockPanel.Dock="Left"
-                            IsChecked="{Binding IsPickerOpen}"
-                            IsHitTestVisible="{Binding IsOpen, ElementName=AddPopup, Converter={StaticResource InvertBool}}"
-                            Style="{StaticResource ChaserAddToggle}"
-                            ToolTip="Add steps: pick the scenes (or other functions) to play one after another (Ins)">
-                            <StackPanel Orientation="Horizontal">
-                                <c:DmxIcon Kind="Add" Size="{StaticResource Dmx.DenseIconSize}" />
+                        <Border DockPanel.Dock="Top" Style="{StaticResource ToolbarStrip}">
+                            <DockPanel>
                                 <TextBlock
-                                    Margin="4,0"
+                                    Margin="8,0,4,0"
                                     VerticalAlignment="Center"
-                                    FontSize="{StaticResource Dmx.FontSize.Small}"
-                                    Text="Add steps…" />
-                                <c:DmxIcon Kind="ChevronDown" Size="{StaticResource Dmx.DenseIconSize}" />
-                            </StackPanel>
-                        </ToggleButton>
-                        <Rectangle DockPanel.Dock="Left" Style="{StaticResource ToolbarSeparator}" />
-                        <Button
-                            AutomationProperties.Name="Duplicate selected steps"
-                            Command="{Binding DuplicateStepsCommand}"
-                            DockPanel.Dock="Left"
-                            Style="{StaticResource PanelHeaderButton}"
-                            ToolTip="Duplicate the selected steps (Ctrl+D)">
-                            <c:DmxIcon Kind="Duplicate" Size="{StaticResource Dmx.DenseIconSize}" />
-                        </Button>
-                        <Button
-                            AutomationProperties.Name="Remove selected steps"
-                            Command="{Binding RemoveStepsCommand}"
-                            DockPanel.Dock="Left"
-                            Style="{StaticResource PanelHeaderButton}"
-                            ToolTip="Remove the selected steps (Del). Revert brings them back until you save.">
-                            <c:DmxIcon Kind="Remove" Size="{StaticResource Dmx.DenseIconSize}" />
-                        </Button>
-                        <Button
-                            AutomationProperties.Name="Move selected steps up"
-                            Command="{Binding MoveStepsUpCommand}"
-                            DockPanel.Dock="Left"
-                            Style="{StaticResource PanelHeaderButton}"
-                            ToolTip="Move the selected steps up (Ctrl+Up)">
-                            <c:DmxIcon Kind="MoveUp" Size="{StaticResource Dmx.DenseIconSize}" />
-                        </Button>
-                        <Button
-                            AutomationProperties.Name="Move selected steps down"
-                            Command="{Binding MoveStepsDownCommand}"
-                            DockPanel.Dock="Left"
-                            Style="{StaticResource PanelHeaderButton}"
-                            ToolTip="Move the selected steps down (Ctrl+Down)">
-                            <c:DmxIcon Kind="MoveDown" Size="{StaticResource Dmx.DenseIconSize}" />
-                        </Button>
-                        <TextBlock
-                            Margin="8,0,4,0"
-                            HorizontalAlignment="Right"
-                            VerticalAlignment="Center"
-                            AutomationProperties.LiveSetting="Polite"
-                            Style="{StaticResource StatusText}"
-                            Text="{Binding StepCountText}" />
-                    </DockPanel>
-                </Border>
-
-                <!-- Function picker flyout (opened by Add steps, Ins or the empty-state button). -->
-                <Popup
-                    x:Name="AddPopup"
-                    AllowsTransparency="True"
-                    Closed="OnAddPopupClosed"
-                    DockPanel.Dock="Top"
-                    IsOpen="{Binding IsPickerOpen, Mode=TwoWay}"
-                    KeyDown="OnAddPopupKeyDown"
-                    Opened="OnAddPopupOpened"
-                    PreviewKeyDown="OnAddPopupPreviewKeyDown"
-                    Placement="Bottom"
-                    PlacementTarget="{Binding ElementName=AddToggle}"
-                    StaysOpen="False">
-                    <Border
-                        Width="340"
-                        Margin="8,0,8,6"
-                        Padding="4"
-                        Background="{DynamicResource FlyoutBackground}"
-                        BorderBrush="{DynamicResource FlyoutBorderBrush}"
-                        BorderThickness="1"
-                        CornerRadius="{StaticResource Dmx.CornerRadius}"
-                        KeyboardNavigation.TabNavigation="Cycle">
-                        <Border.Effect>
-                            <DropShadowEffect
-                                BlurRadius="16"
-                                Direction="270"
-                                Opacity="0.28"
-                                ShadowDepth="4" />
-                        </Border.Effect>
-                        <StackPanel>
-                            <ui:TextBox
-                                x:Name="PickerSearchBox"
-                                AutomationProperties.Name="Search scenes and functions"
-                                PlaceholderText="Search scenes and functions"
-                                PreviewKeyDown="OnPickerSearchPreviewKeyDown"
-                                Style="{StaticResource FormTextBox}"
-                                Text="{Binding PickerSearch, UpdateSourceTrigger=PropertyChanged}"
-                                ToolTip="Type to filter · Enter adds the first match · Down arrow goes to the list">
-                                <ui:TextBox.Icon>
-                                    <ui:SymbolIcon Symbol="Search24" />
-                                </ui:TextBox.Icon>
-                            </ui:TextBox>
-                            <ListBox
-                                x:Name="PickerList"
-                                MaxHeight="360"
-                                AutomationProperties.Name="Scenes and functions to add"
-                                BorderThickness="0"
-                                ItemsSource="{Binding PickerItems}"
-                                SelectionMode="Extended"
-                                ToolTip="Double-click or Enter adds · Ctrl / Shift picks several · Esc closes">
-                                <ListBox.InputBindings>
-                                    <KeyBinding
-                                        Command="{Binding AddStepsCommand}"
-                                        CommandParameter="{Binding SelectedItems, ElementName=PickerList}"
-                                        Gesture="Enter" />
-                                </ListBox.InputBindings>
-                                <ListBox.ItemContainerStyle>
-                                    <Style BasedOn="{StaticResource {x:Type ListBoxItem}}" TargetType="ListBoxItem">
-                                        <Setter Property="Padding" Value="6,0" />
-                                        <Setter Property="Margin" Value="0" />
-                                        <Setter Property="MinHeight" Value="{StaticResource Dmx.ListRowMinHeight}" />
-                                        <Setter Property="AutomationProperties.Name" Value="{Binding AutomationName}" />
-                                        <EventSetter Event="MouseDoubleClick" Handler="OnPickerItemDoubleClick" />
-                                    </Style>
-                                </ListBox.ItemContainerStyle>
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate DataType="{x:Type ed:ChaserPickerItem}">
-                                        <DockPanel>
-                                            <ContentPresenter
-                                                Margin="0,0,6,0"
-                                                Content="{Binding}"
-                                                ContentTemplate="{StaticResource ChaserSwatch}" />
-                                            <c:DmxIcon
-                                                Margin="0,0,6,0"
-                                                VerticalAlignment="Center"
-                                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                                Kind="{Binding IconKind}"
-                                                Size="{StaticResource Dmx.DenseIconSize}" />
+                                    AutomationProperties.LiveSetting="Polite"
+                                    DockPanel.Dock="Right"
+                                    Style="{StaticResource StatusText}"
+                                    Text="{Binding StepCountText}" />
+                                <WrapPanel VerticalAlignment="Center">
+                                    <Button
+                                        AutomationProperties.Name="Add step"
+                                        Command="{Binding AddStepCommand}"
+                                        Style="{StaticResource ChaserLabelButton}"
+                                        ToolTip="Add step: a new look after the selected step, starting as a copy of its look (Ins)">
+                                        <StackPanel Orientation="Horizontal">
+                                            <c:DmxIcon Kind="Add" Size="{StaticResource Dmx.DenseIconSize}" />
                                             <TextBlock
-                                                Margin="8,0,0,0"
+                                                Margin="4,0,0,0"
                                                 VerticalAlignment="Center"
-                                                DockPanel.Dock="Right"
-                                                FontSize="{StaticResource Dmx.FontSize.Caption}"
-                                                Foreground="{DynamicResource TextFillColorTertiaryBrush}"
-                                                Text="{Binding TypeName}" />
-                                            <TextBlock
-                                                VerticalAlignment="Center"
-                                                Text="{Binding Name}"
-                                                TextTrimming="CharacterEllipsis" />
-                                        </DockPanel>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
-                            <TextBlock
-                                Margin="0,2"
-                                Style="{StaticResource HintText}"
-                                Text="Nothing to add. Create scenes first on this page (New ▸ Scene); functions that would play this chaser are hidden."
-                                Visibility="{Binding HasNoPickerItems, Converter={StaticResource BoolToVisibility}}" />
-                            <Button
-                                Margin="0,4,0,0"
-                                HorizontalAlignment="Right"
-                                AutomationProperties.Name="Add the selected functions as steps"
-                                Click="OnPickerAddClick"
-                                Command="{Binding AddStepsCommand}"
-                                CommandParameter="{Binding SelectedItems, ElementName=PickerList}"
-                                Style="{StaticResource ToolbarPrimaryButton}"
-                                ToolTip="Add the selected functions after the selected step (or at the end)">
-                                <StackPanel Orientation="Horizontal">
-                                    <c:DmxIcon Kind="Add" Size="{StaticResource Dmx.ButtonIconSize}" />
-                                    <TextBlock Style="{StaticResource ButtonLabel}" Text="Add" />
-                                </StackPanel>
-                            </Button>
-                        </StackPanel>
-                    </Border>
-                </Popup>
-
-                <!-- Colour strip: one cycle in play order (on screen only; the lights follow the editor by themselves). -->
-                <Border
-                    Padding="6,3"
-                    BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
-                    BorderThickness="0,0,0,1"
-                    DockPanel.Dock="Top"
-                    Visibility="{Binding HasSteps, Converter={StaticResource BoolToVisibility}}">
-                    <DockPanel>
-                        <TextBlock
-                            Margin="0,0,6,0"
-                            VerticalAlignment="Center"
-                            DockPanel.Dock="Left"
-                            Style="{StaticResource StatusText}"
-                            Text="Plays"
-                            ToolTip="The order the steps play in one cycle, with their colours (on screen only)" />
-                        <TextBlock
-                            Margin="6,0,0,0"
-                            VerticalAlignment="Center"
-                            DockPanel.Dock="Right"
-                            Style="{StaticResource StatusText}"
-                            Text="{Binding EndOfCycleText}" />
-                        <ItemsControl
-                            AutomationProperties.Name="Play order of the steps"
-                            Focusable="False"
-                            IsTabStop="False"
-                            ItemsSource="{Binding PlayOrderSteps}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <UniformGrid Rows="1" />
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate DataType="{x:Type ed:ChaserStepRowViewModel}">
-                                    <Border
-                                        x:Name="Block"
-                                        MinWidth="10"
-                                        Height="18"
-                                        Margin="1,0"
-                                        Background="{Binding ColorHex}"
-                                        BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
-                                        BorderThickness="1"
-                                        CornerRadius="2"
-                                        ToolTip="{Binding StripToolTip}">
-                                        <!-- The number sits on a theme-coloured chip so it stays readable on any light colour. -->
-                                        <Border
-                                            Margin="2,0"
-                                            Padding="2,0"
-                                            HorizontalAlignment="Left"
+                                                FontSize="{StaticResource Dmx.FontSize.Small}"
+                                                Text="Add step" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button
+                                        AutomationProperties.Name="Add blank step"
+                                        Command="{Binding AddBlankStepCommand}"
+                                        Style="{StaticResource ChaserLabelButton}"
+                                        ToolTip="Add blank step: the same lights as the step above, at their default levels">
+                                        <TextBlock
                                             VerticalAlignment="Center"
-                                            Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
-                                            CornerRadius="2">
+                                            FontSize="{StaticResource Dmx.FontSize.Small}"
+                                            Text="Add blank step" />
+                                    </Button>
+                                    <ToggleButton
+                                        x:Name="AddToggle"
+                                        AutomationProperties.Name="Add from function"
+                                        IsChecked="{Binding IsPickerOpen}"
+                                        IsHitTestVisible="{Binding IsOpen, ElementName=AddPopup, Converter={StaticResource InvertBool}}"
+                                        Style="{StaticResource ChaserAddToggle}"
+                                        ToolTip="Add from function: the step gets its own copy of a scene or other function; the original is never changed">
+                                        <StackPanel Orientation="Horizontal">
                                             <TextBlock
-                                                FontSize="{StaticResource Dmx.FontSize.Caption}"
-                                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                                Text="{Binding Number}" />
-                                        </Border>
-                                    </Border>
-                                    <DataTemplate.Triggers>
-                                        <DataTrigger Binding="{Binding HasColor}" Value="False">
-                                            <Setter TargetName="Block" Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}" />
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                            <Setter TargetName="Block" Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
-                                            <Setter TargetName="Block" Property="BorderThickness" Value="2" />
-                                        </DataTrigger>
-                                    </DataTemplate.Triggers>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </DockPanel>
-                </Border>
-
-                <Grid>
-                    <DataGrid
-                        x:Name="StepGrid"
-                        AllowDrop="True"
-                        AutomationProperties.Name="Chaser steps"
-                        CanUserReorderColumns="False"
-                        CanUserSortColumns="False"
-                        DragLeave="OnStepGridDragLeave"
-                        DragOver="OnStepGridDragOver"
-                        Drop="OnStepGridDrop"
-                        ItemsSource="{Binding Steps}"
-                        KeyboardNavigation.TabNavigation="Continue"
-                        PreviewKeyDown="OnStepGridPreviewKeyDown"
-                        SelectionMode="Extended"
-                        Style="{StaticResource DataTable}"
-                        EnableRowVirtualization="False">
-                        <DataGrid.InputBindings>
-                            <KeyBinding Command="{Binding RemoveStepsCommand}" Gesture="Delete" />
-                            <KeyBinding Command="{Binding DuplicateStepsCommand}" Gesture="Ctrl+D" />
-                            <KeyBinding Command="{Binding OpenPickerCommand}" Gesture="Insert" />
-                        </DataGrid.InputBindings>
-                        <DataGrid.ContextMenu>
-                            <ContextMenu>
-                                <MenuItem
-                                    Command="{Binding OpenPickerCommand}"
-                                    Header="Add steps…"
-                                    InputGestureText="Ins">
-                                    <MenuItem.Icon>
-                                        <c:DmxIcon Kind="Add" Size="{StaticResource Dmx.SmallIconSize}" />
-                                    </MenuItem.Icon>
-                                </MenuItem>
-                                <MenuItem
-                                    Command="{Binding DuplicateStepsCommand}"
-                                    Header="Duplicate"
-                                    InputGestureText="Ctrl+D">
-                                    <MenuItem.Icon>
-                                        <c:DmxIcon Kind="Duplicate" Size="{StaticResource Dmx.SmallIconSize}" />
-                                    </MenuItem.Icon>
-                                </MenuItem>
-                                <MenuItem
-                                    Command="{Binding RemoveStepsCommand}"
-                                    Header="Remove"
-                                    InputGestureText="Del">
-                                    <MenuItem.Icon>
-                                        <c:DmxIcon Kind="Remove" Size="{StaticResource Dmx.SmallIconSize}" />
-                                    </MenuItem.Icon>
-                                </MenuItem>
-                                <Separator />
-                                <MenuItem
-                                    Command="{Binding MoveStepsUpCommand}"
-                                    Header="Move up"
-                                    InputGestureText="Ctrl+Up">
-                                    <MenuItem.Icon>
-                                        <c:DmxIcon Kind="MoveUp" Size="{StaticResource Dmx.SmallIconSize}" />
-                                    </MenuItem.Icon>
-                                </MenuItem>
-                                <MenuItem
-                                    Command="{Binding MoveStepsDownCommand}"
-                                    Header="Move down"
-                                    InputGestureText="Ctrl+Down">
-                                    <MenuItem.Icon>
-                                        <c:DmxIcon Kind="MoveDown" Size="{StaticResource Dmx.SmallIconSize}" />
-                                    </MenuItem.Icon>
-                                </MenuItem>
-                                <Separator />
-                                <MenuItem
-                                    Command="{Binding SelectAllStepsCommand}"
-                                    Header="Select all"
-                                    InputGestureText="Ctrl+A">
-                                    <MenuItem.Icon>
-                                        <c:DmxIcon Kind="SelectAll" Size="{StaticResource Dmx.SmallIconSize}" />
-                                    </MenuItem.Icon>
-                                </MenuItem>
-                                <MenuItem Command="{Binding ApplyTimingToSelectedCommand}" Header="Apply step timing to selected" />
-                            </ContextMenu>
-                        </DataGrid.ContextMenu>
-                        <DataGrid.RowStyle>
-                            <Style BasedOn="{StaticResource DataTableRow}" TargetType="DataGridRow">
-                                <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
-                                <Setter Property="AutomationProperties.Name" Value="{Binding AutomationName}" />
-                                <EventSetter Event="GotKeyboardFocus" Handler="OnRowGotKeyboardFocus" />
-                            </Style>
-                        </DataGrid.RowStyle>
-                        <DataGrid.Columns>
-                            <!-- Grip + step number: drag the grip to move the selected steps. -->
-                            <DataGridTemplateColumn
-                                Width="44"
-                                Header="#"
-                                IsReadOnly="True">
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate DataType="{x:Type ed:ChaserStepRowViewModel}">
-                                        <StackPanel
-                                            Background="Transparent"
-                                            Cursor="SizeNS"
-                                            Orientation="Horizontal"
-                                            PreviewMouseLeftButtonDown="OnGripMouseDown"
-                                            PreviewMouseLeftButtonUp="OnGripMouseUp"
-                                            PreviewMouseMove="OnGripMouseMove"
-                                            ToolTip="Drag to move the selected steps">
-                                            <ui:SymbolIcon
                                                 Margin="0,0,4,0"
                                                 VerticalAlignment="Center"
-                                                FontSize="{StaticResource Dmx.DenseIconSize}"
-                                                Foreground="{DynamicResource TextFillColorTertiaryBrush}"
-                                                Symbol="ReOrderDotsVertical24" />
-                                            <TextBlock VerticalAlignment="Center" Text="{Binding Number}" />
+                                                FontSize="{StaticResource Dmx.FontSize.Small}"
+                                                Text="Add from function…" />
+                                            <c:DmxIcon Kind="ChevronDown" Size="{StaticResource Dmx.DenseIconSize}" />
                                         </StackPanel>
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
-                            <DataGridTemplateColumn
-                                Width="*"
-                                MinWidth="160"
-                                Header="Scene / function"
-                                IsReadOnly="True">
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate DataType="{x:Type ed:ChaserStepRowViewModel}">
+                                    </ToggleButton>
+                                    <Rectangle Style="{StaticResource ToolbarSeparator}" />
+                                    <Button
+                                        AutomationProperties.Name="Duplicate selected steps"
+                                        Command="{Binding DuplicateStepsCommand}"
+                                        Style="{StaticResource PanelHeaderButton}"
+                                        ToolTip="Duplicate the selected steps (Ctrl+D)">
+                                        <c:DmxIcon Kind="Duplicate" Size="{StaticResource Dmx.DenseIconSize}" />
+                                    </Button>
+                                    <Button
+                                        AutomationProperties.Name="Remove selected steps"
+                                        Command="{Binding RemoveStepsCommand}"
+                                        Style="{StaticResource PanelHeaderButton}"
+                                        ToolTip="Remove the selected steps (Del). Undo brings them back.">
+                                        <c:DmxIcon Kind="Remove" Size="{StaticResource Dmx.DenseIconSize}" />
+                                    </Button>
+                                    <Button
+                                        AutomationProperties.Name="Move selected steps up"
+                                        Command="{Binding MoveStepsUpCommand}"
+                                        Style="{StaticResource PanelHeaderButton}"
+                                        ToolTip="Move the selected steps up (Ctrl+Up)">
+                                        <c:DmxIcon Kind="MoveUp" Size="{StaticResource Dmx.DenseIconSize}" />
+                                    </Button>
+                                    <Button
+                                        AutomationProperties.Name="Move selected steps down"
+                                        Command="{Binding MoveStepsDownCommand}"
+                                        Style="{StaticResource PanelHeaderButton}"
+                                        ToolTip="Move the selected steps down (Ctrl+Down)">
+                                        <c:DmxIcon Kind="MoveDown" Size="{StaticResource Dmx.DenseIconSize}" />
+                                    </Button>
+                                    <Button
+                                        AutomationProperties.Name="Save the selected step as a function"
+                                        Command="{Binding AskSaveStepAsFunctionCommand}"
+                                        Style="{StaticResource PanelHeaderButton}"
+                                        ToolTip="Save as function…: adds a copy of the selected step to the Functions list (the step keeps its own)">
+                                        <c:DmxIcon Kind="SaveAs" Size="{StaticResource Dmx.DenseIconSize}" />
+                                    </Button>
+                                </WrapPanel>
+                            </DockPanel>
+                        </Border>
+
+                        <!-- "Add from function…" flyout. -->
+                        <Popup
+                            x:Name="AddPopup"
+                            AllowsTransparency="True"
+                            Closed="OnAddPopupClosed"
+                            DockPanel.Dock="Top"
+                            IsOpen="{Binding IsPickerOpen, Mode=TwoWay}"
+                            KeyDown="OnAddPopupKeyDown"
+                            Opened="OnAddPopupOpened"
+                            PreviewKeyDown="OnAddPopupPreviewKeyDown"
+                            Placement="Bottom"
+                            PlacementTarget="{Binding ElementName=AddToggle}"
+                            StaysOpen="False">
+                            <Border
+                                Width="340"
+                                Margin="8,0,8,6"
+                                Padding="4"
+                                Background="{DynamicResource FlyoutBackground}"
+                                BorderBrush="{DynamicResource FlyoutBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="{StaticResource Dmx.CornerRadius}"
+                                KeyboardNavigation.TabNavigation="Cycle">
+                                <Border.Effect>
+                                    <DropShadowEffect
+                                        BlurRadius="16"
+                                        Direction="270"
+                                        Opacity="0.28"
+                                        ShadowDepth="4" />
+                                </Border.Effect>
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,4">
+                                        <ui:TextBox
+                                            x:Name="PickerSearchBox"
+                                            AutomationProperties.Name="Search scenes and functions"
+                                            PlaceholderText="Search scenes and functions"
+                                            PreviewKeyDown="OnPickerSearchPreviewKeyDown"
+                                            Style="{StaticResource ChaserSearchBox}"
+                                            Text="{Binding PickerSearch, UpdateSourceTrigger=PropertyChanged}"
+                                            ToolTip="Type to filter · Enter adds the first match · Down arrow goes to the list" />
+                                        <c:DmxIcon
+                                            Margin="7,0,0,0"
+                                            HorizontalAlignment="Left"
+                                            VerticalAlignment="Center"
+                                            Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                            IsHitTestVisible="False"
+                                            Kind="Search"
+                                            Size="{StaticResource Dmx.DenseIconSize}" />
+                                    </Grid>
+                                    <ListBox
+                                        x:Name="PickerList"
+                                        MaxHeight="360"
+                                        AutomationProperties.Name="Scenes and functions to add"
+                                        BorderThickness="0"
+                                        ItemsSource="{Binding PickerItems}"
+                                        SelectionMode="Extended"
+                                        ToolTip="Double-click or Enter adds · Ctrl / Shift picks several · Esc closes">
+                                        <ListBox.InputBindings>
+                                            <KeyBinding
+                                                Command="{Binding AddStepsCommand}"
+                                                CommandParameter="{Binding SelectedItems, ElementName=PickerList}"
+                                                Gesture="Enter" />
+                                        </ListBox.InputBindings>
+                                        <ListBox.ItemContainerStyle>
+                                            <Style BasedOn="{StaticResource {x:Type ListBoxItem}}" TargetType="ListBoxItem">
+                                                <Setter Property="Padding" Value="6,0" />
+                                                <Setter Property="Margin" Value="0" />
+                                                <Setter Property="MinHeight" Value="{StaticResource Dmx.ListRowMinHeight}" />
+                                                <Setter Property="AutomationProperties.Name" Value="{Binding AutomationName}" />
+                                                <EventSetter Event="MouseDoubleClick" Handler="OnPickerItemDoubleClick" />
+                                            </Style>
+                                        </ListBox.ItemContainerStyle>
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type ed:ChaserPickerItem}">
+                                                <DockPanel>
+                                                    <ContentPresenter
+                                                        Margin="0,0,6,0"
+                                                        Content="{Binding}"
+                                                        ContentTemplate="{StaticResource ChaserSwatch}" />
+                                                    <c:DmxIcon
+                                                        Margin="0,0,6,0"
+                                                        VerticalAlignment="Center"
+                                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                        Kind="{Binding IconKind}"
+                                                        Size="{StaticResource Dmx.DenseIconSize}" />
+                                                    <TextBlock
+                                                        Margin="8,0,0,0"
+                                                        VerticalAlignment="Center"
+                                                        DockPanel.Dock="Right"
+                                                        FontSize="{StaticResource Dmx.FontSize.Caption}"
+                                                        Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                                        Text="{Binding TypeName}" />
+                                                    <TextBlock
+                                                        VerticalAlignment="Center"
+                                                        Text="{Binding Name}"
+                                                        TextTrimming="CharacterEllipsis" />
+                                                </DockPanel>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                    <TextBlock
+                                        Margin="0,2"
+                                        Style="{StaticResource HintText}"
+                                        Text="Nothing to add yet. Create scenes or other functions first (New ▸ Scene); functions that would play this chaser are left out."
+                                        Visibility="{Binding HasNoCandidates, Converter={StaticResource BoolToVisibility}}" />
+                                    <TextBlock
+                                        Margin="0,2"
+                                        AutomationProperties.LiveSetting="Polite"
+                                        Style="{StaticResource HintText}"
+                                        Text="{Binding NoMatchesText}"
+                                        Visibility="{Binding HasNoMatches, Converter={StaticResource BoolToVisibility}}" />
+                                    <TextBlock
+                                        Margin="0,2"
+                                        Style="{StaticResource HintText}"
+                                        Text="Each step gets its own copy: changing it never changes the original." />
+                                    <Button
+                                        Margin="0,4,0,0"
+                                        HorizontalAlignment="Right"
+                                        AutomationProperties.Name="Add the selected functions as steps"
+                                        Click="OnPickerAddClick"
+                                        Command="{Binding AddStepsCommand}"
+                                        CommandParameter="{Binding SelectedItems, ElementName=PickerList}"
+                                        Style="{StaticResource ToolbarPrimaryButton}"
+                                        ToolTip="Add copies of the selected functions after the selected step (or at the end)">
                                         <StackPanel Orientation="Horizontal">
-                                            <ContentPresenter
-                                                Margin="0,0,6,0"
-                                                Content="{Binding}"
-                                                ContentTemplate="{StaticResource ChaserSwatch}"
-                                                ToolTip="{Binding ColorToolTip}" />
-                                            <c:DmxIcon
-                                                x:Name="TypeIcon"
-                                                Margin="0,0,6,0"
-                                                VerticalAlignment="Center"
-                                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                                Kind="{Binding IconKind}"
-                                                Size="{StaticResource Dmx.DenseIconSize}"
-                                                ToolTip="{Binding TypeName}" />
-                                            <TextBlock
-                                                x:Name="NameText"
-                                                VerticalAlignment="Center"
-                                                Text="{Binding FunctionName}"
-                                                TextTrimming="CharacterEllipsis"
-                                                ToolTip="{Binding TypeName}" />
+                                            <c:DmxIcon Kind="Add" Size="{StaticResource Dmx.ButtonIconSize}" />
+                                            <TextBlock Style="{StaticResource ButtonLabel}" Text="Add" />
                                         </StackPanel>
-                                        <DataTemplate.Triggers>
-                                            <DataTrigger Binding="{Binding IsMissing}" Value="True">
-                                                <Setter TargetName="TypeIcon" Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
-                                                <Setter TargetName="NameText" Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
-                                            </DataTrigger>
-                                        </DataTemplate.Triggers>
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
-                            <DataGridTemplateColumn Width="80" Header="Hold (s)">
-                                <DataGridTemplateColumn.HeaderStyle>
-                                    <Style BasedOn="{StaticResource DataTableColumnHeader}" TargetType="DataGridColumnHeader">
-                                        <Setter Property="ToolTip" Value="How long the step stays fully on, in seconds" />
-                                    </Style>
-                                </DataGridTemplateColumn.HeaderStyle>
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate DataType="{x:Type ed:ChaserStepRowViewModel}">
-                                        <c:CommitTextBox
-                                            AutomationProperties.Name="Hold, seconds"
-                                            Style="{StaticResource ChaserSecondsCell}"
-                                            Text="{Binding HoldText}"
-                                            ToolTip="Hold: how long the step stays fully on, in seconds (e.g. 1.5) · Enter or Tab applies, Esc undoes" />
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
-                            <DataGridTemplateColumn Width="84" Header="Fade in (s)">
-                                <DataGridTemplateColumn.HeaderStyle>
-                                    <Style BasedOn="{StaticResource DataTableColumnHeader}" TargetType="DataGridColumnHeader">
-                                        <Setter Property="ToolTip" Value="How long the step takes to blend in, in seconds" />
-                                    </Style>
-                                </DataGridTemplateColumn.HeaderStyle>
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate DataType="{x:Type ed:ChaserStepRowViewModel}">
-                                        <c:CommitTextBox
-                                            AutomationProperties.Name="Fade in, seconds"
-                                            Style="{StaticResource ChaserSecondsCell}"
-                                            Text="{Binding FadeInText}"
-                                            ToolTip="Fade in: how long the step takes to blend in, in seconds (0 = switch at once) · Enter or Tab applies, Esc undoes" />
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
-                            <DataGridTemplateColumn Width="84" Header="Fade out (s)">
-                                <DataGridTemplateColumn.HeaderStyle>
-                                    <Style BasedOn="{StaticResource DataTableColumnHeader}" TargetType="DataGridColumnHeader">
-                                        <Setter Property="ToolTip" Value="How long the step takes to fade away while the next one starts, in seconds" />
-                                    </Style>
-                                </DataGridTemplateColumn.HeaderStyle>
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate DataType="{x:Type ed:ChaserStepRowViewModel}">
-                                        <c:CommitTextBox
-                                            AutomationProperties.Name="Fade out, seconds"
-                                            Style="{StaticResource ChaserSecondsCell}"
-                                            Text="{Binding FadeOutText}"
-                                            ToolTip="Fade out: how long the step fades away while the next one starts, in seconds · Enter or Tab applies, Esc undoes" />
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
-                        </DataGrid.Columns>
-                    </DataGrid>
+                                    </Button>
+                                </StackPanel>
+                            </Border>
+                        </Popup>
 
-                    <!-- Empty state: no steps yet. -->
-                    <StackPanel Style="{StaticResource EmptyStatePanel}" Visibility="{Binding HasNoSteps, Converter={StaticResource BoolToVisibility}}">
-                        <c:DmxIcon
-                            Kind="Chaser"
-                            Size="{StaticResource Dmx.EmptyStateIconSize}"
-                            Style="{StaticResource EmptyStateIcon}" />
-                        <TextBlock Style="{StaticResource EmptyStateTitle}" Text="No steps yet" />
-                        <TextBlock Style="{StaticResource EmptyStateText}" Text="Add scenes to play them one after another." />
-                        <Button
-                            HorizontalAlignment="Center"
-                            AutomationProperties.Name="Add steps"
-                            Command="{Binding OpenPickerCommand}"
-                            Style="{StaticResource ToolbarPrimaryButton}"
-                            ToolTip="Pick the scenes to play (Ins)">
-                            <StackPanel Orientation="Horizontal">
-                                <c:DmxIcon Kind="Add" Size="{StaticResource Dmx.ButtonIconSize}" />
-                                <TextBlock Style="{StaticResource ButtonLabel}" Text="Add steps…" />
+                        <!-- Removed steps: one line with Undo. -->
+                        <Border
+                            DockPanel.Dock="Top"
+                            Style="{StaticResource ChaserInfoStrip}"
+                            Visibility="{Binding HasUndo, Converter={StaticResource BoolToVisibility}}">
+                            <DockPanel>
+                                <Button
+                                    AutomationProperties.Name="Undo remove steps"
+                                    Command="{Binding UndoRemoveCommand}"
+                                    DockPanel.Dock="Right"
+                                    Style="{StaticResource ChaserLabelButton}"
+                                    ToolTip="Put the removed steps back where they were">
+                                    <StackPanel Orientation="Horizontal">
+                                        <c:DmxIcon Kind="Undo" Size="{StaticResource Dmx.DenseIconSize}" />
+                                        <TextBlock
+                                            Margin="4,0,0,0"
+                                            VerticalAlignment="Center"
+                                            FontSize="{StaticResource Dmx.FontSize.Small}"
+                                            Text="Undo" />
+                                    </StackPanel>
+                                </Button>
+                                <c:DmxIcon
+                                    Margin="0,0,6,0"
+                                    VerticalAlignment="Center"
+                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                    Kind="Info"
+                                    Size="{StaticResource Dmx.DenseIconSize}" />
+                                <TextBlock
+                                    VerticalAlignment="Center"
+                                    AutomationProperties.LiveSetting="Polite"
+                                    Text="{Binding UndoText}" />
+                            </DockPanel>
+                        </Border>
+
+                        <!-- Colour strip: one cycle in play order (on screen only; the lights follow the editor by themselves). -->
+                        <Border
+                            Padding="6,3"
+                            BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
+                            BorderThickness="0,0,0,1"
+                            DockPanel.Dock="Top"
+                            Visibility="{Binding HasSteps, Converter={StaticResource BoolToVisibility}}">
+                            <DockPanel>
+                                <TextBlock
+                                    Margin="0,0,6,0"
+                                    VerticalAlignment="Center"
+                                    DockPanel.Dock="Left"
+                                    Style="{StaticResource StatusText}"
+                                    Text="Plays"
+                                    ToolTip="The order the steps play in one cycle, with their colours (on screen only)" />
+                                <TextBlock
+                                    Margin="6,0,0,0"
+                                    VerticalAlignment="Center"
+                                    DockPanel.Dock="Right"
+                                    Style="{StaticResource StatusText}"
+                                    Text="{Binding EndOfCycleText}" />
+                                <ItemsControl
+                                    AutomationProperties.Name="Play order of the steps"
+                                    Focusable="False"
+                                    IsTabStop="False"
+                                    ItemsSource="{Binding PlayOrderSteps}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <UniformGrid Rows="1" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type ed:ChaserStepRowViewModel}">
+                                            <Border
+                                                x:Name="Block"
+                                                MinWidth="10"
+                                                Height="18"
+                                                Margin="1,0"
+                                                Background="{Binding ColorHex}"
+                                                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="2"
+                                                ToolTip="{Binding StripToolTip}">
+                                                <!-- The number sits on a theme-coloured chip so it stays readable on any light colour. -->
+                                                <Border
+                                                    Margin="2,0"
+                                                    Padding="2,0"
+                                                    HorizontalAlignment="Left"
+                                                    VerticalAlignment="Center"
+                                                    Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                                                    CornerRadius="2">
+                                                    <TextBlock
+                                                        FontSize="{StaticResource Dmx.FontSize.Caption}"
+                                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                        Text="{Binding Number}" />
+                                                </Border>
+                                            </Border>
+                                            <DataTemplate.Triggers>
+                                                <DataTrigger Binding="{Binding HasColor}" Value="False">
+                                                    <Setter TargetName="Block" Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                    <Setter TargetName="Block" Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+                                                    <Setter TargetName="Block" Property="BorderThickness" Value="2" />
+                                                </DataTrigger>
+                                            </DataTemplate.Triggers>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </DockPanel>
+                        </Border>
+
+                        <Grid>
+                            <!-- Row virtualization stays on: the selection is synced through SelectionChanged, not row setters. -->
+                            <c:BulkSelectDataGrid
+                                x:Name="StepGrid"
+                                AllowDrop="True"
+                                AutomationProperties.Name="Chaser steps"
+                                CanUserReorderColumns="False"
+                                CanUserSortColumns="False"
+                                DragLeave="OnStepGridDragLeave"
+                                DragOver="OnStepGridDragOver"
+                                Drop="OnStepGridDrop"
+                                ItemsSource="{Binding Steps}"
+                                KeyboardNavigation.TabNavigation="Continue"
+                                PreviewKeyDown="OnStepGridPreviewKeyDown"
+                                SelectionChanged="OnStepGridSelectionChanged"
+                                SelectionMode="Extended"
+                                Style="{StaticResource DataTable}">
+                                <DataGrid.InputBindings>
+                                    <KeyBinding Command="{Binding RemoveStepsCommand}" Gesture="Delete" />
+                                    <KeyBinding Command="{Binding DuplicateStepsCommand}" Gesture="Ctrl+D" />
+                                    <KeyBinding Command="{Binding AddStepCommand}" Gesture="Insert" />
+                                    <KeyBinding Command="{Binding EditStepCommand}" Gesture="Ctrl+E" />
+                                </DataGrid.InputBindings>
+                                <DataGrid.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem
+                                            Command="{Binding AddStepCommand}"
+                                            Header="Add step"
+                                            InputGestureText="Ins">
+                                            <MenuItem.Icon>
+                                                <c:DmxIcon Kind="Add" Size="{StaticResource Dmx.SmallIconSize}" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Command="{Binding AddBlankStepCommand}" Header="Add blank step" />
+                                        <MenuItem Command="{Binding OpenPickerCommand}" Header="Add from function…" />
+                                        <Separator />
+                                        <MenuItem
+                                            Command="{Binding EditStepCommand}"
+                                            Header="Edit step"
+                                            InputGestureText="Ctrl+E">
+                                            <MenuItem.Icon>
+                                                <c:DmxIcon Kind="Edit" Size="{StaticResource Dmx.SmallIconSize}" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Command="{Binding AskSaveStepAsFunctionCommand}" Header="Save as function…">
+                                            <MenuItem.Icon>
+                                                <c:DmxIcon Kind="SaveAs" Size="{StaticResource Dmx.SmallIconSize}" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <Separator />
+                                        <MenuItem
+                                            Command="{Binding DuplicateStepsCommand}"
+                                            Header="Duplicate"
+                                            InputGestureText="Ctrl+D">
+                                            <MenuItem.Icon>
+                                                <c:DmxIcon Kind="Duplicate" Size="{StaticResource Dmx.SmallIconSize}" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem
+                                            Command="{Binding RemoveStepsCommand}"
+                                            Header="Remove"
+                                            InputGestureText="Del">
+                                            <MenuItem.Icon>
+                                                <c:DmxIcon Kind="Remove" Size="{StaticResource Dmx.SmallIconSize}" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <Separator />
+                                        <MenuItem
+                                            Command="{Binding MoveStepsUpCommand}"
+                                            Header="Move up"
+                                            InputGestureText="Ctrl+Up">
+                                            <MenuItem.Icon>
+                                                <c:DmxIcon Kind="MoveUp" Size="{StaticResource Dmx.SmallIconSize}" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem
+                                            Command="{Binding MoveStepsDownCommand}"
+                                            Header="Move down"
+                                            InputGestureText="Ctrl+Down">
+                                            <MenuItem.Icon>
+                                                <c:DmxIcon Kind="MoveDown" Size="{StaticResource Dmx.SmallIconSize}" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <Separator />
+                                        <MenuItem
+                                            Command="{Binding SelectAllStepsCommand}"
+                                            Header="Select all"
+                                            InputGestureText="Ctrl+A">
+                                            <MenuItem.Icon>
+                                                <c:DmxIcon Kind="SelectAll" Size="{StaticResource Dmx.SmallIconSize}" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Command="{Binding ApplyTimingToSelectedCommand}" Header="Apply the times to the selected steps" />
+                                    </ContextMenu>
+                                </DataGrid.ContextMenu>
+                                <DataGrid.RowStyle>
+                                    <Style BasedOn="{StaticResource DataTableRow}" TargetType="DataGridRow">
+                                        <Setter Property="AutomationProperties.Name" Value="{Binding AutomationName}" />
+                                        <EventSetter Event="GotKeyboardFocus" Handler="OnRowGotKeyboardFocus" />
+                                    </Style>
+                                </DataGrid.RowStyle>
+                                <DataGrid.Columns>
+                                    <!-- Grip + step number: drag the grip to move the selected steps. -->
+                                    <DataGridTemplateColumn
+                                        Width="Auto"
+                                        MinWidth="44"
+                                        Header="#"
+                                        IsReadOnly="True">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate DataType="{x:Type ed:ChaserStepRowViewModel}">
+                                                <StackPanel
+                                                    Background="Transparent"
+                                                    Cursor="SizeNS"
+                                                    Orientation="Horizontal"
+                                                    PreviewMouseLeftButtonDown="OnGripMouseDown"
+                                                    PreviewMouseLeftButtonUp="OnGripMouseUp"
+                                                    PreviewMouseMove="OnGripMouseMove"
+                                                    ToolTip="Drag to move the selected steps">
+                                                    <c:DmxIcon
+                                                        Margin="0,0,4,0"
+                                                        VerticalAlignment="Center"
+                                                        Data="{StaticResource ChaserGripGeometry}"
+                                                        Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                                        Size="{StaticResource Dmx.DenseIconSize}" />
+                                                    <TextBlock VerticalAlignment="Center" Text="{Binding Number}" />
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn
+                                        Width="*"
+                                        MinWidth="150"
+                                        Header="Step"
+                                        IsReadOnly="True">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate DataType="{x:Type ed:ChaserStepRowViewModel}">
+                                                <DockPanel ToolTip="{Binding KindToolTip}">
+                                                    <ContentPresenter
+                                                        Margin="0,0,6,0"
+                                                        Content="{Binding}"
+                                                        ContentTemplate="{StaticResource ChaserSwatch}"
+                                                        ToolTip="{Binding ColorToolTip}" />
+                                                    <c:DmxIcon
+                                                        x:Name="TypeIcon"
+                                                        Margin="0,0,6,0"
+                                                        VerticalAlignment="Center"
+                                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                        Kind="{Binding IconKind}"
+                                                        Size="{StaticResource Dmx.DenseIconSize}" />
+                                                    <!-- "linked": text, not colour alone. -->
+                                                    <Border
+                                                        Margin="6,0,0,0"
+                                                        Padding="4,0"
+                                                        VerticalAlignment="Center"
+                                                        BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                                        BorderThickness="1"
+                                                        CornerRadius="2"
+                                                        DockPanel.Dock="Right"
+                                                        Visibility="{Binding IsLinked, Converter={StaticResource BoolToVisibility}}">
+                                                        <TextBlock
+                                                            FontSize="{StaticResource Dmx.FontSize.Caption}"
+                                                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                            Text="linked" />
+                                                    </Border>
+                                                    <TextBlock
+                                                        x:Name="NameText"
+                                                        VerticalAlignment="Center"
+                                                        Text="{Binding FunctionName}"
+                                                        TextTrimming="CharacterEllipsis" />
+                                                </DockPanel>
+                                                <DataTemplate.Triggers>
+                                                    <DataTrigger Binding="{Binding IsMissing}" Value="True">
+                                                        <Setter TargetName="TypeIcon" Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
+                                                        <Setter TargetName="NameText" Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+                                                    </DataTrigger>
+                                                </DataTemplate.Triggers>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Width="Auto" Header="Hold (s)">
+                                        <DataGridTemplateColumn.HeaderStyle>
+                                            <Style BasedOn="{StaticResource DataTableColumnHeader}" TargetType="DataGridColumnHeader">
+                                                <Setter Property="ToolTip" Value="How long the step stays fully on, in seconds" />
+                                            </Style>
+                                        </DataGridTemplateColumn.HeaderStyle>
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate DataType="{x:Type ed:ChaserStepRowViewModel}">
+                                                <c:CommitTextBox
+                                                    AutomationProperties.Name="Hold, seconds"
+                                                    Style="{StaticResource ChaserSecondsCell}"
+                                                    Text="{Binding HoldText}"
+                                                    ToolTip="Hold: how long the step stays fully on, in seconds (e.g. 1.5) · Enter or Tab applies, Esc undoes" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Width="Auto" Header="Fade in (s)">
+                                        <DataGridTemplateColumn.HeaderStyle>
+                                            <Style BasedOn="{StaticResource DataTableColumnHeader}" TargetType="DataGridColumnHeader">
+                                                <Setter Property="ToolTip" Value="How long the step takes to blend in, in seconds" />
+                                            </Style>
+                                        </DataGridTemplateColumn.HeaderStyle>
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate DataType="{x:Type ed:ChaserStepRowViewModel}">
+                                                <c:CommitTextBox
+                                                    AutomationProperties.Name="Fade in, seconds"
+                                                    Style="{StaticResource ChaserSecondsCell}"
+                                                    Text="{Binding FadeInText}"
+                                                    ToolTip="Fade in: how long the step takes to blend in, in seconds (0 = switch at once) · Enter or Tab applies, Esc undoes" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Width="Auto" Header="Fade out (s)">
+                                        <DataGridTemplateColumn.HeaderStyle>
+                                            <Style BasedOn="{StaticResource DataTableColumnHeader}" TargetType="DataGridColumnHeader">
+                                                <Setter Property="ToolTip" Value="How long the step takes to fade away while the next one starts, in seconds" />
+                                            </Style>
+                                        </DataGridTemplateColumn.HeaderStyle>
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate DataType="{x:Type ed:ChaserStepRowViewModel}">
+                                                <c:CommitTextBox
+                                                    AutomationProperties.Name="Fade out, seconds"
+                                                    Style="{StaticResource ChaserSecondsCell}"
+                                                    Text="{Binding FadeOutText}"
+                                                    ToolTip="Fade out: how long the step fades away while the next one starts, in seconds · Enter or Tab applies, Esc undoes" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                </DataGrid.Columns>
+                            </c:BulkSelectDataGrid>
+
+                            <!-- Empty state: no steps yet. -->
+                            <StackPanel Style="{StaticResource EmptyStatePanel}" Visibility="{Binding HasNoSteps, Converter={StaticResource BoolToVisibility}}">
+                                <c:DmxIcon
+                                    Kind="Chaser"
+                                    Size="{StaticResource Dmx.EmptyStateIconSize}"
+                                    Style="{StaticResource EmptyStateIcon}" />
+                                <TextBlock Style="{StaticResource EmptyStateTitle}" Text="No steps yet" />
+                                <TextBlock Style="{StaticResource EmptyStateText}" Text="Add a step and set its lights and colours, or add a copy of a scene or other function." />
+                                <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
+                                    <Button
+                                        AutomationProperties.Name="Add step"
+                                        Command="{Binding AddStepCommand}"
+                                        Style="{StaticResource ToolbarPrimaryButton}"
+                                        ToolTip="A new step whose lights and colours you set on the right (Ins)">
+                                        <StackPanel Orientation="Horizontal">
+                                            <c:DmxIcon Kind="Add" Size="{StaticResource Dmx.ButtonIconSize}" />
+                                            <TextBlock Style="{StaticResource ButtonLabel}" Text="Add step" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button
+                                        Margin="6,0,0,0"
+                                        AutomationProperties.Name="Add from function"
+                                        Command="{Binding OpenPickerCommand}"
+                                        Style="{StaticResource ToolbarLabelButton}"
+                                        ToolTip="Add copies of scenes or other functions as steps">
+                                        <TextBlock Text="Add from function…" />
+                                    </Button>
+                                </StackPanel>
                             </StackPanel>
-                        </Button>
-                    </StackPanel>
+                        </Grid>
+                    </DockPanel>
+                </Border>
+
+                <GridSplitter
+                    Grid.Column="1"
+                    AutomationProperties.Name="Resize the step list"
+                    Style="{StaticResource VerticalSplitter}" />
+
+                <!-- ═════════════ The selected step ═════════════ -->
+                <Grid Grid.Column="2">
+                    <!-- Own look (or a linked scene): the step-look panel. -->
+                    <DockPanel Visibility="{Binding IsLookPanelVisible, Converter={StaticResource BoolToVisibility}}">
+                        <Border
+                            DockPanel.Dock="Top"
+                            Style="{StaticResource ChaserInfoStrip}"
+                            Visibility="{Binding HasLinkedHint, Converter={StaticResource BoolToVisibility}}">
+                            <DockPanel>
+                                <c:DmxIcon
+                                    Margin="0,0,6,0"
+                                    VerticalAlignment="Center"
+                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                    Kind="Info"
+                                    Size="{StaticResource Dmx.DenseIconSize}" />
+                                <TextBlock Text="{Binding LinkedHint}" TextWrapping="Wrap" />
+                            </DockPanel>
+                        </Border>
+                        <Border
+                            DockPanel.Dock="Top"
+                            Style="{StaticResource ChaserInfoStrip}"
+                            Visibility="{Binding HasStepNote, Converter={StaticResource BoolToVisibility}}">
+                            <DockPanel>
+                                <c:DmxIcon
+                                    Margin="0,0,6,0"
+                                    VerticalAlignment="Center"
+                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                    Kind="Info"
+                                    Size="{StaticResource Dmx.DenseIconSize}" />
+                                <TextBlock
+                                    AutomationProperties.LiveSetting="Polite"
+                                    Text="{Binding StepNote}"
+                                    TextWrapping="Wrap" />
+                            </DockPanel>
+                        </Border>
+                        <edv:ChaserStepLookView DataContext="{Binding StepLook}">
+                            <edv:ChaserStepLookView.HeaderContent>
+                                <ContentControl
+                                    Content="{Binding DataContext, ElementName=Root}"
+                                    ContentTemplate="{StaticResource ChaserPreviewSwitch}"
+                                    Focusable="False"
+                                    IsTabStop="False" />
+                            </edv:ChaserStepLookView.HeaderContent>
+                        </edv:ChaserStepLookView>
+                    </DockPanel>
+
+                    <!-- Function step (or a deleted function): what it plays, Edit step, Save as function. -->
+                    <Border Style="{StaticResource PanelBorder}" Visibility="{Binding IsFunctionPanelVisible, Converter={StaticResource BoolToVisibility}}">
+                        <DockPanel>
+                            <Border DockPanel.Dock="Top" Style="{StaticResource PanelHeader}">
+                                <DockPanel>
+                                    <ContentControl
+                                        Margin="8,0,4,0"
+                                        Content="{Binding}"
+                                        ContentTemplate="{StaticResource ChaserPreviewSwitch}"
+                                        DockPanel.Dock="Right"
+                                        Focusable="False"
+                                        IsTabStop="False" />
+                                    <TextBlock
+                                        Style="{StaticResource PanelTitle}"
+                                        Text="{Binding CurrentStepTitle}"
+                                        ToolTip="{Binding CurrentStepTitle}" />
+                                </DockPanel>
+                            </Border>
+                            <StackPanel Margin="10,8">
+                                <StackPanel Margin="0,0,0,4" Orientation="Horizontal">
+                                    <c:DmxIcon
+                                        x:Name="StepTypeIcon"
+                                        Margin="0,0,8,0"
+                                        VerticalAlignment="Center"
+                                        Kind="{Binding CurrentStep.IconKind}"
+                                        Size="{StaticResource Dmx.SmallIconSize}">
+                                        <c:DmxIcon.Style>
+                                            <Style TargetType="c:DmxIcon">
+                                                <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding CurrentStep.IsMissing}" Value="True">
+                                                        <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </c:DmxIcon.Style>
+                                    </c:DmxIcon>
+                                    <TextBlock
+                                        VerticalAlignment="Center"
+                                        FontWeight="SemiBold"
+                                        Text="{Binding CurrentStep.FunctionName}"
+                                        TextTrimming="CharacterEllipsis" />
+                                    <TextBlock
+                                        Margin="8,0,0,0"
+                                        VerticalAlignment="Center"
+                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                        Text="{Binding CurrentStep.TypeName}" />
+                                </StackPanel>
+                                <TextBlock
+                                    Margin="0,0,0,6"
+                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                    Text="{Binding CurrentStep.Summary}" />
+                                <TextBlock
+                                    Margin="0,0,0,8"
+                                    Style="{StaticResource HintText}"
+                                    Text="{Binding CurrentStep.KindToolTip}" />
+                                <StackPanel Orientation="Horizontal">
+                                    <Button
+                                        AutomationProperties.Name="Edit step"
+                                        Command="{Binding EditStepCommand}"
+                                        Style="{StaticResource ToolbarPrimaryButton}"
+                                        ToolTip="Open this step's own copy in its editor (Ctrl+E). Unsaved chaser changes are saved first (you are asked).">
+                                        <StackPanel Orientation="Horizontal">
+                                            <c:DmxIcon Kind="Edit" Size="{StaticResource Dmx.ButtonIconSize}" />
+                                            <TextBlock Style="{StaticResource ButtonLabel}" Text="Edit step" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button
+                                        Margin="6,0,0,0"
+                                        AutomationProperties.Name="Save the step as a function"
+                                        Command="{Binding AskSaveStepAsFunctionCommand}"
+                                        Style="{StaticResource ToolbarLabelButton}"
+                                        ToolTip="Adds a copy of this step to the Functions list; the step keeps its own">
+                                        <TextBlock Text="Save as function…" />
+                                    </Button>
+                                </StackPanel>
+                                <DockPanel Margin="0,8,0,0" Visibility="{Binding HasStepNote, Converter={StaticResource BoolToVisibility}}">
+                                    <c:DmxIcon
+                                        Margin="0,0,6,0"
+                                        VerticalAlignment="Top"
+                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                        Kind="Info"
+                                        Size="{StaticResource Dmx.DenseIconSize}" />
+                                    <TextBlock
+                                        AutomationProperties.LiveSetting="Polite"
+                                        Text="{Binding StepNote}"
+                                        TextWrapping="Wrap" />
+                                </DockPanel>
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+
+                    <!-- No step selected. -->
+                    <Border Style="{StaticResource PanelBorder}" Visibility="{Binding IsNoStepPanelVisible, Converter={StaticResource BoolToVisibility}}">
+                        <DockPanel>
+                            <Border DockPanel.Dock="Top" Style="{StaticResource PanelHeader}">
+                                <DockPanel>
+                                    <ContentControl
+                                        Margin="8,0,4,0"
+                                        Content="{Binding}"
+                                        ContentTemplate="{StaticResource ChaserPreviewSwitch}"
+                                        DockPanel.Dock="Right"
+                                        Focusable="False"
+                                        IsTabStop="False" />
+                                    <TextBlock Style="{StaticResource PanelTitle}" Text="Step" />
+                                </DockPanel>
+                            </Border>
+                            <StackPanel Style="{StaticResource EmptyStatePanel}">
+                                <TextBlock Style="{StaticResource EmptyStateTitle}" Text="No step selected" />
+                                <TextBlock Style="{StaticResource EmptyStateText}" Text="Select a step to set its lights and colours, or add one." />
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
                 </Grid>
-            </DockPanel>
-        </Border>
 
-        <GridSplitter
-            Grid.Column="1"
-            AutomationProperties.Name="Resize the settings panel"
-            Style="{StaticResource VerticalSplitter}" />
+                <GridSplitter
+                    Grid.Column="3"
+                    AutomationProperties.Name="Resize the settings panel"
+                    Style="{StaticResource VerticalSplitter}" />
 
-        <!-- ═════════════ Playback + step timing ═════════════ -->
-        <Border Grid.Column="2" Style="{StaticResource PanelBorder}">
-            <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-                <StackPanel Margin="8,0,8,6">
-                    <TextBlock Style="{StaticResource FormSection}" Text="Playback" />
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="72" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
+                <!-- ═════════════ Playback + times ═════════════ -->
+                <Border Grid.Column="4" Style="{StaticResource PanelBorder}">
+                    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="8,0,8,6" Grid.IsSharedSizeScope="True">
+                            <TextBlock Style="{StaticResource FormSection}" Text="Playback" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="ChaserLabel" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
 
-                        <TextBlock
-                            Margin="0,2,6,0"
-                            VerticalAlignment="Top"
-                            Style="{StaticResource FormLabel}"
-                            Text="Run order" />
-                        <StackPanel
-                            Grid.Column="1"
-                            Margin="0,0,0,6"
-                            AutomationProperties.Name="Run order">
-                            <RadioButton
-                                Content="Loop"
-                                IsChecked="{Binding IsLoop}"
-                                ToolTip="Plays the steps again and again until it is stopped" />
-                            <RadioButton
-                                Content="Play once"
-                                IsChecked="{Binding IsPlayOnce}"
-                                ToolTip="Plays every step once, then stops" />
-                            <RadioButton
-                                Content="Back and forth"
-                                IsChecked="{Binding IsBackAndForth}"
-                                ToolTip="Plays first to last, then back to the first, again and again until it is stopped" />
+                                <TextBlock
+                                    Margin="0,2,6,0"
+                                    VerticalAlignment="Top"
+                                    Style="{StaticResource FormLabel}"
+                                    Text="Run order" />
+                                <StackPanel
+                                    Grid.Column="1"
+                                    Margin="0,0,0,6"
+                                    AutomationProperties.Name="Run order">
+                                    <RadioButton
+                                        Content="Loop"
+                                        IsChecked="{Binding IsLoop}"
+                                        ToolTip="Plays the steps again and again until it is stopped" />
+                                    <RadioButton
+                                        Content="Play once"
+                                        IsChecked="{Binding IsPlayOnce}"
+                                        ToolTip="Plays every step once, then stops" />
+                                    <RadioButton
+                                        Content="Back and forth"
+                                        IsChecked="{Binding IsBackAndForth}"
+                                        ToolTip="Plays first to last, then back to the first, again and again until it is stopped" />
+                                </StackPanel>
+
+                                <TextBlock
+                                    Grid.Row="1"
+                                    Margin="0,2,6,0"
+                                    VerticalAlignment="Top"
+                                    Style="{StaticResource FormLabel}"
+                                    Text="Direction" />
+                                <StackPanel
+                                    Grid.Row="1"
+                                    Grid.Column="1"
+                                    Margin="0,0,0,4"
+                                    AutomationProperties.Name="Direction">
+                                    <RadioButton
+                                        Content="Forward"
+                                        IsChecked="{Binding IsForward}"
+                                        ToolTip="Starts at step 1 and goes down the list" />
+                                    <RadioButton
+                                        Content="Backward"
+                                        IsChecked="{Binding IsBackward}"
+                                        ToolTip="Starts at the last step and goes up the list" />
+                                </StackPanel>
+                            </Grid>
+
+                            <StackPanel
+                                Margin="0,0,0,2"
+                                Orientation="Horizontal"
+                                ToolTip="How long one cycle takes: each step lasts fade in + hold; its fade out overlaps the next step">
+                                <c:DmxIcon
+                                    Margin="0,0,4,0"
+                                    VerticalAlignment="Center"
+                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                    Kind="Recent"
+                                    Size="{StaticResource Dmx.DenseIconSize}" />
+                                <TextBlock
+                                    VerticalAlignment="Center"
+                                    AutomationProperties.LiveSetting="Polite"
+                                    AutomationProperties.Name="Cycle time"
+                                    Style="{StaticResource StatusText}"
+                                    Text="{Binding CycleText}" />
+                            </StackPanel>
+
+                            <TextBlock Style="{StaticResource FormSection}" Text="Times for new steps" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="ChaserLabel" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Style="{StaticResource FormLabel}" Text="Hold (s)" />
+                                <ui:NumberBox
+                                    Grid.Column="1"
+                                    AutomationProperties.Name="Hold, seconds"
+                                    Style="{StaticResource ChaserSecondsBox}"
+                                    ToolTip="How long a step stays fully on"
+                                    Value="{Binding NewHoldSeconds, Mode=TwoWay}" />
+                                <TextBlock
+                                    Grid.Row="1"
+                                    Style="{StaticResource FormLabel}"
+                                    Text="Fade in (s)" />
+                                <ui:NumberBox
+                                    Grid.Row="1"
+                                    Grid.Column="1"
+                                    AutomationProperties.Name="Fade in, seconds"
+                                    Style="{StaticResource ChaserSecondsBox}"
+                                    ToolTip="How long a step takes to blend in (0 = switch at once)"
+                                    Value="{Binding NewFadeInSeconds, Mode=TwoWay}" />
+                                <TextBlock
+                                    Grid.Row="2"
+                                    Style="{StaticResource FormLabel}"
+                                    Text="Fade out (s)" />
+                                <ui:NumberBox
+                                    Grid.Row="2"
+                                    Grid.Column="1"
+                                    AutomationProperties.Name="Fade out, seconds"
+                                    Style="{StaticResource ChaserSecondsBox}"
+                                    ToolTip="How long a step fades away while the next one starts"
+                                    Value="{Binding NewFadeOutSeconds, Mode=TwoWay}" />
+                            </Grid>
+                            <Button
+                                Margin="0,4,0,4"
+                                HorizontalAlignment="Stretch"
+                                AutomationProperties.Name="Apply the times to the selected steps"
+                                Command="{Binding ApplyTimingToSelectedCommand}"
+                                Style="{StaticResource ToolbarPrimaryButton}"
+                                ToolTip="Give the selected steps these hold and fade times (Ctrl / Shift + click selects several)">
+                                <TextBlock Text="{Binding ApplyToSelectedText}" />
+                            </Button>
+                            <Button
+                                AutomationProperties.Name="Apply the times to all steps"
+                                Command="{Binding ApplyTimingToAllCommand}"
+                                Style="{StaticResource ChaserSideButton}"
+                                ToolTip="Same time for all steps: give every step these hold and fade times">
+                                <TextBlock Text="Apply to all steps" />
+                            </Button>
+                            <TextBlock
+                                Margin="0,2,0,0"
+                                Style="{StaticResource HintText}"
+                                Text="New steps get these times. Selecting a step shows its times here." />
                         </StackPanel>
+                    </ScrollViewer>
+                </Border>
+            </Grid>
+        </DockPanel>
 
-                        <TextBlock
-                            Grid.Row="1"
-                            Margin="0,2,6,0"
-                            VerticalAlignment="Top"
-                            Style="{StaticResource FormLabel}"
-                            Text="Direction" />
-                        <StackPanel
-                            Grid.Row="1"
-                            Grid.Column="1"
-                            Margin="0,0,0,4"
-                            AutomationProperties.Name="Direction">
-                            <RadioButton
-                                Content="Forward"
-                                IsChecked="{Binding IsForward}"
-                                ToolTip="Starts at step 1 and goes down the list" />
-                            <RadioButton
-                                Content="Backward"
-                                IsChecked="{Binding IsBackward}"
-                                ToolTip="Starts at the last step and goes up the list" />
-                        </StackPanel>
-                    </Grid>
-
-                    <StackPanel
-                        Margin="0,0,0,2"
-                        Orientation="Horizontal"
-                        ToolTip="How long one cycle takes: each step lasts fade in + hold; its fade out overlaps the next step">
-                        <c:DmxIcon
-                            Margin="0,0,4,0"
-                            VerticalAlignment="Center"
-                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                            Kind="Recent"
-                            Size="{StaticResource Dmx.DenseIconSize}" />
+        <!-- "Edit step": the step's own copy in its normal editor, with the way back. -->
+        <DockPanel Visibility="{Binding IsInnerEditorOpen, Converter={StaticResource BoolToVisibility}}">
+            <Border DockPanel.Dock="Top" Style="{StaticResource ToolbarStrip}">
+                <StackPanel Orientation="Horizontal">
+                    <Button
+                        AutomationProperties.Name="{Binding BackToChaserText}"
+                        Command="{Binding BackToChaserCommand}"
+                        Style="{StaticResource ChaserLabelButton}"
+                        ToolTip="Back to the chaser (asks first when the step has unsaved changes)">
                         <TextBlock
                             VerticalAlignment="Center"
-                            AutomationProperties.LiveSetting="Polite"
-                            AutomationProperties.Name="Cycle time"
-                            Style="{StaticResource StatusText}"
-                            Text="{Binding CycleText}" />
-                    </StackPanel>
-
-                    <TextBlock Style="{StaticResource FormSection}" Text="Step timing" />
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="72" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <TextBlock Style="{StaticResource FormLabel}" Text="Hold (s)" />
-                        <ui:NumberBox
-                            Grid.Column="1"
-                            AutomationProperties.Name="Step timing: hold, seconds"
-                            Style="{StaticResource ChaserSecondsBox}"
-                            ToolTip="How long a step stays fully on"
-                            Value="{Binding NewHoldSeconds, Mode=TwoWay}" />
-                        <TextBlock
-                            Grid.Row="1"
-                            Style="{StaticResource FormLabel}"
-                            Text="Fade in (s)" />
-                        <ui:NumberBox
-                            Grid.Row="1"
-                            Grid.Column="1"
-                            AutomationProperties.Name="Step timing: fade in, seconds"
-                            Style="{StaticResource ChaserSecondsBox}"
-                            ToolTip="How long a step takes to blend in (0 = switch at once)"
-                            Value="{Binding NewFadeInSeconds, Mode=TwoWay}" />
-                        <TextBlock
-                            Grid.Row="2"
-                            Style="{StaticResource FormLabel}"
-                            Text="Fade out (s)" />
-                        <ui:NumberBox
-                            Grid.Row="2"
-                            Grid.Column="1"
-                            AutomationProperties.Name="Step timing: fade out, seconds"
-                            Style="{StaticResource ChaserSecondsBox}"
-                            ToolTip="How long a step fades away while the next one starts"
-                            Value="{Binding NewFadeOutSeconds, Mode=TwoWay}" />
-                    </Grid>
+                            FontSize="{StaticResource Dmx.FontSize.Small}"
+                            Text="{Binding BackToChaserText}" />
+                    </Button>
                     <TextBlock
-                        Margin="0,2,0,6"
+                        Margin="8,0,0,0"
+                        VerticalAlignment="Center"
                         Style="{StaticResource HintText}"
-                        Text="New steps get these times. To change steps already in the list:" />
-                    <Button
-                        AutomationProperties.Name="Apply the step timing to the selected steps"
-                        Command="{Binding ApplyTimingToSelectedCommand}"
-                        Style="{StaticResource ChaserSideButton}"
-                        ToolTip="Give the selected steps these hold and fade times (Ctrl / Shift + click selects several)">
-                        <TextBlock Text="{Binding ApplyToSelectedText}" />
-                    </Button>
-                    <Button
-                        AutomationProperties.Name="Apply the step timing to all steps"
-                        Command="{Binding ApplyTimingToAllCommand}"
-                        Style="{StaticResource ChaserSideButton}"
-                        ToolTip="Same time for all steps: give every step these hold and fade times">
-                        <TextBlock Text="Apply to all steps" />
-                    </Button>
+                        Text="This step's own copy: changing it never changes the original." />
                 </StackPanel>
-            </ScrollViewer>
-        </Border>
+            </Border>
+            <ContentControl
+                Content="{Binding StepEditor}"
+                Focusable="False"
+                IsTabStop="False">
+                <ContentControl.ContentTemplate>
+                    <DataTemplate>
+                        <views:FunctionEditorPanel />
+                    </DataTemplate>
+                </ContentControl.ContentTemplate>
+            </ContentControl>
+        </DockPanel>
     </Grid>
 </UserControl>
