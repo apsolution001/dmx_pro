@@ -114,7 +114,7 @@ Details (`src/DmxPro.Engine/DmxEngine.cs`, `Runtime/`):
 - **Speed:** `SetFunctionSpeed(id, layer, factor)` scales a running function's own time (0..8, a new start resets it
   to 1); fades on start/stop stay real time. The console Speed widget feeds it (per-function speed × global speed).
 - **Strobe enforcement (safety rule 8):** `AllowStrobe` (off = every Strobe channel forced to its safe value) and
-  `MaxStrobeRateHz` (caps chaser step changes × speed to no faster than 1/(2×max rate) per step; 0 = steady light). Snapshots carry a `[Flags] StrobeLimit`
+  `MaxStrobeRateHz` (caps chaser step changes × speed to no faster than 1/(2×max rate) per step, or 1/6 s while strobe is not allowed; each running chaser re-bases its time on a limit change and a per-instance guard holds earlier step changes; shared channels crossfade linearly; 0 = steady light). Snapshots carry a `[Flags] StrobeLimit`
   (`RateLimited`, `Suppressed`) so the UI can show it. Hardware strobe channels cannot be rate-limited (profiles have no
   value → Hz calibration).
 - **Safe frame:** `CreateSafeFrame(universe, SafeFrameMode)` — profile defaults (strobe at its safe value), or
