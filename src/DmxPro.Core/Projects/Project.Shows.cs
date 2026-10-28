@@ -17,10 +17,12 @@ public sealed partial class Project
 
     public List<Show> Shows { get; set; } = [];
 
-    /// <summary>What the Functions page lists: every library function plus show copies marked "Show in function list".</summary>
+    /// <summary>
+    /// What the Functions page lists: every library function plus show copies marked "Show in function list". Functions
+    /// owned by another function (a chaser's steps) are never listed.
+    /// </summary>
     [JsonIgnore]
-    public IEnumerable<LightFunction> FunctionListItems =>
-        Functions.Where(f => f.OwnerShowId is null || f.ShowInFunctionList);
+    public IEnumerable<LightFunction> FunctionListItems => Functions.Where(f => !f.IsHiddenFromList);
 
     public LightFunction? FindFunction(Guid id) => Functions.FirstOrDefault(f => f.Id == id);
 
@@ -98,7 +100,8 @@ public sealed partial class Project
 
     /// <summary>
     /// Places <paramref name="sourceFunctionId"/> in a show. The item references a NEW show-owned copy (hidden from the
-    /// Functions list, <see cref="LightFunction.CopiedFromId"/> = source), so the show can change it freely.
+    /// Functions list, <see cref="LightFunction.CopiedFromId"/> = source), so the show can change it freely. A chaser's
+    /// own step functions are copied too, owned by the new chaser copy.
     /// </summary>
     public ShowItem PlaceFunctionInShow(Guid showId, Guid trackId, Guid sourceFunctionId, double startSeconds, double lengthSeconds)
     {
@@ -107,10 +110,7 @@ public sealed partial class Project
             ?? throw new ArgumentException("Function not found.", nameof(sourceFunctionId));
         var item = NewItem(startSeconds, lengthSeconds);
 
-        var copy = source.CloneAsNew();
-        copy.OwnerShowId = showId;
-        copy.ShowInFunctionList = false;
-        Functions.Add(copy);
+        var copy = AddShowCopy(showId, source);
         item.FunctionId = copy.Id;
         track.Items.Add(item);
         return item;
@@ -153,10 +153,7 @@ public sealed partial class Project
         var function = FindFunction(source.FunctionId)
             ?? throw new InvalidOperationException("The item's function no longer exists.");
 
-        var copy = function.CloneAsNew();
-        copy.OwnerShowId = showId;
-        copy.ShowInFunctionList = false;
-        Functions.Add(copy);
+        var copy = AddShowCopy(showId, function);
 
         var item = new ShowItem { FunctionId = copy.Id };
         item.SetTiming(source.EndSeconds, source.LengthSeconds, source.FadeInSeconds, source.FadeOutSeconds);
@@ -198,8 +195,8 @@ public sealed partial class Project
     }
 
     /// <summary>
-    /// Deletes a show. Its unlisted functions are removed; functions ticked "Show in function list" are kept and become
-    /// normal library functions.
+    /// Deletes a show. Its unlisted functions are removed (with their own step functions); functions ticked "Show in
+    /// function list" are kept and become normal library functions.
     /// </summary>
     public bool DeleteShow(Guid showId)
     {
@@ -210,7 +207,12 @@ public sealed partial class Project
 
         Shows.Remove(show);
         var stillUsed = Shows.SelectMany(s => s.AllItems).Select(i => i.FunctionId).ToHashSet();
-        Functions.RemoveAll(f => f.OwnerShowId == showId && !f.ShowInFunctionList && !stillUsed.Contains(f.Id));
+        var removed = Functions.Where(f => f.OwnerShowId == showId && !f.ShowInFunctionList && !stillUsed.Contains(f.Id)).ToList();
+        foreach (var function in removed)
+        {
+            RemoveFunctionWithOwned(function);
+        }
+
         foreach (var function in Functions.Where(f => f.OwnerShowId == showId))
         {
             function.OwnerShowId = null;
@@ -304,6 +306,32 @@ public sealed partial class Project
             return;
         }
 
+        RemoveFunctionWithOwned(function);
+    }
+
+    /// <summary>
+    /// Adds a show-owned, unlisted copy of <paramref name="source"/> plus copies of its own step functions (owned by the
+    /// copy, not by the show: a function has one owner).
+    /// </summary>
+    private LightFunction AddShowCopy(Guid showId, LightFunction source)
+    {
+        var copies = this.CloneWithOwned(source);
+        var copy = copies[0];
+        copy.OwnerShowId = showId;
+        copy.OwnerFunctionId = null;
+        copy.ShowInFunctionList = false;
+        Functions.AddRange(copies);
+        return copy;
+    }
+
+    /// <summary>Removes <paramref name="function"/> and every function it owns (recursively).</summary>
+    internal void RemoveFunctionWithOwned(LightFunction function)
+    {
+        var owned = this.OwnedFunctions(function.Id);
         Functions.Remove(function);
+        foreach (var child in owned)
+        {
+            Functions.Remove(child);
+        }
     }
 }
