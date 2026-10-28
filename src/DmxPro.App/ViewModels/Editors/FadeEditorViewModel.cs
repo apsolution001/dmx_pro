@@ -38,7 +38,7 @@ public sealed partial class FadeEditorViewModel : FunctionEditorViewModel
     {
         From = new FadeSideViewModel(project, isFrom: true, id => FromSceneId = id);
         To = new FadeSideViewModel(project, isFrom: false, id => ToSceneId = id);
-        DurationPresets = PresetSeconds.Select(s => new FadeDurationPreset(s)).ToList();
+        DurationPresets = PresetSeconds.Select(s => new FadeDurationPreset(s, SetDuration)).ToList();
         LoadFromOriginal();
     }
 
@@ -47,6 +47,9 @@ public sealed partial class FadeEditorViewModel : FunctionEditorViewModel
     public FadeSideViewModel To { get; }
 
     public IReadOnlyList<FadeDurationPreset> DurationPresets { get; }
+
+    /// <summary>Radio group name of the quick duration buttons, unique per editor so two open fade editors never share it.</summary>
+    public string PresetGroupName { get; } = $"FadeDuration-{Guid.NewGuid():N}";
 
     /// <summary>True when the project has no scene at all (the editor shows an empty state).</summary>
     public bool HasNoScenes { get; private set; }

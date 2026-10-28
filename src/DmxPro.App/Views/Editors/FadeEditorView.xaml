@@ -7,32 +7,38 @@
     xmlns:ed="clr-namespace:DmxPro.App.ViewModels.Editors"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    xmlns:views="clr-namespace:DmxPro.App.Views"
     xmlns:vm="clr-namespace:DmxPro.App.ViewModels"
     d:DataContext="{d:DesignInstance Type=ed:FadeEditorViewModel}"
     d:DesignHeight="420"
     d:DesignWidth="900"
     mc:Ignorable="d">
     <!--
-        Fade editor (DataContext: FadeEditorViewModel). Two panels side by side, each the chosen scene (big swatch,
-        name, its lights as colour dots) over a searchable scene list; a swap button between them; then the duration
-        with quick buttons, an on-screen colour strip, one plain sentence and inline notes.
+        Fade editor (DataContext: FadeEditorViewModel). A one-line explanation strip; two square docked panels side by
+        side, each the chosen scene (big swatch, name, its lights as colour dots) over a searchable scene list; a Swap
+        button between them; then a panel with the duration and its quick presets (a radio group), an on-screen colour
+        strip, one plain sentence and inline notes.
 
-        ┌ From  where the lights start ──┐  →   ┌ To  where the lights end up ───┐
-        │ [██] Warm red                  │ [⇄]  │ [██] Deep blue                 │
-        │      4 lights  ● ● ● ●         │      │      4 lights  ● ● ● ●         │
-        │ [⌕ Find scene             ]    │      │ [⌕ Find scene             ]    │
-        │  ◌ Current look   lights now   │      │  ■ Deep blue        4 lights   │
-        │  ■ Warm red       4 lights  ◀  │      │  ■ Green            2 lights   │
-        └────────────────────────────────┘      └────────────────────────────────┘
-        Duration [3.00] s   [1 s] [3 s] [5 s] [10 s]
-        [████████████████ red → blue ████████████████]
-        Warm red                3 s              Deep blue
-        The lights start on "Warm red" and move smoothly to "Deep blue" over 3 s, then stay …
-        (i) 1 light is only in To (PAR 5): it fades in from what it shows now.
+        ▌ Moves the lights smoothly from one scene to another.
+        ┌ From  where the lights start ──┐   >    ┌ To  where the lights end up ───┐
+        │ [██] Warm red                  │ [Swap] │ [██] Deep blue                 │
+        │      4 lights  ● ● ● ●         │        │      4 lights  ● ● ● ●         │
+        │ [⌕ Find scene             ]    │        │ [⌕ Find scene             ]    │
+        │  ◌ Current look   lights now   │        │  ■ Deep blue        4 lights   │
+        │  ■ Warm red       4 lights  ◀  │        │  ■ Green            2 lights   │
+        └────────────────────────────────┘        └────────────────────────────────┘
+        ┌──────────────────────────────────────────────────────────────────────────┐
+        │ Duration [3.00] s   (1 s)(●3 s)(5 s)(10 s)                               │
+        │ [████████████████ red → blue ████████████████]                           │
+        │ Warm red                3 s              Deep blue                       │
+        │ The lights start on "Warm red" and move smoothly to "Deep blue" over 3 s …│
+        │ (i) 1 light is only in To (PAR 5): it fades in from what it shows now.   │
+        └──────────────────────────────────────────────────────────────────────────┘
 
-        No scenes in the project: an empty state replaces everything.
-        Keyboard: Tab From search → From list → Swap → To search → To list → duration → presets; Down in a search box
-        moves into its list.
+        No scenes in the project: an empty state (icon, title, sentence, New scene button on the Functions page)
+        replaces everything.
+        Keyboard: Tab From search → From list → Swap → To search → To list → duration → presets (one tab stop; arrow
+        keys move between presets, Space picks); Down in a search box moves into its list.
     -->
     <UserControl.Resources>
         <!-- Search box in a panel: the form text box without its bottom margin, room on the left for the icon. -->
@@ -44,24 +50,37 @@
             <Setter Property="Padding" Value="26,4,8,0" />
         </Style>
 
-        <!-- Quick duration button: outlined; the active one is filled with the accent and bold (not colour alone). -->
+        <!--
+            Quick duration button: a segmented pick-one radio button (same look as EffectChoiceButton in
+            EffectEditorStyles.xaml): outlined, accent fill + semibold when checked (not colour alone). Being a radio
+            button, screen readers announce which preset is active.
+        -->
         <Style
-            x:Key="FadePresetButton"
-            BasedOn="{StaticResource ToolbarLabelButton}"
-            TargetType="Button">
-            <Setter Property="MinWidth" Value="40" />
-            <Setter Property="Margin" Value="0,0,4,0" />
-            <Setter Property="BorderThickness" Value="1" />
+            x:Key="FadeChoiceButton"
+            BasedOn="{StaticResource ToolbarToggleButton}"
+            TargetType="RadioButton">
+            <Setter Property="Width" Value="NaN" />
+            <Setter Property="MinWidth" Value="48" />
+            <Setter Property="Height" Value="{StaticResource Dmx.ControlHeight}" />
+            <Setter Property="Padding" Value="8,0" />
+            <Setter Property="Margin" Value="0,0,2,0" />
+            <Setter Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
-            <Setter Property="FontSize" Value="{StaticResource Dmx.FontSize.Small}" />
+            <Setter Property="BorderThickness" Value="1" />
             <Style.Triggers>
-                <DataTrigger Binding="{Binding IsActive}" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}" />
-                    <Setter Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
-                    <Setter Property="Foreground" Value="{DynamicResource TextOnAccentFillColorPrimaryBrush}" />
+                <Trigger Property="IsChecked" Value="True">
                     <Setter Property="FontWeight" Value="SemiBold" />
-                </DataTrigger>
+                </Trigger>
             </Style.Triggers>
+        </Style>
+
+        <!-- One-line "what this does" strip at the top (same look as EffectExplanation in EffectEditorStyles.xaml). -->
+        <Style x:Key="FadeExplanation" TargetType="Border">
+            <Setter Property="Margin" Value="0,0,0,6" />
+            <Setter Property="Padding" Value="6,3" />
+            <Setter Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+            <Setter Property="BorderThickness" Value="3,0,0,0" />
         </Style>
 
         <!-- One light of the chosen scene: a small colour dot (name in the tooltip). -->
@@ -129,11 +148,7 @@
 
         <!-- One side (From or To): header, the chosen scene, search, scene list. -->
         <DataTemplate x:Key="FadeSidePanel" DataType="{x:Type ed:FadeSideViewModel}">
-            <Border
-                x:Name="Frame"
-                BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
-                BorderThickness="1"
-                CornerRadius="{StaticResource Dmx.CornerRadius}">
+            <Border x:Name="Frame" Style="{StaticResource PanelBorder}">
                 <DockPanel>
                     <Border DockPanel.Dock="Top" Style="{StaticResource PanelHeader}">
                         <TextBlock VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
@@ -282,74 +297,114 @@
         </DataTemplate>
     </UserControl.Resources>
 
-    <Border Style="{StaticResource PanelBorder}">
-        <Grid>
-            <!-- ═════════════ Empty state: no scenes in the project ═════════════ -->
-            <StackPanel Style="{StaticResource EmptyStatePanel}" Visibility="{Binding HasNoScenes, Converter={StaticResource BoolToVisibility}}">
-                <c:DmxIcon Kind="Fade" Style="{StaticResource EmptyStateIcon}" />
+    <Grid>
+        <!-- ═════════════ Empty state: no scenes in the project ═════════════ -->
+        <Border Style="{StaticResource PanelBorder}" Visibility="{Binding HasNoScenes, Converter={StaticResource BoolToVisibility}}">
+            <StackPanel Style="{StaticResource EmptyStatePanel}">
+                <c:DmxIcon
+                    Kind="Fade"
+                    Size="{StaticResource Dmx.EmptyStateIconSize}"
+                    Style="{StaticResource EmptyStateIcon}" />
                 <TextBlock Style="{StaticResource EmptyStateTitle}" Text="No scenes to fade between" />
-                <TextBlock Style="{StaticResource EmptyStateText}" Text="A fade moves the lights smoothly from one scene to another. Create a scene or two first (New ▸ Scene), then pick them here." />
-            </StackPanel>
-
-            <!-- ═════════════ Editor ═════════════ -->
-            <Grid Margin="6" Visibility="{Binding HasScenes, Converter={StaticResource BoolToVisibility}}">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="*" MinHeight="170" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
-
-                <!-- From → [⇄] → To -->
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" MinWidth="200" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" MinWidth="200" />
-                    </Grid.ColumnDefinitions>
-
-                    <ContentControl
-                        AutomationProperties.Name="From: where the lights start"
-                        Content="{Binding From}"
-                        ContentTemplate="{StaticResource FadeSidePanel}"
-                        Focusable="False"
-                        IsTabStop="False" />
-
-                    <StackPanel
-                        Grid.Column="1"
-                        Margin="4,0"
-                        VerticalAlignment="Center">
-                        <ui:SymbolIcon
-                            Margin="0,0,0,4"
-                            HorizontalAlignment="Center"
-                            AutomationProperties.Name="moves to"
-                            FontSize="16"
-                            Foreground="{DynamicResource TextFillColorTertiaryBrush}"
-                            Symbol="ArrowRight24" />
-                        <Button
-                            AutomationProperties.Name="Swap From and To"
-                            Command="{Binding SwapCommand}"
-                            Style="{StaticResource ToolbarButton}"
-                            ToolTip="Swap From and To (fade the other way round). Needs a scene on both sides.">
-                            <ui:SymbolIcon FontSize="16" Symbol="ArrowSwap24" />
-                        </Button>
+                <TextBlock Style="{StaticResource EmptyStateText}" Text="A fade moves the lights from one scene to another. Create scenes first (New ▸ Scene), then pick them here." />
+                <!--
+                    The New scene command lives on the Functions page; when the editor is hosted elsewhere (Shows page)
+                    the binding finds no FunctionsView and the button hides (the sentence above still says what to do).
+                -->
+                <Button
+                    HorizontalAlignment="Center"
+                    AutomationProperties.Name="New scene"
+                    Command="{Binding DataContext.NewSceneCommand, RelativeSource={RelativeSource AncestorType=views:FunctionsView}, FallbackValue={x:Null}}"
+                    Style="{StaticResource ToolbarPrimaryButton}"
+                    ToolTip="Create a new scene (closes this editor; you are asked first if it has unsaved changes)"
+                    Visibility="{Binding DataContext.NewSceneCommand, RelativeSource={RelativeSource AncestorType=views:FunctionsView}, FallbackValue={x:Null}, Converter={StaticResource NullToVisibility}}">
+                    <StackPanel Orientation="Horizontal">
+                        <c:DmxIcon Kind="Scenes" Size="{StaticResource Dmx.ButtonIconSize}" />
+                        <TextBlock Style="{StaticResource ButtonLabel}" Text="New scene" />
                     </StackPanel>
+                </Button>
+            </StackPanel>
+        </Border>
 
-                    <ContentControl
-                        Grid.Column="2"
-                        AutomationProperties.Name="To: where the lights end up"
-                        Content="{Binding To}"
-                        ContentTemplate="{StaticResource FadeSidePanel}"
-                        Focusable="False"
-                        IsTabStop="False" />
-                </Grid>
+        <!-- ═════════════ Editor ═════════════ -->
+        <Grid Visibility="{Binding HasScenes, Converter={StaticResource BoolToVisibility}}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" MinHeight="170" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
-                <!-- Duration, colour strip, explanation, notes -->
-                <StackPanel Grid.Row="1" Margin="2,6,2,2">
+            <!-- What this does, in one line. -->
+            <Border Margin="0,0,0,4" Style="{StaticResource FadeExplanation}">
+                <DockPanel>
+                    <c:DmxIcon
+                        Margin="0,0,6,0"
+                        VerticalAlignment="Center"
+                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                        Kind="Fade"
+                        Size="{StaticResource Dmx.SmallIconSize}" />
+                    <TextBlock Text="Moves the lights smoothly from one scene to another." TextWrapping="Wrap" />
+                </DockPanel>
+            </Border>
+
+            <!-- From → [Swap] → To: two square docked panels side by side. -->
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" MinWidth="200" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" MinWidth="200" />
+                </Grid.ColumnDefinitions>
+
+                <ContentControl
+                    AutomationProperties.Name="From: where the lights start"
+                    Content="{Binding From}"
+                    ContentTemplate="{StaticResource FadeSidePanel}"
+                    Focusable="False"
+                    IsTabStop="False" />
+
+                <StackPanel
+                    Grid.Column="1"
+                    Margin="4,0"
+                    VerticalAlignment="Center">
+                    <c:DmxIcon
+                        Margin="0,0,0,4"
+                        HorizontalAlignment="Center"
+                        AutomationProperties.Name="moves to"
+                        Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                        Kind="ChevronRight"
+                        Size="{StaticResource Dmx.ButtonIconSize}" />
+                    <Button
+                        AutomationProperties.Name="Swap From and To"
+                        Command="{Binding SwapCommand}"
+                        Style="{StaticResource ToolbarLabelButton}"
+                        ToolTip="Swap From and To (fade the other way round). Needs a scene on both sides.">
+                        <StackPanel Orientation="Horizontal">
+                            <c:DmxIcon Kind="Refresh" Size="{StaticResource Dmx.ButtonIconSize}" />
+                            <TextBlock Style="{StaticResource ButtonLabel}" Text="Swap" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+
+                <ContentControl
+                    Grid.Column="2"
+                    AutomationProperties.Name="To: where the lights end up"
+                    Content="{Binding To}"
+                    ContentTemplate="{StaticResource FadeSidePanel}"
+                    Focusable="False"
+                    IsTabStop="False" />
+            </Grid>
+
+            <!-- Duration, colour strip, explanation, notes -->
+            <Border
+                Grid.Row="2"
+                Margin="0,4,0,0"
+                Style="{StaticResource PanelBorder}">
+                <StackPanel Margin="6">
                     <DockPanel>
                         <TextBlock
-                            Margin="0,0,8,0"
-                            VerticalAlignment="Center"
+                            Margin="0,0,6,0"
                             DockPanel.Dock="Left"
-                            FontWeight="SemiBold"
+                            Style="{StaticResource FormLabel}"
                             Text="Duration" />
                         <ui:NumberBox
                             Width="104"
@@ -370,13 +425,16 @@
                             VerticalAlignment="Center"
                             DockPanel.Dock="Left"
                             Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                            Text="seconds" />
+                            Text="s" />
+                        <!-- Quick durations: one radio group (Tab enters once, arrow keys move, Space picks). -->
                         <ItemsControl
                             VerticalAlignment="Center"
                             AutomationProperties.Name="Quick durations"
                             Focusable="False"
                             IsTabStop="False"
-                            ItemsSource="{Binding DurationPresets}">
+                            ItemsSource="{Binding DurationPresets}"
+                            KeyboardNavigation.DirectionalNavigation="Cycle"
+                            KeyboardNavigation.TabNavigation="Once">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <StackPanel Orientation="Horizontal" />
@@ -384,12 +442,12 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="{x:Type ed:FadeDurationPreset}">
-                                    <Button
+                                    <RadioButton
                                         AutomationProperties.Name="{Binding AutomationName}"
-                                        Command="{Binding DataContext.SetDurationCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                        CommandParameter="{Binding}"
                                         Content="{Binding Label}"
-                                        Style="{StaticResource FadePresetButton}"
+                                        GroupName="{Binding DataContext.PresetGroupName, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                        IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                        Style="{StaticResource FadeChoiceButton}"
                                         ToolTip="{Binding AutomationName}" />
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
@@ -496,7 +554,7 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                 </StackPanel>
-            </Grid>
+            </Border>
         </Grid>
-    </Border>
+    </Grid>
 </UserControl>

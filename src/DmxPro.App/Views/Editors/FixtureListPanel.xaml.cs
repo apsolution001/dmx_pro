@@ -6,7 +6,7 @@ using DmxPro.App.ViewModels.Editors;
 namespace DmxPro.App.Views.Editors;
 
 /// <summary>
-/// Fixtures panel of the sequence and effect editors. Code-behind only tells the ViewModel how to open the modal
+/// Lights panel of the sequence and effect editors. Code-behind only tells the ViewModel how to open the modal
 /// Choose lights dialog over this panel's window (the editors are created without DI, so they have no dialog service).
 /// DataContext: <see cref="FixtureListEditorViewModel"/>.
 /// </summary>

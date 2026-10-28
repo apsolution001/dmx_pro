@@ -11,12 +11,14 @@
     d:DesignWidth="320"
     mc:Ignorable="d">
     <!--
-        "Fixtures" panel of the sequence and effect editors (DataContext: FixtureListEditorViewModel). The fixtures
-        the function drives, in order, one dense line each (QLC+-style). "Add / choose lights…" opens the modal
-        Choose lights dialog (FixturePickerWindow: single lights with Shift/Ctrl multi-select, or whole groups).
-        Del removes the selected fixture, Alt+Up / Alt+Down move it, Ctrl+L opens the dialog.
+        "Lights" panel of the sequence and effect editors (DataContext: FixtureListEditorViewModel). The lights the
+        function drives, in order, one dense line each (QLC+-style). "Choose lights…" opens the modal Choose lights
+        dialog (FixturePickerWindow: single lights with Shift/Ctrl multi-select, or whole groups).
+        Del removes the selected light, Ctrl+Up / Ctrl+Down move it (Alt+Up / Alt+Down too), Ctrl+L opens the dialog.
+        A deleted light stays listed as "(deleted light)" with a warning icon so it can be removed.
+        Empty: icon, "No lights yet", a sentence and a Choose lights… button.
 
-        ┌ Fixtures · 3 fixtures   [+ Add / choose lights…][-][↑][↓] ┐
+        ┌ Lights · 3 lights       [+ Choose lights…][-][↑][↓] ┐
         │ 1  PAR 1   U1 · 1–8 · Generic RGBW                        │
         │ 2  PAR 2   U1 · 9–16 · Generic RGBW                       │
         └───────────────────────────────────────────────────────────┘
@@ -42,7 +44,7 @@
                 <DockPanel>
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                         <Button
-                            AutomationProperties.Name="Add or choose lights"
+                            AutomationProperties.Name="Choose lights"
                             Command="{Binding ChooseLightsCommand}"
                             Style="{StaticResource HeaderLabelButton}"
                             ToolTip="Choose the lights this function uses: single lights (click, Shift+click, Ctrl+click) or whole groups (Ctrl+L)">
@@ -52,33 +54,33 @@
                                     Margin="4,0,0,0"
                                     VerticalAlignment="Center"
                                     FontSize="{StaticResource Dmx.FontSize.Small}"
-                                    Text="Add / choose lights…" />
+                                    Text="Choose lights…" />
                             </StackPanel>
                         </Button>
                         <Button
-                            AutomationProperties.Name="Remove selected fixture"
+                            AutomationProperties.Name="Remove selected light"
                             Command="{Binding RemoveSelectedCommand}"
                             Style="{StaticResource PanelHeaderButton}"
-                            ToolTip="Remove the selected fixture (Del)">
+                            ToolTip="Remove the selected light from this function (Del)">
                             <c:DmxIcon Kind="Remove" Size="{StaticResource Dmx.DenseIconSize}" />
                         </Button>
                         <Button
-                            AutomationProperties.Name="Move fixture up"
+                            AutomationProperties.Name="Move light up"
                             Command="{Binding MoveUpCommand}"
                             Style="{StaticResource PanelHeaderButton}"
-                            ToolTip="Move up: earlier in the order (Alt+Up)">
+                            ToolTip="Move up: earlier in the order (Ctrl+Up)">
                             <c:DmxIcon Kind="MoveUp" Size="{StaticResource Dmx.DenseIconSize}" />
                         </Button>
                         <Button
-                            AutomationProperties.Name="Move fixture down"
+                            AutomationProperties.Name="Move light down"
                             Command="{Binding MoveDownCommand}"
                             Style="{StaticResource PanelHeaderButton}"
-                            ToolTip="Move down: later in the order (Alt+Down)">
+                            ToolTip="Move down: later in the order (Ctrl+Down)">
                             <c:DmxIcon Kind="MoveDown" Size="{StaticResource Dmx.DenseIconSize}" />
                         </Button>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Style="{StaticResource PanelTitle}" Text="Fixtures" />
+                        <TextBlock Style="{StaticResource PanelTitle}" Text="Lights" />
                         <TextBlock
                             Margin="8,0,0,0"
                             VerticalAlignment="Center"
@@ -90,13 +92,15 @@
 
             <Grid>
                 <ListBox
-                    AutomationProperties.Name="Fixtures used, in order"
+                    AutomationProperties.Name="Lights used, in order"
                     Background="Transparent"
                     BorderThickness="0"
                     ItemsSource="{Binding Items}"
                     SelectedItem="{Binding SelectedItem}">
                     <ListBox.InputBindings>
                         <KeyBinding Command="{Binding RemoveSelectedCommand}" Gesture="Delete" />
+                        <KeyBinding Command="{Binding MoveUpCommand}" Gesture="Ctrl+Up" />
+                        <KeyBinding Command="{Binding MoveDownCommand}" Gesture="Ctrl+Down" />
                         <KeyBinding Command="{Binding MoveUpCommand}" Gesture="Alt+Up" />
                         <KeyBinding Command="{Binding MoveDownCommand}" Gesture="Alt+Down" />
                     </ListBox.InputBindings>
@@ -122,12 +126,12 @@
                                 <c:DmxIcon
                                     Margin="4,0,0,0"
                                     VerticalAlignment="Center"
-                                    AutomationProperties.Name="Missing fixture"
+                                    AutomationProperties.Name="Deleted light"
                                     DockPanel.Dock="Right"
                                     Foreground="{DynamicResource SystemFillColorCautionBrush}"
                                     Kind="Warning"
                                     Size="{StaticResource Dmx.DenseIconSize}"
-                                    ToolTip="This fixture was deleted from the patch; it is skipped. Remove it here."
+                                    ToolTip="This light was deleted from the patch; it is skipped. Remove it here (Del)."
                                     Visibility="{Binding IsMissing, Converter={StaticResource BoolToVisibility}}" />
                                 <TextBlock VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
                                     <Run Text="{Binding Name, Mode=OneWay}" />
@@ -146,8 +150,19 @@
                         Kind="Fixtures"
                         Size="{StaticResource Dmx.EmptyStateIconSize}"
                         Style="{StaticResource EmptyStateIcon}" />
-                    <TextBlock Style="{StaticResource EmptyStateTitle}" Text="No fixtures" />
-                    <TextBlock Style="{StaticResource EmptyStateText}" Text="Click Add / choose lights… to pick single lights or whole groups." />
+                    <TextBlock Style="{StaticResource EmptyStateTitle}" Text="No lights yet" />
+                    <TextBlock Style="{StaticResource EmptyStateText}" Text="Pick the lights this function uses: single lights or whole groups." />
+                    <Button
+                        HorizontalAlignment="Center"
+                        AutomationProperties.Name="Choose lights"
+                        Command="{Binding ChooseLightsCommand}"
+                        Style="{StaticResource ToolbarPrimaryButton}"
+                        ToolTip="Choose the lights this function uses (Ctrl+L)">
+                        <StackPanel Orientation="Horizontal">
+                            <c:DmxIcon Kind="Add" Size="{StaticResource Dmx.ButtonIconSize}" />
+                            <TextBlock Style="{StaticResource ButtonLabel}" Text="Choose lights…" />
+                        </StackPanel>
+                    </Button>
                 </StackPanel>
             </Grid>
         </DockPanel>
