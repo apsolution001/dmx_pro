@@ -8,6 +8,5 @@ public partial class PulseEditorView : UserControl
     public PulseEditorView()
     {
         InitializeComponent();
-        EffectEditorPicker.Attach(this);
     }
 }

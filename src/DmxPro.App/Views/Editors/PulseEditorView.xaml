@@ -10,28 +10,23 @@
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
     d:DataContext="{d:DesignInstance Type=ed:PulseEditorViewModel}"
     d:DesignHeight="420"
-    d:DesignWidth="1000"
+    d:DesignWidth="1100"
     mc:Ignorable="d">
     <!--
-        Pulse editor (DataContext: PulseEditorViewModel), laid out like the scene editor: two tabs in the editor's tab
-        strip (EditorTabControl from FunctionEditorPanel). Opens on "Pulse" when the pulse has lights, else on "Lights".
-        Ctrl+L = Choose lights anywhere in the editor; Ctrl+Tab switches tabs.
+        Pulse editor (DataContext: PulseEditorViewModel). Three docked panels like the colour cycle editor: the lights
+        at the left, the pulse settings in the middle, the on-screen preview at the right; both GridSplitters resize.
+        Ctrl+L = Choose lights anywhere in the editor.
 
-        [Lights 3] [Pulse]
-        ┌───────────────────────────────────────────────────────────┬ Preview (on screen) ─────┐
-        │ ▌The lights slowly get brighter and darker … like breathing│ (●)  ╭╮  ╭╮               │
-        │ Colour                                                    │      ╯╰──╯╰  │ marker    │
-        │  [A colour] [Brightness only]                             │ One breath every 2 s,    │
-        │  (●)(●)(●)… [██] Red [Custom ▾]                           │ from 0 % to 100 % …      │
-        │ Speed                                                     │                          │
-        │  [Slow][Medium][Fast]  [2.00] s per breath  = 30 a minute │                          │
-        │ Shape                                                     │                          │
-        │  [∿ Smooth] [/\ Straight]                                 │                          │
-        │ Brightness                                                │                          │
-        │  Darkest   ●────────── [0] %                              │                          │
-        │  Brightest ─────────●  [100] %                            │                          │
-        │  [x] Use white channel                                    │                          │
-        └───────────────────────────────────────────────────────────┴──────────────────────────┘
+        ┌ Fixtures ─────────┐║┌ Pulse ───────────────────────────────────────────┐║┌ Preview (on screen) ─┐
+        │ 1 PAR 1  U1 · 1–4 │║│ ▌The lights slowly get brighter and darker …      │║│ (●)  ╭╮  ╭╮          │
+        │ 2 PAR 2  U1 · 5–8 │║│ Colour     [A colour][Brightness only]            │║│      ╯╰──╯╰ marker   │
+        │                   │║│            (●)(●)(●)… [██] Red [Custom ▾]         │║│ One breath every 2 s │
+        │                   │║│ Speed      [Slow][Medium][Fast] [2.00] s per breath = 30 a minute            │
+        │                   │║│ Shape      [∿ Smooth][/\ Straight]                │║│                      │
+        │                   │║│ Brightness Darkest   ●────────── [0] %            │║│                      │
+        │                   │║│            Brightest ─────────●  [100] %          │║│                      │
+        │                   │║│ [x] Use white channel                             │║│                      │
+        └───────────────────┘║└───────────────────────────────────────────────────┘║└──────────────────────┘
     -->
     <UserControl.Resources>
         <ResourceDictionary>
@@ -45,288 +40,296 @@
         <KeyBinding Command="{Binding Fixtures.ChooseLightsCommand}" Gesture="Ctrl+L" />
     </UserControl.InputBindings>
 
-    <TabControl
-        AutomationProperties.Name="Pulse editor tabs"
-        SelectedIndex="{Binding SelectedTabIndex, Mode=TwoWay}"
-        Style="{DynamicResource EditorTabControl}">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition
+                Width="260"
+                MinWidth="180"
+                MaxWidth="520" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" MinWidth="380" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition
+                Width="260"
+                MinWidth="200"
+                MaxWidth="480" />
+        </Grid.ColumnDefinitions>
 
         <!-- ═════════════ Lights ═════════════ -->
-        <TabItem AutomationProperties.Name="Lights">
-            <TabItem.Header>
-                <StackPanel Orientation="Horizontal">
-                    <c:DmxIcon
-                        Margin="0,0,4,0"
-                        VerticalAlignment="Center"
-                        Kind="Fixtures"
-                        Size="{StaticResource Dmx.DenseIconSize}" />
-                    <TextBlock VerticalAlignment="Center" Text="Lights" />
-                    <TextBlock
-                        Margin="4,0,0,0"
-                        VerticalAlignment="Center"
-                        FontSize="{StaticResource Dmx.FontSize.Small}"
-                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                        Text="{Binding Fixtures.Items.Count}" />
-                </StackPanel>
-            </TabItem.Header>
-            <edv:FixtureListPanel DataContext="{Binding Fixtures}" />
-        </TabItem>
+        <edv:FixtureListPanel DataContext="{Binding Fixtures}" />
+
+        <GridSplitter
+            Grid.Column="1"
+            AutomationProperties.Name="Resize the light list"
+            Style="{StaticResource VerticalSplitter}" />
 
         <!-- ═════════════ Pulse settings ═════════════ -->
-        <TabItem AutomationProperties.Name="Pulse settings">
-            <TabItem.Header>
-                <StackPanel Orientation="Horizontal">
-                    <c:DmxIcon
-                        Margin="0,0,4,0"
-                        VerticalAlignment="Center"
-                        Kind="Pulse"
-                        Size="{StaticResource Dmx.DenseIconSize}" />
-                    <TextBlock VerticalAlignment="Center" Text="Pulse" />
-                </StackPanel>
-            </TabItem.Header>
+        <Border
+            Grid.Column="2"
+            AutomationProperties.Name="Pulse settings"
+            Style="{StaticResource PanelBorder}">
+            <DockPanel>
+                <Border DockPanel.Dock="Top" Style="{StaticResource PanelHeader}">
+                    <StackPanel Orientation="Horizontal">
+                        <c:DmxIcon
+                            Margin="0,0,6,0"
+                            VerticalAlignment="Center"
+                            Kind="Pulse"
+                            Size="{StaticResource Dmx.DenseIconSize}" />
+                        <TextBlock Style="{StaticResource PanelTitle}" Text="Pulse" />
+                    </StackPanel>
+                </Border>
 
-            <Border Style="{StaticResource PanelBorder}">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" MinWidth="380" />
-                        <ColumnDefinition Width="260" />
-                    </Grid.ColumnDefinitions>
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                    <StackPanel
+                        MaxWidth="620"
+                        Margin="8,6"
+                        HorizontalAlignment="Left"
+                        Grid.IsSharedSizeScope="True">
 
-                    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                        <Border Style="{StaticResource EffectExplanation}">
+                            <DockPanel>
+                                <c:DmxIcon
+                                    Margin="0,0,6,0"
+                                    VerticalAlignment="Center"
+                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                    Kind="Pulse"
+                                    Size="{StaticResource Dmx.SmallIconSize}" />
+                                <TextBlock Text="The lights slowly get brighter and darker, again and again, like breathing." TextWrapping="Wrap" />
+                            </DockPanel>
+                        </Border>
+
+                        <!-- Empty state: no lights yet (neutral, not a warning). -->
+                        <Border Style="{StaticResource EffectNoLightsBar}" Visibility="{Binding HasNoFixtures, Converter={StaticResource BoolToVisibility}}">
+                            <DockPanel>
+                                <Button
+                                    Margin="8,0,0,0"
+                                    AutomationProperties.Name="Choose lights"
+                                    Command="{Binding Fixtures.ChooseLightsCommand}"
+                                    DockPanel.Dock="Right"
+                                    Style="{StaticResource ToolbarLabelButton}"
+                                    ToolTip="Pick single lights or whole groups (Ctrl+L)">
+                                    <StackPanel Orientation="Horizontal">
+                                        <c:DmxIcon Kind="Add" Size="{StaticResource Dmx.DenseIconSize}" />
+                                        <TextBlock Style="{StaticResource ButtonLabel}" Text="Choose lights…" />
+                                    </StackPanel>
+                                </Button>
+                                <c:DmxIcon Kind="Info" Style="{StaticResource EffectNoLightsIcon}" />
+                                <TextBlock VerticalAlignment="Center" TextWrapping="Wrap">
+                                    <Run FontWeight="SemiBold" Text="No lights chosen yet." />
+                                    <Run Text="This pulse does nothing until you pick some." />
+                                </TextBlock>
+                            </DockPanel>
+                        </Border>
+
+                        <!-- ═════ Colour ═════ -->
+                        <TextBlock Style="{StaticResource EffectSection}" Text="Colour" />
                         <StackPanel
-                            MaxWidth="620"
-                            Margin="8,6"
+                            Margin="0,0,0,4"
+                            AutomationProperties.Name="What the pulse changes"
+                            Style="{StaticResource EffectChoicePanel}"
                             HorizontalAlignment="Left">
+                            <RadioButton
+                                AutomationProperties.Name="Pulse in a colour"
+                                Content="A colour"
+                                GroupName="PulseColourMode"
+                                IsChecked="{Binding UsesColor, Mode=TwoWay}"
+                                Style="{StaticResource EffectChoiceButton}"
+                                ToolTip="The lights show the colour below while they pulse" />
+                            <RadioButton
+                                AutomationProperties.Name="Brightness only, keep the colour"
+                                Content="Brightness only"
+                                GroupName="PulseColourMode"
+                                IsChecked="{Binding DimmerOnly, Mode=TwoWay}"
+                                Style="{StaticResource EffectChoiceButton}"
+                                ToolTip="Only the brightness moves; the colour stays as whatever else is playing" />
+                        </StackPanel>
+                        <edv:ColorEditorView DataContext="{Binding ColorEditor}" Visibility="{Binding DataContext.UsesColor, RelativeSource={RelativeSource AncestorType=edv:PulseEditorView}, Converter={StaticResource BoolToVisibility}}" />
+                        <TextBlock
+                            Style="{StaticResource HintText}"
+                            Text="Only the brightness moves; the colour stays as whatever else is playing. Lights without a dimmer channel are left alone."
+                            Visibility="{Binding DimmerOnly, Converter={StaticResource BoolToVisibility}}" />
 
-                            <Border Style="{StaticResource EffectExplanation}">
-                                <DockPanel>
-                                    <c:DmxIcon
+                        <!-- ═════ Speed ═════ -->
+                        <TextBlock Style="{StaticResource EffectSection}" Text="Speed" />
+                        <WrapPanel>
+                            <ItemsControl
+                                AutomationProperties.Name="Speed presets"
+                                ItemsSource="{Binding SpeedPresets.Choices}"
+                                Style="{StaticResource EffectChoiceRow}" />
+                            <ui:NumberBox
+                                AutomationProperties.Name="Seconds per breath"
+                                Maximum="3600"
+                                Minimum="{Binding MinPeriodSeconds}"
+                                Style="{StaticResource EffectSecondsBox}"
+                                ToolTip="Exact time of one breath (dark, bright, dark again), at least 0.1 s"
+                                Value="{Binding PeriodSeconds, Mode=TwoWay}" />
+                            <TextBlock Style="{StaticResource EffectUnitText}" Text="s per breath" />
+                            <TextBlock
+                                Margin="8,0,0,0"
+                                VerticalAlignment="Center"
+                                Style="{StaticResource StatusText}"
+                                Text="{Binding SpeedText}" />
+                        </WrapPanel>
+
+                        <!-- ═════ Shape: small pictures plus words ═════ -->
+                        <TextBlock Style="{StaticResource EffectSection}" Text="Shape" />
+                        <StackPanel
+                            HorizontalAlignment="Left"
+                            AutomationProperties.Name="Shape"
+                            Style="{StaticResource EffectChoicePanel}">
+                            <RadioButton
+                                AutomationProperties.HelpText="{Binding ShapeChoices.Choices[0].ToolTip}"
+                                AutomationProperties.Name="Smooth shape"
+                                GroupName="{Binding ShapeChoices.GroupName}"
+                                IsChecked="{Binding ShapeChoices.Choices[0].IsSelected, Mode=TwoWay}"
+                                Style="{StaticResource EffectChoiceButton}"
+                                ToolTip="{Binding ShapeChoices.Choices[0].ToolTip}">
+                                <StackPanel Orientation="Horizontal">
+                                    <Path
+                                        Width="22"
+                                        Height="12"
                                         Margin="0,0,6,0"
                                         VerticalAlignment="Center"
-                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                        Kind="Pulse"
-                                        Size="{StaticResource Dmx.SmallIconSize}" />
-                                    <TextBlock Text="The lights slowly get brighter and darker, again and again, like breathing." TextWrapping="Wrap" />
-                                </DockPanel>
-                            </Border>
-
-                            <!-- Empty state: no lights yet. -->
-                            <Border Style="{StaticResource EffectNoLightsBar}" Visibility="{Binding HasNoFixtures, Converter={StaticResource BoolToVisibility}}">
-                                <DockPanel>
-                                    <Button
-                                        Margin="8,0,0,0"
-                                        AutomationProperties.Name="Choose lights"
-                                        Command="{Binding Fixtures.ChooseLightsCommand}"
-                                        DockPanel.Dock="Right"
-                                        Style="{StaticResource ToolbarLabelButton}"
-                                        ToolTip="Pick single lights or whole groups (Ctrl+L)">
-                                        <StackPanel Orientation="Horizontal">
-                                            <c:DmxIcon Kind="Add" Size="{StaticResource Dmx.DenseIconSize}" />
-                                            <TextBlock Style="{StaticResource ButtonLabel}" Text="Choose lights…" />
-                                        </StackPanel>
-                                    </Button>
-                                    <c:DmxIcon Kind="Info" Style="{StaticResource CautionIcon}" VerticalAlignment="Center" />
-                                    <TextBlock
+                                        Data="M0,12 C5,12 6,0 11,0 C16,0 17,12 22,12"
+                                        Stretch="None"
+                                        Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
+                                        StrokeThickness="1.5" />
+                                    <TextBlock VerticalAlignment="Center" Text="{Binding ShapeChoices.Choices[0].Label}" />
+                                </StackPanel>
+                            </RadioButton>
+                            <RadioButton
+                                AutomationProperties.HelpText="{Binding ShapeChoices.Choices[1].ToolTip}"
+                                AutomationProperties.Name="Straight shape"
+                                GroupName="{Binding ShapeChoices.GroupName}"
+                                IsChecked="{Binding ShapeChoices.Choices[1].IsSelected, Mode=TwoWay}"
+                                Style="{StaticResource EffectChoiceButton}"
+                                ToolTip="{Binding ShapeChoices.Choices[1].ToolTip}">
+                                <StackPanel Orientation="Horizontal">
+                                    <Path
+                                        Width="22"
+                                        Height="12"
+                                        Margin="0,0,6,0"
                                         VerticalAlignment="Center"
-                                        Text="No lights chosen yet: this pulse does nothing until you pick some."
-                                        TextWrapping="Wrap" />
-                                </DockPanel>
-                            </Border>
-
-                            <!-- ═════ Colour ═════ -->
-                            <TextBlock Style="{StaticResource EffectSection}" Text="Colour" />
-                            <StackPanel Margin="0,0,0,4" Orientation="Horizontal">
-                                <RadioButton
-                                    AutomationProperties.Name="Pulse in a colour"
-                                    Content="A colour"
-                                    GroupName="PulseColourMode"
-                                    IsChecked="{Binding UsesColor, Mode=TwoWay}"
-                                    Style="{StaticResource EffectChoiceButton}"
-                                    ToolTip="The lights show the colour below while they pulse" />
-                                <RadioButton
-                                    AutomationProperties.Name="Brightness only, keep the colour"
-                                    Content="Brightness only"
-                                    GroupName="PulseColourMode"
-                                    IsChecked="{Binding DimmerOnly, Mode=TwoWay}"
-                                    Style="{StaticResource EffectChoiceButton}"
-                                    ToolTip="Only the brightness moves; the colour stays as whatever else is playing" />
-                            </StackPanel>
-                            <edv:ColorEditorView DataContext="{Binding ColorEditor}" Visibility="{Binding DataContext.UsesColor, RelativeSource={RelativeSource AncestorType=edv:PulseEditorView}, Converter={StaticResource BoolToVisibility}}" />
-                            <TextBlock
-                                Style="{StaticResource HintText}"
-                                Text="Only the brightness moves; the colour stays as whatever else is playing. Lights without a dimmer channel are left alone."
-                                Visibility="{Binding DimmerOnly, Converter={StaticResource BoolToVisibility}}" />
-
-                            <!-- ═════ Speed ═════ -->
-                            <TextBlock Style="{StaticResource EffectSection}" Text="Speed" />
-                            <WrapPanel>
-                                <ItemsControl
-                                    AutomationProperties.Name="Speed presets"
-                                    ItemsSource="{Binding SpeedPresets.Choices}"
-                                    Style="{StaticResource EffectChoiceRow}" />
-                                <ui:NumberBox
-                                    AutomationProperties.Name="Seconds per breath"
-                                    Maximum="3600"
-                                    Minimum="{Binding MinPeriodSeconds}"
-                                    Style="{StaticResource EffectSecondsBox}"
-                                    ToolTip="Exact time of one breath (dark, bright, dark again), at least 0.1 s"
-                                    Value="{Binding PeriodSeconds, Mode=TwoWay}" />
-                                <TextBlock Style="{StaticResource EffectUnitText}" Text="s per breath" />
-                                <TextBlock
-                                    Margin="8,0,0,0"
-                                    VerticalAlignment="Center"
-                                    Style="{StaticResource StatusText}"
-                                    Text="{Binding SpeedText}" />
-                            </WrapPanel>
-
-                            <!-- ═════ Shape: small pictures plus words ═════ -->
-                            <TextBlock Style="{StaticResource EffectSection}" Text="Shape" />
-                            <StackPanel Orientation="Horizontal">
-                                <RadioButton
-                                    AutomationProperties.HelpText="{Binding ShapeChoices.Choices[0].ToolTip}"
-                                    AutomationProperties.Name="Smooth shape"
-                                    GroupName="PulseShape"
-                                    IsChecked="{Binding ShapeChoices.Choices[0].IsSelected, Mode=TwoWay}"
-                                    Style="{StaticResource EffectChoiceButton}"
-                                    ToolTip="{Binding ShapeChoices.Choices[0].ToolTip}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <Path
-                                            Width="22"
-                                            Height="12"
-                                            Margin="0,0,6,0"
-                                            VerticalAlignment="Center"
-                                            Data="M0,12 C5,12 6,0 11,0 C16,0 17,12 22,12"
-                                            Stretch="None"
-                                            Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
-                                            StrokeThickness="1.5" />
-                                        <TextBlock VerticalAlignment="Center" Text="{Binding ShapeChoices.Choices[0].Label}" />
-                                    </StackPanel>
-                                </RadioButton>
-                                <RadioButton
-                                    AutomationProperties.HelpText="{Binding ShapeChoices.Choices[1].ToolTip}"
-                                    AutomationProperties.Name="Straight shape"
-                                    GroupName="PulseShape"
-                                    IsChecked="{Binding ShapeChoices.Choices[1].IsSelected, Mode=TwoWay}"
-                                    Style="{StaticResource EffectChoiceButton}"
-                                    ToolTip="{Binding ShapeChoices.Choices[1].ToolTip}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <Path
-                                            Width="22"
-                                            Height="12"
-                                            Margin="0,0,6,0"
-                                            VerticalAlignment="Center"
-                                            Data="M0,12 L11,0 L22,12"
-                                            Stretch="None"
-                                            Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
-                                            StrokeThickness="1.5" />
-                                        <TextBlock VerticalAlignment="Center" Text="{Binding ShapeChoices.Choices[1].Label}" />
-                                    </StackPanel>
-                                </RadioButton>
-                            </StackPanel>
-
-                            <!-- ═════ Brightness ═════ -->
-                            <TextBlock Style="{StaticResource EffectSection}" Text="Brightness" />
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="72" />
-                                    <ColumnDefinition Width="*" MinWidth="140" />
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
-                                </Grid.RowDefinitions>
-
-                                <TextBlock Style="{StaticResource FormLabel}" Text="Darkest" />
-                                <Slider
-                                    Grid.Column="1"
-                                    AutomationProperties.Name="Darkest brightness, percent"
-                                    Style="{StaticResource EffectPercentSlider}"
-                                    ToolTip="How dark the lights get at the bottom of each breath (0 % = off)"
-                                    Value="{Binding MinLevelPercent}" />
-                                <ui:NumberBox
-                                    Grid.Column="2"
-                                    Width="96"
-                                    AutomationProperties.Name="Darkest brightness, percent"
-                                    Maximum="100"
-                                    Minimum="0"
-                                    Style="{StaticResource FormNumberBox}"
-                                    ToolTip="Darkest brightness, 0–100 %"
-                                    Value="{Binding MinLevelPercent, Mode=TwoWay}" />
-                                <TextBlock
-                                    Grid.Column="3"
-                                    Margin="4,0,0,3"
-                                    Style="{StaticResource EffectUnitText}"
-                                    Text="%" />
-
-                                <TextBlock
-                                    Grid.Row="1"
-                                    Style="{StaticResource FormLabel}"
-                                    Text="Brightest" />
-                                <Slider
-                                    Grid.Row="1"
-                                    Grid.Column="1"
-                                    AutomationProperties.Name="Brightest brightness, percent"
-                                    Style="{StaticResource EffectPercentSlider}"
-                                    ToolTip="How bright the lights get at the top of each breath (100 % = full)"
-                                    Value="{Binding MaxLevelPercent}" />
-                                <ui:NumberBox
-                                    Grid.Row="1"
-                                    Grid.Column="2"
-                                    Width="96"
-                                    AutomationProperties.Name="Brightest brightness, percent"
-                                    Maximum="100"
-                                    Minimum="0"
-                                    Style="{StaticResource FormNumberBox}"
-                                    ToolTip="Brightest brightness, 0–100 %"
-                                    Value="{Binding MaxLevelPercent, Mode=TwoWay}" />
-                                <TextBlock
-                                    Grid.Row="1"
-                                    Grid.Column="3"
-                                    Margin="4,0,0,3"
-                                    Style="{StaticResource EffectUnitText}"
-                                    Text="%" />
-                            </Grid>
-
-                            <CheckBox
-                                Margin="0,4,0,0"
-                                AutomationProperties.Name="Use the white channel"
-                                Content="Use white channel"
-                                IsChecked="{Binding UseWhiteChannel}"
-                                IsEnabled="{Binding UsesColor}"
-                                ToolTip="On: the white part of the colour goes to the light's White channel. Off: white is mixed from red, green and blue." />
+                                        Data="M0,12 L11,0 L22,12"
+                                        Stretch="None"
+                                        Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
+                                        StrokeThickness="1.5" />
+                                    <TextBlock VerticalAlignment="Center" Text="{Binding ShapeChoices.Choices[1].Label}" />
+                                </StackPanel>
+                            </RadioButton>
                         </StackPanel>
-                    </ScrollViewer>
 
-                    <!-- ═════ On-screen preview ═════ -->
-                    <Border Grid.Column="1" Style="{StaticResource EffectPreviewPanel}">
-                        <DockPanel>
-                            <Border DockPanel.Dock="Top" Style="{StaticResource PanelHeader}">
-                                <TextBlock
-                                    Style="{StaticResource PanelTitle}"
-                                    Text="Preview (on screen)"
-                                    ToolTip="A picture of the effect on screen. The real lights show your changes too while this editor is open (see the editor toolbar)." />
-                            </Border>
-                            <StackPanel Margin="8,6">
-                                <edv:EffectPreviewGraph
-                                    Height="56"
-                                    AutomationProperties.Name="{Binding PreviewCaption}"
-                                    GridBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
-                                    IsAnimated="{Binding IsPreviewAnimated}"
-                                    LightColor="{Binding PreviewColorHex}"
-                                    LineBrush="{DynamicResource TextFillColorPrimaryBrush}"
-                                    MarkerBrush="{DynamicResource AccentFillColorDefaultBrush}"
-                                    Points="{Binding PreviewPoints}"
-                                    WindowSeconds="{Binding PreviewWindowSeconds}" />
-                                <TextBlock
-                                    Margin="0,6,0,0"
-                                    Style="{StaticResource HintText}"
-                                    Text="{Binding PreviewCaption}" />
-                            </StackPanel>
-                        </DockPanel>
-                    </Border>
-                </Grid>
-            </Border>
-        </TabItem>
-    </TabControl>
+                        <!-- ═════ Brightness ═════ -->
+                        <TextBlock Style="{StaticResource EffectSection}" Text="Brightness" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="EffectLabel" />
+                                <ColumnDefinition Width="*" MinWidth="140" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Style="{StaticResource FormLabel}" Text="Darkest" />
+                            <Slider
+                                Grid.Column="1"
+                                AutomationProperties.Name="Darkest brightness, percent"
+                                Style="{StaticResource EffectPercentSlider}"
+                                ToolTip="How dark the lights get at the bottom of each breath (0 % = off)"
+                                Value="{Binding MinLevelPercent}" />
+                            <ui:NumberBox
+                                Grid.Column="2"
+                                Margin="6,0,0,3"
+                                AutomationProperties.Name="Darkest brightness, percent"
+                                Maximum="100"
+                                Minimum="0"
+                                Style="{StaticResource EffectPercentBox}"
+                                ToolTip="Darkest brightness, 0–100 %"
+                                Value="{Binding MinLevelPercent, Mode=TwoWay}" />
+                            <TextBlock
+                                Grid.Column="3"
+                                Margin="4,0,0,3"
+                                Style="{StaticResource EffectUnitText}"
+                                Text="%" />
+
+                            <TextBlock
+                                Grid.Row="1"
+                                Style="{StaticResource FormLabel}"
+                                Text="Brightest" />
+                            <Slider
+                                Grid.Row="1"
+                                Grid.Column="1"
+                                AutomationProperties.Name="Brightest brightness, percent"
+                                Style="{StaticResource EffectPercentSlider}"
+                                ToolTip="How bright the lights get at the top of each breath (100 % = full)"
+                                Value="{Binding MaxLevelPercent}" />
+                            <ui:NumberBox
+                                Grid.Row="1"
+                                Grid.Column="2"
+                                Margin="6,0,0,3"
+                                AutomationProperties.Name="Brightest brightness, percent"
+                                Maximum="100"
+                                Minimum="0"
+                                Style="{StaticResource EffectPercentBox}"
+                                ToolTip="Brightest brightness, 0–100 %"
+                                Value="{Binding MaxLevelPercent, Mode=TwoWay}" />
+                            <TextBlock
+                                Grid.Row="1"
+                                Grid.Column="3"
+                                Margin="4,0,0,3"
+                                Style="{StaticResource EffectUnitText}"
+                                Text="%" />
+                        </Grid>
+
+                        <CheckBox
+                            Margin="0,4,0,0"
+                            AutomationProperties.Name="Use white channel"
+                            Content="Use white channel"
+                            IsChecked="{Binding UseWhiteChannel}"
+                            IsEnabled="{Binding UsesColor}"
+                            ToolTip="On: the white part of the colour goes to the light's White channel. Off: white is mixed from red, green and blue." />
+                    </StackPanel>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+
+        <GridSplitter
+            Grid.Column="3"
+            AutomationProperties.Name="Resize the preview"
+            Style="{StaticResource VerticalSplitter}" />
+
+        <!-- ═════════════ On-screen preview ═════════════ -->
+        <Border Grid.Column="4" Style="{StaticResource PanelBorder}">
+            <DockPanel>
+                <Border DockPanel.Dock="Top" Style="{StaticResource PanelHeader}">
+                    <TextBlock
+                        Style="{StaticResource PanelTitle}"
+                        Text="Preview (on screen)"
+                        ToolTip="A picture of the effect on screen. The real lights show your changes too while this editor is open (see the editor toolbar)." />
+                </Border>
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="8,6">
+                        <edv:EffectPreviewGraph
+                            Height="56"
+                            AutomationProperties.Name="{Binding PreviewCaption}"
+                            GridBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                            IsAnimated="{Binding IsPreviewAnimated}"
+                            LightColor="{Binding PreviewColorHex}"
+                            LineBrush="{DynamicResource TextFillColorPrimaryBrush}"
+                            MarkerBrush="{DynamicResource AccentFillColorDefaultBrush}"
+                            Points="{Binding PreviewPoints}"
+                            WindowSeconds="{Binding PreviewWindowSeconds}" />
+                        <TextBlock
+                            Margin="0,6,0,0"
+                            Style="{StaticResource HintText}"
+                            Text="{Binding PreviewCaption}" />
+                    </StackPanel>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+    </Grid>
 </UserControl>

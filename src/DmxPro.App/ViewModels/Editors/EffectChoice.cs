@@ -13,11 +13,12 @@ public sealed class EffectChoice<T> : ObservableObject
     private readonly Action<EffectChoice<T>> _choose;
     private bool _isSelected;
 
-    internal EffectChoice(T value, string label, string toolTip, Action<EffectChoice<T>> choose)
+    internal EffectChoice(T value, string label, string toolTip, string groupName, Action<EffectChoice<T>> choose)
     {
         Value = value;
         Label = label;
         ToolTip = toolTip;
+        GroupName = groupName;
         _choose = choose;
     }
 
@@ -26,6 +27,9 @@ public sealed class EffectChoice<T> : ObservableObject
     public string Label { get; }
 
     public string ToolTip { get; }
+
+    /// <summary>The <see cref="EffectChoiceGroup{T}.GroupName"/> of the row this button belongs to.</summary>
+    public string GroupName { get; }
 
     /// <summary>Checked: this is the current value. Setting true applies it; setting false is ignored (pick another one).</summary>
     public bool IsSelected
