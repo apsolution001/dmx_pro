@@ -171,7 +171,7 @@ public sealed partial class FunctionsViewModel : PageViewModel
     }
 
     /// <summary>The project has no listed functions at all: the list shows the "No functions yet" empty state.</summary>
-    public bool IsListEmpty => !_projects.Current.FunctionListItems.Any() && !(ShowHiddenShowCopies && _projects.Current.Functions.Count > 0);
+    public bool IsListEmpty => !_projects.Current.FunctionListItems.Any() && !(ShowHiddenShowCopies && _projects.Current.Functions.Any(f => f.OwnerFunctionId is null));
 
     /// <summary>Functions exist but the search/type filter hides all of them.</summary>
     public bool NoFilterResults => !IsListEmpty && Rows.Count == 0;
@@ -409,7 +409,7 @@ public sealed partial class FunctionsViewModel : PageViewModel
             return;
         }
 
-        _functionClipboard.Copy(function);
+        _functionClipboard.Copy(function, _projects.Current);
         StatusMessage?.Invoke(this, $"Copied \"{function.Name}\". Paste (Ctrl+V) adds a copy to the Functions list.");
     }
 
@@ -425,13 +425,15 @@ public sealed partial class FunctionsViewModel : PageViewModel
             return;
         }
 
+        // Deleting a chaser also deletes its owned step functions, so grab them first.
+        var owned = _projects.Current.OwnedFunctions(function.Id).ToList();
         await DeleteAsync();
         if (_projects.Current.FunctionListItems.Contains(function))
         {
             return;
         }
 
-        _functionClipboard.Copy(function);
+        _functionClipboard.Copy(function, owned);
         StatusMessage?.Invoke(this, $"Cut \"{function.Name}\". Paste (Ctrl+V) adds it back as a copy.");
     }
 
@@ -631,7 +633,7 @@ public sealed partial class FunctionsViewModel : PageViewModel
         var selected = SelectedRow?.Function ?? _selectionHiddenByFilter;
         var terms = Search.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         var searching = terms.Length > 0;
-        IEnumerable<LightFunction> source = ShowHiddenShowCopies ? project.Functions : project.FunctionListItems;
+        IEnumerable<LightFunction> source = ShowHiddenShowCopies ? project.Functions.Where(f => f.OwnerFunctionId is null) : project.FunctionListItems;
 
         if (_rowCacheRevision != _projects.Revision)
         {
