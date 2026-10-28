@@ -1,6 +1,7 @@
 using DmxPro.Engine;
 using DmxPro.Output;
 using Microsoft.Extensions.Logging;
+using Wpf.Ui.Controls;
 
 namespace DmxPro.App.Services;
 
@@ -11,6 +12,12 @@ namespace DmxPro.App.Services;
 /// </summary>
 public sealed class EngineRuntimeService
 {
+    /// <summary>
+    /// Shown in the shell info bar (error severity: it stays until closed or the next good refresh, safety rule 10) when
+    /// the engine could not take a project edit and keeps playing the previous model — e.g. a deleted chaser still runs.
+    /// </summary>
+    public const string RefreshFailedMessage = "Engine could not apply the latest edit — press Release All";
+
     private readonly ShowMusicService _music;
     private readonly DmxEngine _engine;
     private readonly EngineHost _host;
@@ -19,6 +26,7 @@ public sealed class EngineRuntimeService
     private readonly ProjectService _projects;
     private readonly EngineConsolePlayback _playback;
     private readonly ILogger<EngineRuntimeService> _logger;
+    private readonly InfoBarState _infoBar;
     private readonly object _gate = new();
     private SynchronizationContext? _uiContext;
     private bool _started;
@@ -34,8 +42,10 @@ public sealed class EngineRuntimeService
         ProjectService projects,
         EngineConsolePlayback playback,
         ShowMusicService music,
+        InfoBarState infoBar,
         ILogger<EngineRuntimeService> logger)
     {
+        _infoBar = infoBar;
         _music = music;
         _engine = engine;
         _host = host;
@@ -63,6 +73,12 @@ public sealed class EngineRuntimeService
     /// queueing engine commands (e.g. the edit preview); the engine refuses previews and overrides from then on anyway.
     /// </summary>
     public event EventHandler? ShuttingDown;
+
+    /// <summary>
+    /// True while the last engine refresh after a project edit failed: the engine still plays the model from before that
+    /// edit. Cleared by the next successful refresh or project load. UI thread only.
+    /// </summary>
+    public bool HasRefreshFailure { get; private set; }
 
     /// <summary>Frame sent once on close (safety rule 6). Settings sets this; default profile defaults.</summary>
     public SafeFrameMode SafeFrameMode
@@ -206,11 +222,49 @@ public sealed class EngineRuntimeService
             // Compiled on the UI thread on purpose: the project is edited there, so reading it elsewhere would race.
             _engine.RefreshPatch(_projects.Current);
             _playback.SyncWithModel();
+        }
+        catch (Exception ex)
+        {
+            // The engine keeps the previous model, so removed functions may keep playing. Safety rules 4 + 10: say so
+            // visibly and point at Release All. Never release automatically: the owner may be running a live show.
+            _logger.LogError(ex, "Updating the engine after a project edit failed");
+            ReportRefreshFailure();
+            return;
+        }
+
+        ClearRefreshFailure();
+        try
+        {
             PatchRefreshed?.Invoke(this, EventArgs.Empty);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Updating the engine after a project edit failed");
+            // The engine took the edit; only a listener failed.
+            _logger.LogError(ex, "A patch-refreshed handler failed");
+        }
+    }
+
+    private void ReportRefreshFailure()
+    {
+        HasRefreshFailure = true;
+
+        // Also re-shows the message when the user closed the bar and a later edit fails again.
+        _infoBar.Show(InfoBarSeverity.Error, RefreshFailedMessage, autoHide: false);
+    }
+
+    private void ClearRefreshFailure()
+    {
+        if (!HasRefreshFailure)
+        {
+            return;
+        }
+
+        HasRefreshFailure = false;
+
+        // Only hide our own message: a newer message (a save, an import error) must stay.
+        if (_infoBar.Message == RefreshFailedMessage)
+        {
+            _infoBar.Show(InfoBarSeverity.Informational, null);
         }
     }
 
@@ -220,6 +274,9 @@ public sealed class EngineRuntimeService
         try
         {
             _engine.LoadProject(_projects.Current);
+
+            // A fresh model replaced the stale one (and released everything): the old refresh failure no longer applies.
+            ClearRefreshFailure();
         }
         catch (Exception ex)
         {

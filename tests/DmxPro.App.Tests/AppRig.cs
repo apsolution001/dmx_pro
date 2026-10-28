@@ -25,8 +25,9 @@ internal sealed class AppRig : IDisposable
         Output = new OutputManager(new NoHardwareOutputFactory());
         Host = new EngineHost(Engine);
         Music = new ShowMusicService(Projects, Playback, new FakeAudioAnalyzer(), () => new FakeAudioPlayer(), NullLogger<ShowMusicService>.Instance);
+        InfoBar = new InfoBarState(TimeProvider.System);
         Runtime = new EngineRuntimeService(
-            Engine, Host, Output, new OutputFrameSink(Output), Projects, Playback, Music, NullLogger<EngineRuntimeService>.Instance);
+            Engine, Host, Output, new OutputFrameSink(Output), Projects, Playback, Music, InfoBar, NullLogger<EngineRuntimeService>.Instance);
         LiveMode = new LiveModeService(Engine, Playback, Runtime, NullLogger<LiveModeService>.Instance);
         Preview = new FunctionPreviewService(Engine, Projects, LiveMode, Playback, Runtime, Output, NullLogger<FunctionPreviewService>.Instance);
         Settings = new AppSettingsService(NullLogger<AppSettingsService>.Instance, _settingsPath);
@@ -45,6 +46,8 @@ internal sealed class AppRig : IDisposable
     public ShowMusicService Music { get; }
 
     public EngineRuntimeService Runtime { get; }
+
+    public InfoBarState InfoBar { get; }
 
     public LiveModeService LiveMode { get; }
 
@@ -77,6 +80,7 @@ internal sealed class AppRig : IDisposable
         }
 
         Playback.Dispose();
+        InfoBar.Dispose();
         try
         {
             File.Delete(_settingsPath);
