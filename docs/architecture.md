@@ -146,7 +146,7 @@ Details (`src/DmxPro.Engine/DmxEngine.cs`, `Runtime/`):
   `ProjectSerializer.Deserialize` after `SequenceMigration`. It converts old functions in place (same id, name,
   ownership): Colour cycle -> looping chaser, one step per colour; Fade -> chaser that plays once (From step, then To
   step with fade in = duration); Pulse -> looping bright/dark chaser with fades; Flash -> scene (VC flash buttons stay
-  momentary); Strobe -> scene setting the light's own strobe channel if it has one, else a 2-step on/off chaser. Files are
+  momentary); Strobe -> a 2-step on/off chaser for every light with the shutter held open (software mode), or a scene setting the strobe channel (hardware mode). Files are
   saved as scenes/chasers only.
 
 ## 5. Project file
