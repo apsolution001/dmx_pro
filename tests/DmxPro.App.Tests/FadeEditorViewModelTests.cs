@@ -42,6 +42,16 @@ public sealed class FadeEditorViewModelTests
     }
 
     [Fact]
+    public void Create_ChaserOwnedScene_IsNotOffered()
+    {
+        Scene("Blue", 0, 0, 255, 0);
+        Scene("Step 1", 255, 0, 0, 0).OwnerFunctionId = Guid.NewGuid();
+        var vm = Create(Fade());
+
+        Assert.Equal(["Blue"], vm.To.Options.Select(o => o.Name));
+    }
+
+    [Fact]
     public void Create_NoFromScene_ShowsCurrentLookAndToIsUnset()
     {
         Scene("Blue", 0, 0, 255, 0);

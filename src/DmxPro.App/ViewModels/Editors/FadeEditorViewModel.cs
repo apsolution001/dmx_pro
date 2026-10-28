@@ -171,7 +171,7 @@ public sealed partial class FadeEditorViewModel : FunctionEditorViewModel
     {
         var scenes = Project.Functions
             .OfType<SceneFunction>()
-            .Where(s => s.ShowInFunctionList || s.OwnerShowId is null || s.Id == FromSceneId || s.Id == ToSceneId)
+            .Where(s => !s.IsHiddenFromList || s.Id == FromSceneId || s.Id == ToSceneId)
             .OrderBy(s => s.Name, StringComparer.CurrentCultureIgnoreCase)
             .Select(SceneOption)
             .ToList();
