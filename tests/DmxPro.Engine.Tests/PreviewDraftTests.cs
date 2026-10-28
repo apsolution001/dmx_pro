@@ -377,17 +377,6 @@ public class PreviewDraftTests
         var cycle = rig.Add(new ColorCycleFunction { Name = "Cycle", FixtureIds = [rig.Fixture.Id] });
         rig.Load();
         rig.Engine.SetPreviewFunction(rig.Project, DraftOf(cycle));
-        for (var i = 0; i < 100; i++)
-        {
-            rig.Tick();
-        }
-
-        var before = GC.GetAllocatedBytesForCurrentThread();
-        for (var i = 0; i < 1000; i++)
-        {
-            rig.Tick();
-        }
-
-        Assert.Equal(0, GC.GetAllocatedBytesForCurrentThread() - before);
+        Assert.Equal(0, AllocationProbe.Measure(_ => rig.Tick()));
     }
 }

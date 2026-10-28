@@ -104,12 +104,6 @@ public class ArtNetPacketTests
         var data = TestFrames.Ramp(512);
         ArtNetPacket.WriteArtDmx(packet, 1, 0, 1, data);
 
-        var before = GC.GetAllocatedBytesForCurrentThread();
-        for (var i = 0; i < 1000; i++)
-        {
-            ArtNetPacket.WriteArtDmx(packet, (byte)i, 0, 1, data);
-        }
-
-        Assert.Equal(0, GC.GetAllocatedBytesForCurrentThread() - before);
+        Assert.Equal(0, AllocationProbe.Measure(i => ArtNetPacket.WriteArtDmx(packet, (byte)i, 0, 1, data)));
     }
 }

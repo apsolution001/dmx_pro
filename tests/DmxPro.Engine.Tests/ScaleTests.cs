@@ -45,26 +45,30 @@ public class ScaleTests
             engine.StartFunction(effect, EngineLayer.Console, 0.6);
         }
 
-        for (var i = 0; i < 100; i++)
-        {
-            engine.Tick(TestRig.Frame);
-        }
-
         const int ticks = 400;
-        var clock = new Stopwatch();
-        var before = GC.GetAllocatedBytesForCurrentThread();
-        clock.Start();
+        var ticksRun = 0;
+        var allocated = AllocationProbe.Measure(
+            _ =>
+            {
+                engine.Tick(TestRig.Frame);
+                ticksRun++;
+            },
+            iterations: ticks,
+            warmupPerRound: 100);
+
+        // Timing is a separate, loose pass: the allocation rounds above may have run more than one round of ticks.
+        var clock = Stopwatch.StartNew();
         for (var i = 0; i < ticks; i++)
         {
             engine.Tick(TestRig.Frame);
         }
 
         clock.Stop();
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        ticksRun += ticks;
         _output.WriteLine($"Tick: {clock.Elapsed.TotalMilliseconds / ticks:0.000} ms average, {allocated} bytes allocated over {ticks} ticks");
 
         Assert.Equal(0, allocated);
-        Assert.Equal(Universes * (100 + ticks), sink.Frames);
+        Assert.Equal(Universes * ticksRun, sink.Frames);
         Assert.Equal(ShowCount, engine.GetSnapshot()!.Shows.Count);
 
         // Generous bound (debug build, shared CI machine): a 44 Hz tick has ~22 ms; this catches O(n²) regressions only.

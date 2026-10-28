@@ -149,12 +149,6 @@ public class SacnPacketTests
         var data = TestFrames.Ramp(512);
         SacnPacket.WriteDataPacket(packet, TestCid, name, 100, 0, 0, SacnOptions.None, 1, data);
 
-        var before = GC.GetAllocatedBytesForCurrentThread();
-        for (var i = 0; i < 1000; i++)
-        {
-            SacnPacket.WriteDataPacket(packet, TestCid, name, 100, 0, (byte)i, SacnOptions.None, 1, data);
-        }
-
-        Assert.Equal(0, GC.GetAllocatedBytesForCurrentThread() - before);
+        Assert.Equal(0, AllocationProbe.Measure(i => SacnPacket.WriteDataPacket(packet, TestCid, name, 100, 0, (byte)i, SacnOptions.None, 1, data)));
     }
 }
