@@ -57,6 +57,32 @@ public class LegacyFunctionMigrationTests
         Modes = [new() { Name = "5ch", Channels = ["dim", "r", "g", "b", "shutter"] }],
     };
 
+    private static FixtureProfile ShutterProfile(string id, byte shutterDefault, params ChannelCapability[] capabilities) => new()
+    {
+        Id = id,
+        Manufacturer = "Test",
+        Model = id,
+        Channels =
+        [
+            new() { Key = "dim", Name = "Dimmer", Type = ChannelType.Dimmer },
+            new() { Key = "shutter", Name = "Shutter", Type = ChannelType.Strobe, Default = shutterDefault, Capabilities = [.. capabilities] },
+        ],
+        Modes = [new() { Name = "2ch", Channels = ["dim", "shutter"] }],
+    };
+
+    /// <summary>The value of <paramref name="key"/> in <paramref name="look"/> is unset or not in a strobing range of <see cref="StrobeProfile"/>.</summary>
+    private static void AssertNotStrobing(SceneFunction look, Guid fixtureId, string key)
+    {
+        if (look.GetValue(fixtureId, key) is not { } value)
+        {
+            return;
+        }
+
+        var range = StrobeProfile().Channels.Single(c => c.Key == key).FindCapability(value);
+        Assert.NotNull(range);
+        Assert.NotEqual(StrobeRangeKind.Strobing, StrobeCapabilityClassifier.Classify(range));
+    }
+
     private T Add<T>(T function)
         where T : LightFunction
     {
@@ -532,28 +558,88 @@ public class LegacyFunctionMigrationTests
     }
 
     [Fact]
-    public void Migrate_SoftwareStrobeOnDocumentedStrobeChannel_SceneWithMatchingRateValue()
+    public void Migrate_SoftwareStrobeOnDocumentedStrobeChannel_OnOffChaserWithShutterOpen()
     {
-        // Stage estimate 1–20 Hz over 10–255: 5 Hz → 10 + floor((4 / 19) × 245) = 61.
-        var strobe = Add(new StrobeFunction { FixtureIds = [_strobePar.Id], RateHz = 5 });
+        var strobe = Add(new StrobeFunction { Name = "Strobe", FixtureIds = [_strobePar.Id], RateHz = 5, DutyCycle = 0.5 });
 
         LegacyFunctionMigration.Migrate(_project);
 
-        var scene = Assert.IsType<SceneFunction>(_project.FindFunction(strobe.Id));
-        Assert.Equal((byte?)61, scene.GetValue(_strobePar.Id, "shutter"));
-        Assert.Equal((byte?)255, scene.GetValue(_strobePar.Id, "dim"));
+        // Safety rule 8: never a fixed strobing value on the channel (not rate-limited by the engine); a chaser instead.
+        var chaser = Chaser(strobe.Id);
+        Assert.Equal("Strobe", chaser.Name);
+        Assert.Equal(RunOrder.Loop, chaser.RunOrder);
+        Assert.Equal(2, chaser.Steps.Count);
+        Assert.Equal([0.1, 0.1], chaser.Steps.Select(s => Math.Round(s.HoldSeconds, 9)));
+        var on = Step(chaser, 0);
+        var off = Step(chaser, 1);
+        Assert.Equal((byte?)0, on.GetValue(_strobePar.Id, "shutter"));
+        Assert.Equal((byte?)0, off.GetValue(_strobePar.Id, "shutter"));
+        Assert.Equal((byte?)255, on.GetValue(_strobePar.Id, "dim"));
+        Assert.Equal((byte?)0, off.GetValue(_strobePar.Id, "dim"));
     }
 
     [Fact]
-    public void Migrate_SoftwareStrobeFasterThanLimit_ChannelValueCappedAtLimitRate()
+    public void Migrate_SoftwareStrobeFasterThanLimitOnStrobeChannel_ChaserCappedAndShutterNeverStrobing()
     {
-        var strobe = Add(new StrobeFunction { FixtureIds = [_strobePar.Id], RateHz = 25 });
+        var strobe = Add(new StrobeFunction { FixtureIds = [_strobePar.Id], RateHz = 25, DutyCycle = 0.05 });
 
         LegacyFunctionMigration.Migrate(_project);
 
-        // 10 Hz → 10 + floor((9 / 19) × 245) = 126.
-        var scene = Assert.IsType<SceneFunction>(_project.FindFunction(strobe.Id));
-        Assert.Equal((byte?)126, scene.GetValue(_strobePar.Id, "shutter"));
+        var chaser = Chaser(strobe.Id);
+        Assert.True(chaser.Steps.Sum(s => s.HoldSeconds) >= 1 / LegacyFunctionMigration.MaxConvertedStrobeRateHz);
+        Assert.All(chaser.Steps, s => Assert.True(s.HoldSeconds >= FunctionEditing.MinStepSeconds));
+        AssertNotStrobing(Step(chaser, 0), _strobePar.Id, "shutter");
+        AssertNotStrobing(Step(chaser, 1), _strobePar.Id, "shutter");
+    }
+
+    [Fact]
+    public void Migrate_SoftwareStrobeOpenRangeNotAtDefault_ShutterHeldAtStartOfOpenRange()
+    {
+        var profile = ShutterProfile(
+            "open-later",
+            0,
+            new() { Min = 0, Max = 9, Label = "Shutter closed" },
+            new() { Min = 10, Max = 19, Label = "Shutter open" },
+            new() { Min = 20, Max = 255, Label = "Strobe slow to fast" });
+        var light = _project.AddFixtures(profile, "2ch", 1, 1, 300, "OPEN")[0];
+        var strobe = Add(new StrobeFunction { FixtureIds = [light.Id], RateHz = 4 });
+
+        LegacyFunctionMigration.Migrate(_project);
+
+        var chaser = Chaser(strobe.Id);
+        Assert.Equal((byte?)10, Step(chaser, 0).GetValue(light.Id, "shutter"));
+        Assert.Equal((byte?)10, Step(chaser, 1).GetValue(light.Id, "shutter"));
+    }
+
+    [Fact]
+    public void Migrate_SoftwareStrobeDefaultStrobesNoOpenRange_ShutterHeldClosedNotStrobing()
+    {
+        var profile = ShutterProfile(
+            "closed-only",
+            100,
+            new() { Min = 0, Max = 9, Label = "Blackout" },
+            new() { Min = 10, Max = 255, Label = "Strobe slow to fast" });
+        var light = _project.AddFixtures(profile, "2ch", 1, 1, 300, "CLOSED")[0];
+        var strobe = Add(new StrobeFunction { FixtureIds = [light.Id], RateHz = 4 });
+
+        LegacyFunctionMigration.Migrate(_project);
+
+        var chaser = Chaser(strobe.Id);
+        Assert.Equal((byte?)0, Step(chaser, 0).GetValue(light.Id, "shutter"));
+        Assert.Equal((byte?)0, Step(chaser, 1).GetValue(light.Id, "shutter"));
+    }
+
+    [Fact]
+    public void Migrate_SoftwareStrobeUndocumentedStrobeChannel_ChaserLeavesChannelAlone()
+    {
+        var strobe = Add(new StrobeFunction { FixtureIds = [_par.Id], RateHz = 4 });
+
+        LegacyFunctionMigration.Migrate(_project);
+
+        var chaser = Chaser(strobe.Id);
+        Assert.Null(Step(chaser, 0).GetValue(_par.Id, "strobe"));
+        Assert.Null(Step(chaser, 1).GetValue(_par.Id, "strobe"));
+        Assert.Equal((byte?)0, Step(chaser, 1).GetValue(_par.Id, "dim"));
     }
 
     [Fact]
@@ -604,7 +690,7 @@ public class LegacyFunctionMigrationTests
     }
 
     [Fact]
-    public void Migrate_StrobeMixedLights_HardwareLightSteadyInBothSteps()
+    public void Migrate_SoftwareStrobeMixedLights_EveryLightFlashesInTheChaser()
     {
         var strobe = Add(new StrobeFunction { FixtureIds = [_strobePar.Id, _bar.Id], RateHz = 5 });
 
@@ -613,8 +699,26 @@ public class LegacyFunctionMigrationTests
         var chaser = Chaser(strobe.Id);
         var on = Step(chaser, 0);
         var off = Step(chaser, 1);
-        Assert.Equal((byte?)61, on.GetValue(_strobePar.Id, "shutter"));
-        Assert.Equal((byte?)61, off.GetValue(_strobePar.Id, "shutter"));
+        Assert.Equal((byte?)0, on.GetValue(_strobePar.Id, "shutter"));
+        Assert.Equal((byte?)0, off.GetValue(_strobePar.Id, "shutter"));
+        Assert.Equal((byte?)255, on.GetValue(_strobePar.Id, "dim"));
+        Assert.Equal((byte?)0, off.GetValue(_strobePar.Id, "dim"));
+        Assert.Equal((byte?)255, on.GetValue(_bar.Id, "r"));
+        Assert.Equal((byte?)0, off.GetValue(_bar.Id, "r"));
+    }
+
+    [Fact]
+    public void Migrate_HardwareStrobeMixedLights_HardwareLightSteadyInBothSteps()
+    {
+        var strobe = Add(new StrobeFunction { FixtureIds = [_strobePar.Id, _bar.Id], Mode = StrobeMode.Hardware, RateHz = 5 });
+
+        LegacyFunctionMigration.Migrate(_project);
+
+        var chaser = Chaser(strobe.Id);
+        var on = Step(chaser, 0);
+        var off = Step(chaser, 1);
+        Assert.Equal((byte?)10, on.GetValue(_strobePar.Id, "shutter"));
+        Assert.Equal((byte?)10, off.GetValue(_strobePar.Id, "shutter"));
         Assert.Equal((byte?)255, off.GetValue(_strobePar.Id, "dim"));
         Assert.Equal((byte?)0, off.GetValue(_bar.Id, "r"));
     }
@@ -623,14 +727,14 @@ public class LegacyFunctionMigrationTests
     [InlineData(0.0)]
     [InlineData(-3.0)]
     [InlineData(double.NaN)]
-    public void Migrate_SoftwareStrobeNoRate_SteadySceneWithoutStrobeChannel(double rate)
+    public void Migrate_SoftwareStrobeNoRate_SteadySceneWithShutterOpen(double rate)
     {
         var strobe = Add(new StrobeFunction { FixtureIds = [_strobePar.Id, _bar.Id], RateHz = rate });
 
         LegacyFunctionMigration.Migrate(_project);
 
         var scene = Assert.IsType<SceneFunction>(_project.FindFunction(strobe.Id));
-        Assert.Null(scene.GetValue(_strobePar.Id, "shutter"));
+        Assert.Equal((byte?)0, scene.GetValue(_strobePar.Id, "shutter"));
         Assert.Equal((byte?)255, scene.GetValue(_bar.Id, "r"));
     }
 
@@ -737,13 +841,15 @@ public class LegacyFunctionMigrationTests
     {
         Add(new ColorCycleFunction { FixtureIds = [_par.Id] });
         Add(new StrobeFunction { FixtureIds = [_bar.Id] });
+        Add(new StrobeFunction { FixtureIds = [_strobePar.Id, _bar.Id], RateHz = 8 });
+        Add(new StrobeFunction { FixtureIds = [_strobePar.Id], Mode = StrobeMode.Hardware });
         Add(new FlashFunction { FixtureIds = [_par.Id] });
         var first = LegacyFunctionMigration.Migrate(_project);
         var snapshot = _serializer.Serialize(_project);
 
         var second = LegacyFunctionMigration.Migrate(_project);
 
-        Assert.Equal(3, first);
+        Assert.Equal(5, first);
         Assert.Equal(0, second);
         Assert.Equal(snapshot, _serializer.Serialize(_project));
     }

@@ -1,6 +1,5 @@
 using DmxPro.Core.Functions;
 using DmxPro.Core.Profiles;
-using DmxPro.Core.Stage;
 using DmxPro.Core.VirtualConsole;
 
 namespace DmxPro.Core.Projects;
@@ -444,12 +443,15 @@ public static class LegacyFunctionMigration
     // ───────────────────────────── Strobe ─────────────────────────────
 
     /// <summary>
-    /// Lights with a profile Strobe channel that documents a strobing range use it: the channel gets the hardware value
-    /// (hardware mode: the set value, else the start of the first strobing range) or, in software mode, the value whose
-    /// estimated rate (the virtual stage's 1–20 Hz over the first strobing range) is not faster than the strobe's capped
-    /// rate, with the colour steadily on. When every light can do that the result is a Scene. Other lights flash in a
-    /// looping 2-step "On"/"Off" chaser (hard cuts) at the strobe's rate, capped at <see cref="MaxConvertedStrobeRateHz"/>
-    /// and at least one chaser step per half, with the duty cycle. Without a valid rate the lights stay steadily on.
+    /// Only a <b>Hardware</b>-mode strobe (set explicitly by the user) uses the lights' profile Strobe channels: the set
+    /// value, else the start of the first documented strobing range, with the colour steadily on. When every light can do
+    /// that the result is a Scene. A <b>Software</b>-mode strobe never drives a Strobe channel to a strobing value
+    /// (safety rule 8: strobe-channel values are not rate-limited by the engine and their Hz meaning is unknown): every
+    /// light, also one with a strobe channel, flashes its colour in a looping 2-step "On"/"Off" chaser (hard cuts) at the
+    /// strobe's rate, capped at <see cref="MaxConvertedStrobeRateHz"/> and at least one chaser step per half, with the duty
+    /// cycle, so the engine's chaser speed limit governs it. Strobe channels not used for a hardware strobe are held at
+    /// the profile's documented open / no-strobe value in every step (see <see cref="NonStrobingValue"/>) so the colour
+    /// shows. Lights a hardware strobe cannot drive fall back to the chaser. Without a valid rate the lights stay steadily on.
     /// </summary>
     private static (LightFunction, List<LightFunction>) ConvertStrobe(Project project, StrobeFunction strobe)
     {
@@ -464,17 +466,25 @@ public static class LegacyFunctionMigration
         foreach (var light in lights)
         {
             var usedChannel = false;
-            if (hardware || rate > 0)
+            if (hardware)
             {
                 foreach (var channel in light.Strobe)
                 {
-                    var value = hardware ? strobe.HardwareValue ?? FirstStrobingValue(channel) : StrobeValueForRate(channel, rate);
-                    if (value is { } v)
+                    if ((strobe.HardwareValue ?? FirstStrobingValue(channel)) is { } v)
                     {
                         on.SetValue(light.Id, channel.Key, v);
                         off.SetValue(light.Id, channel.Key, v);
                         usedChannel = true;
                     }
+                }
+            }
+
+            foreach (var channel in light.Strobe)
+            {
+                if (on.GetValue(light.Id, channel.Key) is null && NonStrobingValue(channel) is { } safe)
+                {
+                    on.SetValue(light.Id, channel.Key, safe);
+                    off.SetValue(light.Id, channel.Key, safe);
                 }
             }
 
@@ -514,21 +524,61 @@ public static class LegacyFunctionMigration
         FirstStrobingRange(channel) is { } range ? (byte)Math.Clamp(range.Min, 0, 255) : null;
 
     /// <summary>
-    /// Value in the first strobing range whose rate, read like the virtual stage reads it (linear
-    /// <see cref="StageColorStrobe.MinRateHz"/>–<see cref="StageColorStrobe.MaxRateHz"/> from the range's start to its end),
-    /// is at most <paramref name="rateHz"/> (rounded towards slow). Null when the profile documents no strobing range.
+    /// The value a Strobe channel holds while a converted strobe does not use it, resolved from the profile with the shared
+    /// <see cref="StrobeCapabilityClassifier"/> (the same rule as the engine's strobe-safe value): the profile default when
+    /// it lies in a steady (open / no strobe) range, else the start of the first steady range; without a steady range the
+    /// start of the first closed range when the default itself would strobe. Null (channel left alone, at its default)
+    /// when the profile documents nothing that says the default strobes.
     /// </summary>
-    private static byte? StrobeValueForRate(ChannelDefinition channel, double rateHz)
+    private static byte? NonStrobingValue(ChannelDefinition channel)
     {
-        if (FirstStrobingRange(channel) is not { } range)
+        if (channel.Capabilities is null)
         {
             return null;
         }
 
-        var min = Math.Clamp(range.Min, 0, 255);
-        var max = Math.Clamp(range.Max, min, 255);
-        var t = Math.Clamp((rateHz - StageColorStrobe.MinRateHz) / (StageColorStrobe.MaxRateHz - StageColorStrobe.MinRateHz), 0, 1);
-        return (byte)(min + (int)Math.Floor(t * (max - min)));
+        ChannelCapability? firstSteady = null;
+        ChannelCapability? firstClosed = null;
+        var defaultFound = false;
+        var defaultKind = StrobeRangeKind.Unknown;
+        foreach (var capability in channel.Capabilities)
+        {
+            if (capability is null)
+            {
+                continue;
+            }
+
+            var kind = StrobeCapabilityClassifier.Classify(capability);
+            if (!defaultFound && capability.Contains(channel.Default))
+            {
+                defaultFound = true;
+                defaultKind = kind;
+            }
+
+            if (kind == StrobeRangeKind.Steady)
+            {
+                firstSteady ??= capability;
+            }
+            else if (kind == StrobeRangeKind.Closed)
+            {
+                firstClosed ??= capability;
+            }
+        }
+
+        // The first range containing a value decides what it means (as in ChannelDefinition.FindCapability).
+        if (defaultKind == StrobeRangeKind.Steady)
+        {
+            return channel.Default;
+        }
+
+        if (firstSteady is not null)
+        {
+            return (byte)Math.Clamp(firstSteady.Min, 0, 255);
+        }
+
+        return defaultKind == StrobeRangeKind.Strobing && firstClosed is not null
+            ? (byte)Math.Clamp(firstClosed.Min, 0, 255)
+            : null;
     }
 
     private static ChannelCapability? FirstStrobingRange(ChannelDefinition channel)
