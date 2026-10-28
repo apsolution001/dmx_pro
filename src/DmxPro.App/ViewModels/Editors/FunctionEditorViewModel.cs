@@ -134,6 +134,11 @@ public abstract partial class FunctionEditorViewModel : ObservableObject
     /// </summary>
     public LightFunction BuildPreviewFunction()
     {
+        if (InnerEditor is { } inner)
+        {
+            return inner.BuildPreviewFunction();
+        }
+
         var copy = Original.CloneAsNew();
         copy.Id = Original.Id;
         copy.CopiedFromId = Original.CopiedFromId;
@@ -150,6 +155,25 @@ public abstract partial class FunctionEditorViewModel : ObservableObject
 
         return copy;
     }
+
+    /// <summary>
+    /// Another function's editor currently shown inside this one (a chaser step's own copy, opened with "Edit step");
+    /// null normally. While set, the host hides this editor's toolbar (the inner editor shows its own) and the live
+    /// preview shows the inner editor's draft.
+    /// </summary>
+    public virtual FunctionEditorViewModel? InnerEditor => null;
+
+    /// <summary>True while <see cref="InnerEditor"/> is shown (the host hides this editor's own toolbar).</summary>
+    public bool IsInnerEditorOpen => InnerEditor is not null;
+
+    /// <summary>
+    /// Unsaved functions the preview of <see cref="BuildPreviewFunction"/> plays besides the function itself (a chaser
+    /// draft's own step functions); they stand in for the saved functions with the same ids. Empty for most editors.
+    /// </summary>
+    public IReadOnlyList<LightFunction> PreviewFunctions => InnerEditor is { } inner ? inner.PreviewFunctions : DraftFunctions;
+
+    /// <summary>The editor's own unsaved functions for <see cref="PreviewFunctions"/>; none by default.</summary>
+    protected virtual IReadOnlyList<LightFunction> DraftFunctions => [];
 
     /// <summary>Called when the editor goes away: unsubscribe from long-lived services here.</summary>
     public virtual void Detach()
@@ -202,6 +226,21 @@ public abstract partial class FunctionEditorViewModel : ObservableObject
         if (changed)
         {
             MarkDirty();
+        }
+    }
+
+    /// <summary>
+    /// Tells the host the project changed although this editor's own draft was not saved (e.g. a chaser step's copy
+    /// was saved in its inner editor, or a step was saved as a new function), so it marks the project changed.
+    /// </summary>
+    protected void RaiseSaved() => Saved?.Invoke(this, EventArgs.Empty);
+
+    /// <summary>Re-sends the draft to the live preview without counting as an edit (e.g. another step selected).</summary>
+    protected void NotifyDraftChanged()
+    {
+        if (!_loading)
+        {
+            DraftChanged?.Invoke(this, EventArgs.Empty);
         }
     }
 

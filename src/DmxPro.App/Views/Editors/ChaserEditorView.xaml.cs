@@ -3,14 +3,17 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using DmxPro.App.Services;
 using DmxPro.App.ViewModels.Editors;
 
 namespace DmxPro.App.Views.Editors;
 
 /// <summary>
 /// Chaser editor. Code-behind only handles view concerns: focus (picker flyout, row selection when a timing box is
-/// focused), mapping keys / double-clicks to ViewModel commands, and the drag-to-move gesture with its insertion line.
-/// All list changes are ViewModel commands. DataContext: <c>ChaserEditorViewModel</c>.
+/// focused), mapping keys / double-clicks to ViewModel commands, the drag-to-move gesture with its insertion line,
+/// keeping the list selection and the ViewModel's selection in step (the list virtualizes its rows, so rows cannot
+/// bind it), and giving the ViewModel its prompts (the editors are created without DI). All list changes are
+/// ViewModel commands. DataContext: <c>ChaserEditorViewModel</c>.
 /// </summary>
 public partial class ChaserEditorView : UserControl
 {
@@ -18,14 +21,66 @@ public partial class ChaserEditorView : UserControl
 
     private Point? _dragStart;
     private bool _focusStepsOnClose;
+    private bool _syncingSelection;
     private InsertionLineAdorner? _insertionLine;
 
     public ChaserEditorView()
     {
         InitializeComponent();
+        DataContextChanged += OnDataContextChanged;
     }
 
     private ChaserEditorViewModel? ViewModel => DataContext as ChaserEditorViewModel;
+
+    private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (e.OldValue is ChaserEditorViewModel old)
+        {
+            old.SelectionReset -= OnSelectionReset;
+        }
+
+        if (e.NewValue is ChaserEditorViewModel viewModel)
+        {
+            viewModel.Dialogs ??= new DialogService();
+            viewModel.SelectionReset += OnSelectionReset;
+            Dispatcher.BeginInvoke(() => OnSelectionReset(viewModel, EventArgs.Empty));
+        }
+    }
+
+    /// <summary>The user changed the list selection: tell the ViewModel (rows and the step panel follow).</summary>
+    private void OnStepGridSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_syncingSelection || ViewModel is not { } vm)
+        {
+            return;
+        }
+
+        vm.SyncSelection(StepGrid.SelectedItems.OfType<ChaserStepRowViewModel>().ToList(), StepGrid.SelectedItem as ChaserStepRowViewModel);
+    }
+
+    /// <summary>The ViewModel changed the selection (add, duplicate, remove, undo, select all): the list follows.</summary>
+    private void OnSelectionReset(object? sender, EventArgs e)
+    {
+        if (!ReferenceEquals(sender, ViewModel) || ViewModel is not { } vm)
+        {
+            return;
+        }
+
+        _syncingSelection = true;
+        try
+        {
+            StepGrid.SelectOnly(vm.Steps.Where(s => s.IsSelected).ToList());
+        }
+        finally
+        {
+            _syncingSelection = false;
+        }
+
+        if (vm.CurrentStep is { } current)
+        {
+            StepGrid.ScrollIntoView(current);
+        }
+    }
 
     /// <summary>Typing in a step's timing box selects that step (only it, unless it is already part of the selection).</summary>
     private void OnRowGotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)

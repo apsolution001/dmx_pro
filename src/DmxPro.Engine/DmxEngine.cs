@@ -266,8 +266,12 @@ public sealed partial class DmxEngine
     /// </summary>
     /// <param name="project">The open project (fixtures, profiles, referenced functions).</param>
     /// <param name="draft">The editor's draft; may be a copy that is not in the project.</param>
+    /// <param name="draftFunctions">
+    /// Optional unsaved functions the draft plays (e.g. a chaser editor's own step scenes that are not saved yet): each
+    /// replaces the project's function with the same id, or is added when the project has none, for this preview only.
+    /// </param>
     /// <returns>True when the preview was queued.</returns>
-    public bool SetPreviewFunction(Project project, LightFunction draft)
+    public bool SetPreviewFunction(Project project, LightFunction draft, IReadOnlyList<LightFunction>? draftFunctions = null)
     {
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(draft);
@@ -281,7 +285,7 @@ public sealed partial class DmxEngine
         // first. A caller's own "check ReleaseGeneration, then call" cannot close that window.
         var generation = Interlocked.Read(ref _releaseGeneration);
         var model = _latestModel;
-        var program = EngineModelBuilder.CompileDraft(project, draft, model, _logger);
+        var program = EngineModelBuilder.CompileDraft(project, draft, model, _logger, draftFunctions);
         if (program is null)
         {
             return false;

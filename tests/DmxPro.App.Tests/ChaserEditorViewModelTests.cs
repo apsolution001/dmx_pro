@@ -4,8 +4,12 @@ using DmxPro.Core.Projects;
 
 namespace DmxPro.App.Tests;
 
-public sealed class ChaserEditorViewModelTests
+public sealed class ChaserEditorViewModelTests : IDisposable
 {
+    private readonly AppRig _rig = new();
+
+    public void Dispose() => _rig.Dispose();
+
     [Fact]
     public void Load_ReadsStepsAndPlaybackWithoutDirtying()
     {
@@ -13,7 +17,7 @@ public sealed class ChaserEditorViewModelTests
         chaser.RunOrder = RunOrder.PingPong;
         chaser.Direction = RunDirection.Backward;
 
-        var vm = new ChaserEditorViewModel(project, chaser);
+        var vm = Create(project, chaser);
 
         Assert.Equal(["Red", "Green", "Blue"], vm.Steps.Select(s => s.FunctionName));
         Assert.Equal([1, 2, 3], vm.Steps.Select(s => s.Number));
@@ -29,7 +33,7 @@ public sealed class ChaserEditorViewModelTests
     {
         var (project, chaser) = CreateProject();
 
-        var vm = new ChaserEditorViewModel(project, chaser);
+        var vm = Create(project, chaser);
 
         Assert.True(vm.HasNoSteps);
         Assert.False(vm.ApplyTimingToAllCommand.CanExecute(null));
@@ -42,7 +46,7 @@ public sealed class ChaserEditorViewModelTests
     {
         var (project, chaser) = CreateProject("Red", "Green");
         var blue = AddScene(project, "Blue");
-        var vm = new ChaserEditorViewModel(project, chaser);
+        var vm = Create(project, chaser);
         vm.Steps[0].IsSelected = true;
         vm.NewHoldSeconds = 2.5;
         vm.NewFadeInSeconds = 0.5;
@@ -65,7 +69,7 @@ public sealed class ChaserEditorViewModelTests
     public void Picker_HidesTheChaserItselfAndFiltersBySearch()
     {
         var (project, chaser) = CreateProject("Red", "Green");
-        var vm = new ChaserEditorViewModel(project, chaser);
+        var vm = Create(project, chaser);
 
         Assert.DoesNotContain(vm.PickerItems, p => p.Function == chaser);
 
@@ -78,7 +82,7 @@ public sealed class ChaserEditorViewModelTests
     public void AddFirstMatch_AddsTheFirstSearchResult()
     {
         var (project, chaser) = CreateProject("Red", "Green");
-        var vm = new ChaserEditorViewModel(project, chaser);
+        var vm = Create(project, chaser);
         vm.PickerSearch = "green";
 
         vm.AddFirstMatchCommand.Execute(null);
@@ -90,7 +94,7 @@ public sealed class ChaserEditorViewModelTests
     public void RemoveSteps_RemovesAllSelectedAndSelectsTheNext()
     {
         var (project, chaser) = CreateProject("A", "B", "C", "D");
-        var vm = new ChaserEditorViewModel(project, chaser);
+        var vm = Create(project, chaser);
         vm.Steps[0].IsSelected = true;
         vm.Steps[2].IsSelected = true;
 
@@ -106,7 +110,7 @@ public sealed class ChaserEditorViewModelTests
     public void DuplicateSteps_CopiesAfterLastSelected()
     {
         var (project, chaser) = CreateProject("A", "B", "C");
-        var vm = new ChaserEditorViewModel(project, chaser);
+        var vm = Create(project, chaser);
         vm.Steps[0].IsSelected = true;
         vm.Steps[1].IsSelected = true;
 
@@ -121,7 +125,7 @@ public sealed class ChaserEditorViewModelTests
     public void MoveSteps_UpDownAndCanExecuteAtTheEnds()
     {
         var (project, chaser) = CreateProject("A", "B", "C");
-        var vm = new ChaserEditorViewModel(project, chaser);
+        var vm = Create(project, chaser);
         vm.Steps[0].IsSelected = true;
 
         Assert.False(vm.MoveStepsUpCommand.CanExecute(null));
@@ -138,7 +142,7 @@ public sealed class ChaserEditorViewModelTests
     public void MoveStepsTo_DropsSelectionIntoGap()
     {
         var (project, chaser) = CreateProject("A", "B", "C", "D");
-        var vm = new ChaserEditorViewModel(project, chaser);
+        var vm = Create(project, chaser);
         vm.Steps[3].IsSelected = true;
 
         vm.MoveStepsToCommand.Execute(1);
@@ -150,7 +154,7 @@ public sealed class ChaserEditorViewModelTests
     public void ApplyTimingToSelected_ChangesOnlySelectedSteps()
     {
         var (project, chaser) = CreateProject("A", "B", "C");
-        var vm = new ChaserEditorViewModel(project, chaser);
+        var vm = Create(project, chaser);
         vm.Steps[1].IsSelected = true;
         vm.NewHoldSeconds = 3;
         vm.NewFadeOutSeconds = 1;
@@ -168,7 +172,7 @@ public sealed class ChaserEditorViewModelTests
     public void ApplyTimingToAll_UpdatesCycle()
     {
         var (project, chaser) = CreateProject("A", "B");
-        var vm = new ChaserEditorViewModel(project, chaser);
+        var vm = Create(project, chaser);
         vm.NewHoldSeconds = 4;
 
         vm.ApplyTimingToAllCommand.Execute(null);
@@ -180,7 +184,7 @@ public sealed class ChaserEditorViewModelTests
     public void ApplyTiming_SameValues_StaysClean()
     {
         var (project, chaser) = CreateProject("A", "B");
-        var vm = new ChaserEditorViewModel(project, chaser);
+        var vm = Create(project, chaser);
 
         vm.ApplyTimingToAllCommand.Execute(null);
 
@@ -191,7 +195,7 @@ public sealed class ChaserEditorViewModelTests
     public void StepTimingFields_ClampAndIgnoreEmptyWithoutDirtying()
     {
         var (project, chaser) = CreateProject("A");
-        var vm = new ChaserEditorViewModel(project, chaser);
+        var vm = Create(project, chaser);
 
         vm.NewHoldSeconds = -5;
         Assert.Equal(0, vm.NewHoldSeconds);
@@ -205,7 +209,7 @@ public sealed class ChaserEditorViewModelTests
     public void RunOrderRadios_SetRunOrderAndRebuildStrip()
     {
         var (project, chaser) = CreateProject("A", "B", "C");
-        var vm = new ChaserEditorViewModel(project, chaser);
+        var vm = Create(project, chaser);
 
         vm.IsBackAndForth = true;
         Assert.Equal(RunOrder.PingPong, vm.RunOrder);
@@ -226,7 +230,7 @@ public sealed class ChaserEditorViewModelTests
     public void Save_WritesStepsAndPlayback_RevertRestores()
     {
         var (project, chaser) = CreateProject("A", "B");
-        var vm = new ChaserEditorViewModel(project, chaser);
+        var vm = Create(project, chaser);
         vm.Steps[0].IsSelected = true;
         vm.MoveStepsDownCommand.Execute(null);
         vm.IsBackAndForth = true;
@@ -247,7 +251,7 @@ public sealed class ChaserEditorViewModelTests
     public void SelectionCount_FollowsRows()
     {
         var (project, chaser) = CreateProject("A", "B", "C");
-        var vm = new ChaserEditorViewModel(project, chaser);
+        var vm = Create(project, chaser);
 
         vm.SelectAllStepsCommand.Execute(null);
 
@@ -262,12 +266,14 @@ public sealed class ChaserEditorViewModelTests
         var (project, chaser) = CreateProject("A");
         chaser.AddStep(Guid.NewGuid());
 
-        var vm = new ChaserEditorViewModel(project, chaser);
+        var vm = Create(project, chaser);
 
         Assert.True(vm.Steps[1].IsMissing);
-        Assert.Equal("(missing function)", vm.Steps[1].FunctionName);
+        Assert.Equal("(deleted function)", vm.Steps[1].FunctionName);
         Assert.False(vm.Steps[1].HasColor);
     }
+
+    private ChaserEditorViewModel Create(Project project, ChaserFunction chaser) => new(project, chaser, _rig.Settings, _rig.Clipboard);
 
     private static (Project Project, ChaserFunction Chaser) CreateProject(params string[] sceneNames)
     {

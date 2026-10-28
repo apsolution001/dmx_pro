@@ -37,7 +37,16 @@ internal sealed class FunctionCompiler
     /// <param name="draft">
     /// Optional unsaved function that replaces the project's function with the same id (preview of an editor draft).
     /// </param>
-    public FunctionCompiler(Project project, PatchIndex patch, ILogger logger, LightFunction? draft = null)
+    /// <param name="draftFunctions">
+    /// Optional unsaved functions the draft references (e.g. a chaser draft's own step scenes): each replaces the
+    /// project's function with the same id, or is added. The draft itself wins over an entry with its id.
+    /// </param>
+    public FunctionCompiler(
+        Project project,
+        PatchIndex patch,
+        ILogger logger,
+        LightFunction? draft = null,
+        IReadOnlyList<LightFunction>? draftFunctions = null)
     {
         _project = project;
         _patch = patch;
@@ -46,6 +55,17 @@ internal sealed class FunctionCompiler
         foreach (var function in project.Functions)
         {
             _byId.TryAdd(function.Id, function);
+        }
+
+        if (draftFunctions is not null)
+        {
+            foreach (var function in draftFunctions)
+            {
+                if (function is not null)
+                {
+                    _byId[function.Id] = function;
+                }
+            }
         }
 
         if (draft is not null)
