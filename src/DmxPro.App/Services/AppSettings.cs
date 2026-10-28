@@ -17,7 +17,9 @@ public sealed class AppSettings
     public const int MaxSeekStepSeconds = 60;
     public const int DefaultSeekStepSeconds = 5;
     public const int DefaultDmxRefreshRateHz = 44;
-    public const int MaxAutosaveIntervalMinutes = 120;
+    public const int MinAutosaveIntervalMinutes = 1;
+    public const int MaxAutosaveIntervalMinutes = 60;
+    public const int DefaultAutosaveIntervalMinutes = 5;
 
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
 
@@ -47,8 +49,23 @@ public sealed class AppSettings
     public int DmxRefreshRateHz { get; set; } = DefaultDmxRefreshRateHz;
 
     // ── Project ──
-    /// <summary>Minutes between autosaves; 0 = off. The autosave feature itself arrives in phase 9.</summary>
-    public int AutosaveIntervalMinutes { get; set; }
+    /// <summary>
+    /// Auto-save the open project (only one that has a file and unsaved changes) every
+    /// <see cref="AutosaveIntervalMinutes"/> (<see cref="ProjectFileSyncService"/>). On by default.
+    /// </summary>
+    public bool AutoSaveEnabled { get; set; } = true;
+
+    /// <summary>
+    /// Minutes between auto-saves (1–60, default 5). Files from before auto-save existed stored 0 here (the field was a
+    /// placeholder that did nothing); that is read as the default.
+    /// </summary>
+    public int AutosaveIntervalMinutes { get; set; } = DefaultAutosaveIntervalMinutes;
+
+    /// <summary>
+    /// When the open project file is changed by another program, apply the change in place (not a project open: output
+    /// and running functions stay). On by default.
+    /// </summary>
+    public bool ReloadProjectOnDiskChange { get; set; } = true;
 
     /// <summary>Folder for Open / Save As dialogs; null = <c>Documents\DmxPro</c>.</summary>
     public string? DefaultProjectFolder { get; set; }
@@ -87,7 +104,9 @@ public sealed class AppSettings
         MaxStrobeRateHz = Math.Clamp(MaxStrobeRateHz, MinStrobeRateHz, MaxStrobeRateLimitHz);
         SeekStepSeconds = Math.Clamp(SeekStepSeconds, MinSeekStepSeconds, MaxSeekStepSeconds);
         DmxRefreshRateHz = Math.Clamp(DmxRefreshRateHz, OutputConfig.MinFrameRateHz, OutputConfig.MaxFrameRateHz);
-        AutosaveIntervalMinutes = Math.Clamp(AutosaveIntervalMinutes, 0, MaxAutosaveIntervalMinutes);
+        AutosaveIntervalMinutes = AutosaveIntervalMinutes <= 0
+            ? DefaultAutosaveIntervalMinutes
+            : Math.Clamp(AutosaveIntervalMinutes, MinAutosaveIntervalMinutes, MaxAutosaveIntervalMinutes);
         if (string.IsNullOrWhiteSpace(DefaultProjectFolder))
         {
             DefaultProjectFolder = null;

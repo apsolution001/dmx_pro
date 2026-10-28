@@ -15,7 +15,7 @@ namespace DmxPro.App.ViewModels;
 /// Edit opens the editor of the function's type. While the editor is open on this page (and live mode is off) its
 /// unsaved draft is shown on the lights automatically (<see cref="FunctionPreviewService"/>); selecting never changes them.
 /// </summary>
-public sealed partial class FunctionsViewModel : PageViewModel
+public sealed partial class FunctionsViewModel : PageViewModel, IUnsavedDraftSource
 {
     private static FunctionTypeOption AllTypes { get; } = new(null, "All types");
 
@@ -141,6 +141,9 @@ public sealed partial class FunctionsViewModel : PageViewModel
     public SceneFunction? SelectedScene => SelectedRow?.Function as SceneFunction;
 
     public bool IsEditing => Editor is not null;
+
+    /// <inheritdoc />
+    public bool HasUnsavedDraft => Editor?.IsDirty == true;
 
     public bool IsSummaryVisible => Editor is null && SelectedRow is not null;
 

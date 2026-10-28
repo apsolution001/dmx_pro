@@ -66,7 +66,7 @@ public partial class MainWindow : FluentWindow
             return;
         }
 
-        if (await _viewModel.ConfirmDiscardChangesAsync())
+        if (await _viewModel.ConfirmCloseAsync())
         {
             // The live stage window has no Owner (it must not float over this window), so close it here: it stops its
             // preview and commits a pending drag before the shutdown, and the app does not linger with it open.

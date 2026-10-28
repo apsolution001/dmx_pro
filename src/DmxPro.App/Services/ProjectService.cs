@@ -59,6 +59,13 @@ public sealed class ProjectService
     public bool IsDirty { get; private set; }
 
     /// <summary>
+    /// <see cref="ProjectSerializer.ComputeContentHash"/> of what the project file is known to hold: the bytes last
+    /// opened, saved or reloaded, or a disk version the user chose to keep their own changes over. Null without a file.
+    /// A file whose hash differs was changed by another program (<see cref="ProjectFileSyncService"/>).
+    /// </summary>
+    public string? DiskContentHash { get; private set; }
+
+    /// <summary>
     /// Increases with every content change, undo/redo and project replacement (each <see cref="ContentChanged"/>), so a
     /// page can tell cheaply whether anything changed since it last rebuilt its lists.
     /// </summary>
@@ -126,6 +133,7 @@ public sealed class ProjectService
     {
         var result = await _serializer.LoadAsync(path);
         Replace(result.Project, path);
+        DiskContentHash = result.ContentHash;
         return result.Issues;
     }
 
@@ -151,7 +159,7 @@ public sealed class ProjectService
             }
         }
 
-        await _serializer.SaveAsync(Current, path);
+        DiskContentHash = await _serializer.SaveAsync(Current, path);
         FilePath = path;
         if (saved is not null)
         {
@@ -162,6 +170,76 @@ public sealed class ProjectService
         StateChanged?.Invoke(this, EventArgs.Empty);
         HistoryChanged?.Invoke(this, EventArgs.Empty);
     }
+
+    /// <summary>
+    /// The project file was changed by another program: puts its content (<paramref name="loaded"/>, read from bytes with
+    /// hash <paramref name="contentHash"/>) into <see cref="Current"/> in place, exactly like Undo does
+    /// (<see cref="ContentChanged"/> + <see cref="ContentRestored"/>; unchanged items stay the same objects). This is not a
+    /// project open: <see cref="ProjectChanged"/> is not raised, so output, live mode and running functions stay as they
+    /// are. It becomes one undo step named <paramref name="description"/> (Ctrl+Z brings the previous content back), and
+    /// the project counts as saved afterwards. <paramref name="changed"/> is false when the file held the same content
+    /// (nothing applied, no undo step). Returns false when it failed (logged; the project is unchanged).
+    /// </summary>
+    public bool TryApplyExternalContent(Project loaded, string contentHash, string description, out bool changed)
+    {
+        ArgumentNullException.ThrowIfNull(loaded);
+        changed = false;
+        try
+        {
+            if (_historyEnabled)
+            {
+                changed = _history.ApplyExternal(Current, loaded, description);
+            }
+            else
+            {
+                // No undo for this project: still apply in place, so pages and the engine keep their objects.
+                var current = ProjectSnapshot.Capture(Current);
+                var target = ProjectSnapshot.Capture(loaded, current);
+                changed = !target.ContentEquals(current);
+                if (changed)
+                {
+                    target.RestoreInto(Current, current);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Applying the project file changed on disk failed");
+            HistoryChanged?.Invoke(this, EventArgs.Empty);
+            return false;
+        }
+
+        DiskContentHash = contentHash;
+        if (IsDirty)
+        {
+            IsDirty = false;
+            StateChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        if (changed)
+        {
+            Revision++;
+            _restoring = true;
+            try
+            {
+                ContentChanged?.Invoke(this, ProjectContentChangedEventArgs.Playback);
+                ContentRestored?.Invoke(this, EventArgs.Empty);
+            }
+            finally
+            {
+                _restoring = false;
+            }
+        }
+
+        HistoryChanged?.Invoke(this, EventArgs.Empty);
+        return true;
+    }
+
+    /// <summary>
+    /// The user kept their own changes over a disk version with hash <paramref name="contentHash"/>: remember it as
+    /// known, so the same disk content is not reported again. The project stays unsaved; the next save overwrites it.
+    /// </summary>
+    public void AcknowledgeDiskContent(string contentHash) => DiskContentHash = contentHash;
 
     private bool TryRestore(bool undo, out string? description)
     {
@@ -287,6 +365,7 @@ public sealed class ProjectService
     {
         Current = project;
         FilePath = filePath;
+        DiskContentHash = null;
         IsDirty = false;
         ResetHistory();
 

@@ -25,6 +25,7 @@ public sealed partial class ShellViewModel : ObservableObject
     private readonly AppSettingsService _appSettings;
     private readonly IStageWindowService _stageWindow;
     private readonly InfoBarState _infoBar;
+    private readonly ProjectFileSyncService _fileSync;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CurrentPage))]
@@ -53,8 +54,10 @@ public sealed partial class ShellViewModel : ObservableObject
         AppSettingsService appSettings,
         IStageWindowService stageWindow,
         ILiveModeService liveMode,
-        InfoBarState infoBar)
+        InfoBarState infoBar,
+        ProjectFileSyncService fileSync)
     {
+        _fileSync = fileSync;
         _infoBar = infoBar;
         _infoBar.PropertyChanged += OnInfoBarPropertyChanged;
         InitializeLiveMode(liveMode);
@@ -261,6 +264,8 @@ public sealed partial class ShellViewModel : ObservableObject
     [RelayCommand]
     private async Task NewProjectAsync()
     {
+        // No auto-save between "Don't save" and the new project (it would write what the user discarded).
+        using var pause = _fileSync.Suspend();
         if (await ConfirmDiscardChangesAsync())
         {
             _projects.New();
@@ -271,6 +276,7 @@ public sealed partial class ShellViewModel : ObservableObject
     [RelayCommand]
     private async Task OpenProjectAsync()
     {
+        using var pause = _fileSync.Suspend();
         if (!await ConfirmDiscardChangesAsync())
         {
             return;
@@ -312,6 +318,24 @@ public sealed partial class ShellViewModel : ObservableObject
         {
             ShowIssues(problems, "Some fixture profiles could not be loaded.");
         }
+    }
+
+    /// <summary>
+    /// Window closing: asks to save unsaved work (false when the user cancels). Once confirmed, auto-save and live
+    /// reload stop for good, so nothing is written after the user chose "Don't save".
+    /// </summary>
+    public async Task<bool> ConfirmCloseAsync()
+    {
+        using (_fileSync.Suspend())
+        {
+            if (!await ConfirmDiscardChangesAsync())
+            {
+                return false;
+            }
+        }
+
+        _fileSync.Stop();
+        return true;
     }
 
     /// <summary>Asks to save unsaved work. Returns false when the user cancels.</summary>

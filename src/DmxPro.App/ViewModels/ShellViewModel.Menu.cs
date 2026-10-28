@@ -164,6 +164,7 @@ public sealed partial class ShellViewModel
             return;
         }
 
+        using var pause = _fileSync.Suspend();
         if (!await ConfirmDiscardChangesAsync())
         {
             return;

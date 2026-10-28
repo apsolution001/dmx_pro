@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using DmxPro.Core.Functions;
@@ -82,18 +83,27 @@ public sealed class ProjectSerializer
         return new ProjectLoadResult(project, project.Validate());
     }
 
-    /// <summary>Reads and parses the file off the calling thread (after the first await).</summary>
+    /// <summary>
+    /// A fingerprint of a project file's exact bytes (SHA-256, hex). The app compares it with the file on disk to tell its
+    /// own saves from changes made by another program.
+    /// </summary>
+    public static string ComputeContentHash(ReadOnlySpan<byte> fileBytes) => Convert.ToHexString(SHA256.HashData(fileBytes));
+
+    /// <summary>
+    /// Reads and parses the file off the calling thread (after the first await). The result's
+    /// <see cref="ProjectLoadResult.ContentHash"/> is the hash of the bytes read.
+    /// </summary>
     public async Task<ProjectLoadResult> LoadAsync(string path, CancellationToken cancellationToken = default)
     {
         var bytes = await File.ReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false);
-        return Deserialize(bytes);
+        return Deserialize(bytes) with { ContentHash = ComputeContentHash(bytes) };
     }
 
     /// <summary>
     /// Saves atomically: writes a temp file, keeps the previous version as <c>.bak</c>, then swaps. A crash mid-save
-    /// never leaves a half-written project.
+    /// never leaves a half-written project. Returns the <see cref="ComputeContentHash"/> of the bytes written.
     /// </summary>
-    public async Task SaveAsync(Project project, string path, CancellationToken cancellationToken = default)
+    public async Task<string> SaveAsync(Project project, string path, CancellationToken cancellationToken = default)
     {
         var fullPath = Path.GetFullPath(path);
         var directory = Path.GetDirectoryName(fullPath);
@@ -114,6 +124,7 @@ public sealed class ProjectSerializer
         }
 
         File.Move(tempPath, fullPath, overwrite: true);
+        return ComputeContentHash(bytes);
     }
 
     /// <summary>

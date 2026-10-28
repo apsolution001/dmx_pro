@@ -176,6 +176,33 @@ public sealed class ProjectHistory
     }
 
     /// <summary>
+    /// Puts the content of <paramref name="loaded"/> (the project file as another program changed it) into
+    /// <paramref name="project"/> in place, the same way <see cref="Undo"/> does: unchanged items stay the same objects.
+    /// A pending edit is captured first, so the in-app edits stay one undo step behind it. The applied content becomes one
+    /// undo step named <paramref name="description"/> and is marked saved (it is what the file holds). Returns false when
+    /// the file held exactly the current content (nothing applied, no step; the state is marked saved). When the content
+    /// cannot be applied it throws and the project and the history stay as they were.
+    /// </summary>
+    public bool ApplyExternal(Project project, Project loaded, string description)
+    {
+        ArgumentNullException.ThrowIfNull(project);
+        ArgumentNullException.ThrowIfNull(loaded);
+        var current = Capture(project);
+        var target = ProjectSnapshot.Capture(loaded, current);
+        if (target.ContentEquals(current))
+        {
+            _history.MarkSaved();
+            return false;
+        }
+
+        // Applies nothing when it throws, so the history is only changed after it succeeded.
+        target.RestoreInto(project, current);
+        _history.Commit(target, description);
+        _history.MarkSaved();
+        return true;
+    }
+
+    /// <summary>
     /// Call right before writing the file: captures the project (a pending edit becomes a step) and returns a token for
     /// <see cref="MarkSaved"/>.
     /// </summary>

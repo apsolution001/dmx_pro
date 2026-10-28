@@ -149,6 +149,18 @@ public sealed partial class SettingsViewModel : PageViewModel
 
     public string DmxRefreshRateText => $"{S.DmxRefreshRateHz} Hz";
 
+    public bool AutoSaveEnabled
+    {
+        get => S.AutoSaveEnabled;
+        set => Set(S.AutoSaveEnabled, value, s => s.AutoSaveEnabled = value);
+    }
+
+    public bool ReloadProjectOnDiskChange
+    {
+        get => S.ReloadProjectOnDiskChange;
+        set => Set(S.ReloadProjectOnDiskChange, value, s => s.ReloadProjectOnDiskChange = value);
+    }
+
     public double? AutosaveIntervalMinutes
     {
         get => S.AutosaveIntervalMinutes;

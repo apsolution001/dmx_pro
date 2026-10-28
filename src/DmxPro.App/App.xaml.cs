@@ -70,6 +70,9 @@ public partial class App : Application
                 () => sp.GetRequiredService<ShellViewModel>()));
             services.AddSingleton(TimeProvider.System);
             services.AddSingleton<InfoBarState>();
+            services.AddSingleton<IUnsavedDraftSource>(sp => sp.GetRequiredService<FunctionsViewModel>());
+            services.AddSingleton<IUnsavedDraftSource>(sp => sp.GetRequiredService<ShowsViewModel>());
+            services.AddSingleton<ProjectFileSyncService>();
             services.AddSingleton<ShellViewModel>();
             services.AddSingleton<MainWindow>();
         })
@@ -92,6 +95,9 @@ public partial class App : Application
         var shell = _host.Services.GetRequiredService<ShellViewModel>();
         shell.ReportLibraryIssues(libraryIssues);
         shell.CurrentPage.OnNavigatedTo();
+
+        // Live reload of the project file + auto-save; events and timers come back to this (UI) thread.
+        _host.Services.GetRequiredService<ProjectFileSyncService>().Start();
 
         var window = _host.Services.GetRequiredService<MainWindow>();
         MainWindow = window;

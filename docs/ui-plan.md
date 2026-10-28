@@ -73,6 +73,11 @@ Earlier web-style sketch (superseded look, same content):
   warnings and errors stay until closed (safety rule 10). Closing the bar clears the message, so the same message (a
   second save) shows again; a newer message replaces the old one and restarts the timer. Import results stay until
   closed.
+- **Live reload / auto-save (2026-10-28):** when another program changes the open project file, the change appears in
+  place within about half a second ("Reloaded "show.dmxpro": it was changed outside DMX Pro. Ctrl+Z undoes this.",
+  auto-hides). Output, live mode, running lights and the console stay as they are. With unsaved changes (or an unsaved
+  editor draft) a prompt asks **Reload** / **Keep mine** (Esc = Keep mine); a file that cannot be read shows a warning
+  that stays. Auto-save shows "Auto-saved 14:05" (auto-hides); an auto-save error stays as an error.
 
 ## 2. Top menu bar
 
@@ -488,7 +493,7 @@ Category list on the left (no "Categories" header or per-section headers), chang
 | Safety | On exit, send (blackout / profile defaults); **Strobe** switch (default **off**) and max strobe rate (Hz) with photosensitivity warning; confirm Release All (default off) |
 | Show playback | Console override: mute the whole show (default) or only the lights the console touches; seek step (seconds; the big skip buttons and Left/Right on the transport bar) |
 | Engine | DMX refresh rate (read-only, 44 Hz) |
-| Project & folders | Autosave interval (stored; autosave itself is phase 9), default project folder, extra fixture-profile folders (loaded on next start) |
+| Project & folders | **Auto-save** on/off (default on) + every *n* minutes (1–60, default 5); **Live reload**: reload the project when its file changes on disk (default on); default project folder, extra fixture-profile folders (loaded on next start) |
 | About | Version, licences and attribution, settings file path |
 
 Not built yet: accent colour, language.

@@ -11,11 +11,20 @@ public enum SaveChangesChoice
 /// <summary>Modal prompts, behind an interface so ViewModels stay testable.</summary>
 public interface IDialogService
 {
+    /// <summary>True while one of these prompts or another modal window is open (auto-save waits for it to close).</summary>
+    bool IsModalOpen { get; }
+
     Task ShowErrorAsync(string title, string message);
 
     Task ShowInfoAsync(string title, string message);
 
     Task<SaveChangesChoice> AskSaveChangesAsync(string projectName);
+
+    /// <summary>
+    /// The open project's file was changed by another program while this app has unsaved changes: reload it, or keep
+    /// the changes made here (the next save overwrites the file).
+    /// </summary>
+    Task<ExternalChangeChoice> AskReloadExternalChangeAsync(string fileName);
 
     /// <summary>Asks a yes/no question; returns true when the user picks <paramref name="confirmText"/>.</summary>
     Task<bool> ConfirmAsync(string title, string message, string confirmText);

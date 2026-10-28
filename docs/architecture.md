@@ -157,7 +157,10 @@ Details (`src/DmxPro.Engine/DmxEngine.cs`, `Runtime/`):
   (`settings.json`, see §6), not in the project; they never contain an enabled flag.
 - Stable GUID ids for all entities; references by id. Additive since 2026-10-27: `ownerFunctionId` on a function (absent = not owned); older files load unchanged.
 - Migrations: `IProjectMigrator` per schema version.
-- Autosave to `%LOCALAPPDATA%/DmxPro/autosave/` every 2 min + on crash; recovery prompt on start.
+- Auto-save (2026-10-28): the open project is saved **into its own file** through the normal save path (atomic write +
+  `.bak`) every 5 min (setting 1–60), only when it has a file and unsaved changes; see section 11. Crash recovery from a
+  separate autosave folder is not built.
+- Live reload (2026-10-28): a change of the open file by another program is applied in place (section 11).
 
 ## 6. App structure (implemented in phase 1)
 
@@ -193,7 +196,8 @@ src/DmxPro.App/
   the engine thread. Idempotent, never throws, never blocks the UI thread.
 - **App settings** (`AppSettings`, `AppSettingsService`): `%APPDATA%\DmxPro\settings.json`, not in the project file —
   theme, safe frame on exit, allow strobe (default **off**), max strobe rate, confirm Release All, console override mode,
-  seek step, DMX refresh rate, autosave interval, default project folder, extra profile folders, sACN CID, and the
+  seek step, DMX refresh rate, auto-save on/off (default on) + interval (default 5 min, 1–60; an old stored 0 reads as 5),
+  reload project when the file changes on disk (default on), default project folder, extra profile folders, sACN CID, and the
   **output configurations** (per universe). There is deliberately no "output enabled" flag (safety rule 1).
 
 ### Test & Preview wiring (phase 6)
@@ -283,3 +287,43 @@ Bottom status bar: **Output pill** (Disabled / Connected / Sending 44 fps / Erro
   selection, window layout, app settings, editor drafts (editors have their own Revert).
 - **Measured** (Release, 512 fixtures + 100 full-rig scenes = 16 MB of JSON): first snapshot 58 ms, snapshot after one
   scene edit 47 ms (161 KB new memory), undo incl. capture 53 ms. Small projects: about 1 ms.
+
+## 11. Live reload and auto-save (2026-10-28)
+
+`src/DmxPro.App/Services/ProjectFileSyncService.cs`, started in `App.OnStartup` on the UI thread (file events and
+timers are posted back to it; reads are async, parsing runs on the thread pool).
+
+- **Disk fingerprint:** `ProjectSerializer.ComputeContentHash` (SHA-256 of the file bytes). `SaveAsync` returns the hash
+  of what it wrote, `LoadAsync` reports the hash of what it read (`ProjectLoadResult.ContentHash`), and
+  `ProjectService.DiskContentHash` holds what the file is known to contain (open, save, reload, or a disk version the
+  user chose to "keep mine" over). A file whose hash equals it is ignored: that is how the app's own saves and
+  auto-saves are told apart from other programs.
+- **Watcher:** a `FileSystemWatcher` on the project's folder, filtered to the file name; Changed, Created and Renamed
+  (tools that write a temp file and rename it over the project) and Error (buffer overflow) all trigger a check. Re-armed
+  when the path changes (open, New, Save as); none for an untitled project or when the setting is off. A folder that
+  cannot be watched shows a warning.
+- **Check:** 500 ms after the last event (debounce, `TimeProvider`), read the file (retries while the writer holds it
+  locked), hash, parse with the normal `ProjectSerializer` (migrations run). A parse failure is retried (half-written
+  file); if it still fails, a warning stays in the info bar ("Project file changed on disk but could not be read: ...")
+  and the project is kept; the same broken content is not reported twice. While a modal dialog is open or New / Open is
+  running, the check waits. If the project or its file changed meanwhile (a save, another open), the check starts over.
+- **Apply in place, not a project open:** `ProjectService.TryApplyExternalContent` -> `ProjectHistory.ApplyExternal`
+  (captures a pending edit as its own step, then `ProjectSnapshot.RestoreInto`, the same restore as Undo, and commits
+  one step "Reloaded from disk", marked saved). It raises `ContentChanged` (Playback) + `ContentRestored`, never
+  `ProjectChanged`: output enable state, live mode, Grand Master, Blackout, running functions/shows and the Virtual
+  Console stay; the engine gets the usual refresh, so a function deleted in the file stops. Pages and editors react as on
+  undo. Afterwards the project is clean and `DiskContentHash` = the file. Ctrl+Z goes back to the content before the reload.
+- **Conflict:** with unsaved changes, or an editor with an unsaved draft (`IUnsavedDraftSource`: Functions and Shows
+  pages), `IDialogService.AskReloadExternalChangeAsync` asks: **Reload** (apply; the unsaved edits are the undo step
+  before it) or **Keep mine** (remember the disk hash so the same content does not ask again; the next save overwrites).
+  Closing the prompt = Keep mine.
+- **Auto-save:** a one-shot `TimeProvider` timer every *interval*; saves through `ProjectService.SaveAsync` only when
+  auto-save is on, the project has a path and unsaved changes. Postponed (retried after 30 s) while a modal dialog is
+  open (`IDialogService.IsModalOpen`: its own prompts plus `ComponentDispatcher.IsThreadModal`), while another file
+  action runs, or while `ShellViewModel` suspends it (New / Open / close prompts, so "Don't save" is never followed by an
+  auto-save; closing stops it for good). Before writing it reads the file: if it differs from `DiskContentHash` (a change
+  not applied yet) it does not overwrite it; with live reload on the reload flow runs instead, with it off a warning
+  says so. Editor drafts are not part of the project, so they are not auto-saved. Success shows "Auto-saved 14:05"
+  (auto-hides); failures are errors in the info bar (rule 10).
+- **Tests:** `tests/DmxPro.App.Tests/ProjectFileSyncServiceTests.cs` (fake watcher + manual clock + temp files, and one
+  real `FileSystemWatcher` rename test), `tests/DmxPro.Core.Tests/ProjectHistoryApplyExternalTests.cs`.

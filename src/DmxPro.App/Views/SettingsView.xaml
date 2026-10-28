@@ -357,33 +357,66 @@
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
 
-                                <TextBlock Style="{StaticResource WideLabel}" Text="Autosave (min)" />
-                                <ui:NumberBox
-                                    Grid.Column="1"
-                                    Width="100"
-                                    HorizontalAlignment="Left"
-                                    AutomationProperties.Name="Autosave interval in minutes"
-                                    Maximum="120"
-                                    Minimum="0"
-                                    Style="{StaticResource FormNumberBox}"
-                                    ToolTip="0 = off"
-                                    Value="{Binding AutosaveIntervalMinutes, UpdateSourceTrigger=LostFocus}" />
+                                <TextBlock Style="{StaticResource WideLabel}" Text="Auto-save" />
+                                <StackPanel Grid.Column="1" Margin="0,0,0,4" Orientation="Horizontal">
+                                    <CheckBox
+                                        VerticalAlignment="Center"
+                                        AutomationProperties.Name="Auto-save the project"
+                                        Content="Save automatically every"
+                                        IsChecked="{Binding AutoSaveEnabled}" />
+                                    <ui:NumberBox
+                                        Width="100"
+                                        Margin="6,0,0,0"
+                                        AutomationProperties.Name="Auto-save interval in minutes"
+                                        IsEnabled="{Binding AutoSaveEnabled}"
+                                        Maximum="60"
+                                        Minimum="1"
+                                        Style="{StaticResource FormNumberBox}"
+                                        ToolTip="Minutes between auto-saves (1–60)"
+                                        Value="{Binding AutosaveIntervalMinutes, UpdateSourceTrigger=LostFocus}" />
+                                    <TextBlock
+                                        Margin="6,0,0,0"
+                                        VerticalAlignment="Center"
+                                        Text="min" />
+                                </StackPanel>
                                 <TextBlock
                                     Grid.Row="1"
                                     Grid.Column="1"
                                     Margin="0,-2,0,4"
                                     Style="{StaticResource HintText}"
-                                    Text="0 = off. Saved now; autosave itself arrives in phase 9." />
+                                    Text="Only projects that already have a file, and only when something changed. Open editor drafts are not included."
+                                    TextWrapping="Wrap" />
 
                                 <TextBlock
                                     Grid.Row="2"
+                                    Style="{StaticResource WideLabel}"
+                                    Text="Live reload" />
+                                <CheckBox
+                                    Grid.Row="2"
+                                    Grid.Column="1"
+                                    Margin="0,0,0,4"
+                                    AutomationProperties.Name="Reload the project when the file changes on disk"
+                                    Content="Reload the project when its file changes on disk"
+                                    IsChecked="{Binding ReloadProjectOnDiskChange}" />
+                                <TextBlock
+                                    Grid.Row="3"
+                                    Grid.Column="1"
+                                    Margin="0,-2,0,4"
+                                    Style="{StaticResource HintText}"
+                                    Text="Changes made by another program appear right away; output and running lights stay as they are. Ctrl+Z undoes a reload."
+                                    TextWrapping="Wrap" />
+
+                                <TextBlock
+                                    Grid.Row="4"
                                     VerticalAlignment="Top"
                                     Margin="0,0,8,4"
                                     Style="{StaticResource WideLabel}"
                                     Text="Project folder" />
-                                <StackPanel Grid.Row="2" Grid.Column="1">
+                                <StackPanel Grid.Row="4" Grid.Column="1">
                                     <TextBox
                                         AutomationProperties.Name="Default project folder"
                                         Style="{StaticResource PathText}"
@@ -411,12 +444,12 @@
                                 </StackPanel>
 
                                 <TextBlock
-                                    Grid.Row="3"
+                                    Grid.Row="5"
                                     VerticalAlignment="Top"
                                     Margin="0,0,8,4"
                                     Style="{StaticResource WideLabel}"
                                     Text="Profile folders" />
-                                <StackPanel Grid.Row="3" Grid.Column="1">
+                                <StackPanel Grid.Row="5" Grid.Column="1">
                                     <TextBlock
                                         Margin="0,0,0,2"
                                         Style="{StaticResource HintText}"

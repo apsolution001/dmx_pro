@@ -81,6 +81,19 @@ internal sealed class FakeDialogService : IDialogService
 
     public List<string> Prompts { get; } = [];
 
+    public ExternalChangeChoice ExternalChangeAnswer { get; set; } = ExternalChangeChoice.Reload;
+
+    /// <summary>File names of the "changed on disk" prompts shown.</summary>
+    public List<string> ExternalChangePrompts { get; } = [];
+
+    public bool IsModalOpen { get; set; }
+
+    public Task<ExternalChangeChoice> AskReloadExternalChangeAsync(string fileName)
+    {
+        ExternalChangePrompts.Add(fileName);
+        return Task.FromResult(ExternalChangeAnswer);
+    }
+
     public Task ShowErrorAsync(string title, string message)
     {
         Prompts.Add(title);

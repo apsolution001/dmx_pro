@@ -25,7 +25,7 @@ namespace DmxPro.App.ViewModels;
 /// console plays, and a hint says so (the engine refuses <see cref="ShowOrigin.Editor"/> shows anyway). Timeline
 /// editing stays available while live; it never touches the player.
 /// </summary>
-public sealed partial class ShowsViewModel : PageViewModel
+public sealed partial class ShowsViewModel : PageViewModel, IUnsavedDraftSource
 {
     /// <summary>Height of one track lane and its header, in pixels.</summary>
     public const double TrackHeight = 28;
@@ -256,6 +256,9 @@ public sealed partial class ShowsViewModel : PageViewModel
 
     /// <summary>The scene editor covers the timeline; the page toolbar is disabled meanwhile.</summary>
     public bool IsEditing => Editor is not null;
+
+    /// <inheritdoc />
+    public bool HasUnsavedDraft => Editor?.IsDirty == true;
 
     public bool IsNotEditing => Editor is null;
 
