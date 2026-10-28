@@ -103,7 +103,7 @@ public sealed partial class Project
         page.Widgets.Add(new ReleaseAllWidget { Label = "Release All", X = 2, Y = 0 });
         page.Widgets.Add(new MasterWidget { Label = "Master", X = 4, Y = 0, Width = 4, Height = 2 });
 
-        var library = Functions.Where(f => f.OwnerShowId is null).ToList();
+        var library = Functions.Where(f => f.OwnerShowId is null && f.OwnerFunctionId is null).ToList();
         var x = 0;
         foreach (var (colorName, color) in DefaultPageColors)
         {

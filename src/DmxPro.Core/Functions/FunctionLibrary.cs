@@ -55,6 +55,8 @@ public static class FunctionLibrary
     /// Copies a function right after the original in the list. The copy is always an independent library function
     /// (deep copy, new id), also when the source is a show's copy ("Save as function" in a show): the source is left
     /// unchanged. It is named <paramref name="name"/> (trimmed) when given, else "&lt;name&gt; copy" (then "copy 2", …).
+    /// A chaser's own step functions are deep-copied too (owned by the copy, inserted right after it), so the two chasers
+    /// never share a step function. A step function itself (owned by a chaser) duplicates as a library function.
     /// </summary>
     public static LightFunction DuplicateFunction(this Project project, Guid functionId, string? name = null)
     {
@@ -62,11 +64,13 @@ public static class FunctionLibrary
         var source = project.FindFunction(functionId)
             ?? throw new ArgumentException("Function not found.", nameof(functionId));
 
-        var copy = source.CloneAsNew();
+        var copies = project.CloneWithOwned(source);
+        var copy = copies[0];
         copy.OwnerShowId = null;
+        copy.OwnerFunctionId = null;
         copy.ShowInFunctionList = true;
         copy.Name = string.IsNullOrWhiteSpace(name) ? UniqueCopyName(project, source.Name) : name.Trim();
-        project.Functions.Insert(project.Functions.IndexOf(source) + 1, copy);
+        project.Functions.InsertRange(project.Functions.IndexOf(source) + 1, copies);
         return copy;
     }
 
@@ -178,8 +182,9 @@ public static class FunctionLibrary
     }
 
     /// <summary>
-    /// Deletes a function from the Functions page. Library functions and unused show copies are removed; a show copy
-    /// still used by its show is only hidden from the list (<see cref="FunctionDeleteResult.HiddenFromList"/>).
+    /// Deletes a function from the Functions page. Library functions and unused show copies are removed together with the
+    /// functions they own (a chaser's step functions, recursively); a show copy still used by its show is only hidden
+    /// from the list (<see cref="FunctionDeleteResult.HiddenFromList"/>) and keeps its step functions.
     /// </summary>
     public static FunctionDeleteResult DeleteFunction(this Project project, Guid functionId)
     {
@@ -195,7 +200,7 @@ public static class FunctionLibrary
             return FunctionDeleteResult.HiddenFromList;
         }
 
-        project.Functions.Remove(function);
+        project.RemoveFunctionWithOwned(function);
         return FunctionDeleteResult.Deleted;
     }
 
