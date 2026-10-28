@@ -33,6 +33,19 @@ internal abstract class FunctionProgram
     /// <param name="context">Frame settings (strobe safety, speed).</param>
     public virtual bool HasEnded(double elapsedSeconds, RenderContext context) => false;
 
+    /// <summary>
+    /// Chaser nesting depth: 0 for a plain program, 1 + the deepest step for a chaser. The model preallocates this many
+    /// <see cref="StepMix"/> levels so rendering allocates nothing.
+    /// </summary>
+    public virtual int MixDepth => 0;
+
+    /// <summary>
+    /// Identifies which step plays at <paramref name="elapsedSeconds"/>, nested steps included (0 for programs without
+    /// steps). A change is a step change; running instances hold every change for the real-time chaser speed limit
+    /// (safety rule 8). Allocation-free (engine thread).
+    /// </summary>
+    public virtual long StepSignature(double elapsedSeconds, RenderContext context) => 0;
+
     /// <summary>Writes this function's values into <paramref name="layer"/>.</summary>
     /// <param name="elapsedSeconds">Function time since it started (already scaled by its speed).</param>
     /// <param name="weight">Fade level × intensity, 0..1.</param>

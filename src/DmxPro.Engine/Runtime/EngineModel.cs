@@ -34,10 +34,33 @@ internal sealed class EngineModel
         Functions = functions;
         Shows = shows;
 
+        // Chaser scratch, one level per nesting depth, shared by the layers (rendering is sequential) and allocated here
+        // so the tick does not. A deeper preview draft adds levels on first use.
+        var depth = 0;
+        foreach (var function in functions.Values)
+        {
+            depth = Math.Max(depth, function.MixDepth);
+        }
+
+        foreach (var show in shows.Values)
+        {
+            foreach (var item in show.Items)
+            {
+                depth = Math.Max(depth, item.Function.MixDepth);
+            }
+        }
+
+        StepMix? mix = null;
+        if (depth > 0)
+        {
+            mix = new StepMix(isIntensity);
+            mix.EnsureDepth(depth);
+        }
+
         Layers = new LayerBuffer[3];
         for (var i = 0; i < Layers.Length; i++)
         {
-            Layers[i] = new LayerBuffer(isIntensity);
+            Layers[i] = new LayerBuffer(isIntensity, mix);
         }
 
         Overrides = new short[defaults.Length];
