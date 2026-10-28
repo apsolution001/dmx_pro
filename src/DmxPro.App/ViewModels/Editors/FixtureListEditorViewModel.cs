@@ -8,9 +8,9 @@ using DmxPro.Core.Projects;
 namespace DmxPro.App.ViewModels.Editors;
 
 /// <summary>
-/// The "Fixtures" panel of the effect and sequence editors: the fixtures the function drives, in order (order matters
-/// for per-fixture offsets). "Add / choose lights…" opens the modal <see cref="FixturePickerViewModel"/> dialog (single
-/// lights with Shift/Ctrl multi-select, or whole groups); remove and move up/down work on the selected fixture. Every
+/// The "Lights" panel of the effect and sequence editors: the lights (fixtures) the function drives, in order (order
+/// matters for per-light offsets). "Choose lights…" opens the modal <see cref="FixturePickerViewModel"/> dialog (single
+/// lights with Shift/Ctrl multi-select, or whole groups); remove and move up/down work on the selected light. Every
 /// change is reported through the callback with the fixture ids that were added and removed (both empty for a reorder).
 /// </summary>
 public sealed partial class FixtureListEditorViewModel : ObservableObject
@@ -47,8 +47,8 @@ public sealed partial class FixtureListEditorViewModel : ObservableObject
     /// <summary>The fixture ids in order.</summary>
     public IReadOnlyList<Guid> FixtureIds => _ids;
 
-    /// <summary>"3 fixtures".</summary>
-    public string CountText => Items.Count == 1 ? "1 fixture" : $"{Items.Count} fixtures";
+    /// <summary>"3 lights".</summary>
+    public string CountText => Items.Count == 1 ? "1 light" : $"{Items.Count} lights";
 
     /// <summary>Replaces the list without reporting a change (editor open / revert).</summary>
     public void Load(IEnumerable<Guid> fixtureIds)
@@ -149,7 +149,7 @@ public sealed partial class FixtureListEditorViewModel : ObservableObject
             }
             else
             {
-                Items.Add(new FixtureListItem(id, i + 1, "(missing fixture)", "Deleted from the patch — remove it here", true));
+                Items.Add(new FixtureListItem(id, i + 1, "(deleted light)", "Deleted from the patch, skipped: remove it here", true));
             }
         }
 

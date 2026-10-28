@@ -196,6 +196,28 @@ public sealed class FadeEditorViewModelTests
         Assert.DoesNotContain(vm.DurationPresets, p => p.IsActive);
     }
 
+    [Fact]
+    public void PresetIsSelected_SetTrue_AppliesDurationAndMovesRadio()
+    {
+        var vm = Create(Fade());
+
+        vm.DurationPresets[0].IsSelected = true;
+
+        Assert.Equal(1, vm.DurationSeconds);
+        Assert.Equal([true, false, false, false], vm.DurationPresets.Select(p => p.IsSelected));
+    }
+
+    [Fact]
+    public void PresetIsSelected_SetFalse_KeepsDuration()
+    {
+        var vm = Create(Fade());
+
+        vm.DurationPresets[1].IsSelected = false;
+
+        Assert.Equal(3, vm.DurationSeconds);
+        Assert.True(vm.DurationPresets[1].IsSelected);
+    }
+
     // ───────────────────────────── Explanation ─────────────────────────────
 
     [Fact]
