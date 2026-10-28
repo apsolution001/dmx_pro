@@ -27,7 +27,6 @@ public class FunctionTypesTests
     [Theory]
     [InlineData(FunctionType.Scene, typeof(SceneFunction))]
     [InlineData(FunctionType.Chaser, typeof(ChaserFunction))]
-    [InlineData(FunctionType.Sequence, typeof(SequenceFunction))]
     [InlineData(FunctionType.ColorCycle, typeof(ColorCycleFunction))]
     [InlineData(FunctionType.Fade, typeof(FadeFunction))]
     [InlineData(FunctionType.Pulse, typeof(PulseFunction))]
@@ -39,6 +38,14 @@ public class FunctionTypesTests
 
         Assert.IsType(expected, function);
         Assert.Equal(type, function.Type);
+    }
+
+    [Fact]
+    public void Create_Sequence_ReturnsChaser()
+    {
+        // Sequence was merged into Chaser; the enum value only remains for old files.
+        Assert.IsType<ChaserFunction>(FunctionFactory.Create(FunctionType.Sequence));
+        Assert.Equal("Chaser 1", _project.CreateFunction(FunctionType.Sequence).Name);
     }
 
     [Fact]
@@ -130,12 +137,15 @@ public class FunctionTypesTests
         Assert.Equal((_red.Id, 0.25, 1.5, 0.75), (c.Steps[0].FunctionId, c.Steps[0].FadeInSeconds, c.Steps[0].HoldSeconds, c.Steps[0].FadeOutSeconds));
         Assert.Equal(ChaserStep.DefaultHoldSeconds, c.Steps[1].HoldSeconds);
 
-        var s = Assert.IsType<SequenceFunction>(loaded.FindFunction(sequence.Id));
-        Assert.Equal([_par.Id], s.FixtureIds);
+        // A sequence loads as a chaser (Sequence merged into Chaser) with an own-look scene per step.
+        var s = Assert.IsType<ChaserFunction>(loaded.FindFunction(sequence.Id));
         Assert.Equal(RunOrder.SingleShot, s.RunOrder);
         var loadedStep = Assert.Single(s.Steps);
-        Assert.Equal(("Hit", 0.1, 0.2, 0.3), (loadedStep.Name, loadedStep.FadeInSeconds, loadedStep.HoldSeconds, loadedStep.FadeOutSeconds));
-        Assert.Equal((byte)77, loadedStep.GetValue(_par.Id, "g"));
+        Assert.Equal((0.1, 0.2, 0.3), (loadedStep.FadeInSeconds, loadedStep.HoldSeconds, loadedStep.FadeOutSeconds));
+        var stepScene = Assert.IsType<SceneFunction>(loaded.FindFunction(loadedStep.FunctionId));
+        Assert.Equal("Hit", stepScene.Name);
+        Assert.Equal(s.Id, stepScene.OwnerFunctionId);
+        Assert.Equal((byte)77, stepScene.GetValue(_par.Id, "g"));
 
         var cc = Assert.IsType<ColorCycleFunction>(loaded.FindFunction(cycle.Id));
         Assert.Equal(cycle.Colors, cc.Colors);

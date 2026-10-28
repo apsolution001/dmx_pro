@@ -141,7 +141,8 @@ public class ShowEditingTests
 
             var function = _project.FindFunction(item.FunctionId);
             Assert.NotNull(function);
-            Assert.Equal(type, function.Type);
+            // Sequence was merged into Chaser: the old enum value creates a chaser.
+            Assert.Equal(type == FunctionType.Sequence ? FunctionType.Chaser : type, function.Type);
             Assert.Equal($"New {type}", function.Name);
             Assert.Equal(_show.Id, function.OwnerShowId);
             Assert.False(function.ShowInFunctionList);

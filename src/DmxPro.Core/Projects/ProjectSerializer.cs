@@ -66,6 +66,10 @@ public sealed class ProjectSerializer
             function.ClampTimes();
         }
 
+        // Sequences were merged into Chaser (2026-10-27): convert after the times are clamped, so the chaser steps get
+        // the repaired timing. The next save writes chasers only.
+        SequenceMigration.Migrate(project);
+
         foreach (var show in project.Shows)
         {
             show.NormalizeAudio();
