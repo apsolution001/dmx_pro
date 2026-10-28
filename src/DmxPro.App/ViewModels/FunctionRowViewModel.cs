@@ -62,22 +62,13 @@ public sealed partial class FunctionRowViewModel : ObservableObject
 
     public string AutomationName => HasShowBadge ? $"{Name}, {TypeName}, {ShowBadge}" : $"{Name}, {TypeName}";
 
-    public static string TypeDisplayName(FunctionType type) => type switch
-    {
-        FunctionType.ColorCycle => "Color cycle",
-        _ => type.ToString(),
-    };
+    public static string TypeDisplayName(FunctionType type) => type.ToString();
 
     public static string TypeIconKind(FunctionType type) => type switch
     {
         FunctionType.Scene => "Scenes",
         FunctionType.Chaser => "Chaser",
         FunctionType.Sequence => "Sequence",
-        FunctionType.ColorCycle => "ColorCycle",
-        FunctionType.Fade => "Fade",
-        FunctionType.Pulse => "Pulse",
-        FunctionType.Flash => "Flash",
-        FunctionType.Strobe => "Strobe",
         _ => "Functions",
     };
 
@@ -109,12 +100,12 @@ public sealed partial class FunctionRowViewModel : ObservableObject
         else
         {
             Swatch = ShowsLibraryItem.PreviewColor(Function, project)?.ToHex();
-            Details = DescribeOther(Function, project);
+            Details = DescribeOther(Function);
         }
     }
 
     /// <summary>One-line summary of a non-scene function ("4 steps · Loop · cycle 8 s").</summary>
-    private static string DescribeOther(LightFunction function, Project project)
+    private static string DescribeOther(LightFunction function)
     {
         static string Count(int n, string one, string many) => n == 1 ? $"1 {one}" : $"{n} {many}";
         static string Order(RunOrder order) => order switch
@@ -130,22 +121,9 @@ public sealed partial class FunctionRowViewModel : ObservableObject
                 $"{Count(chaser.Steps.Count, "step", "steps")} · {Order(chaser.RunOrder)} · {FormatSeconds(chaser.CycleSeconds())}",
             SequenceFunction sequence =>
                 $"{Count(sequence.FixtureIds.Count, "fixture", "fixtures")} · {Count(sequence.Steps.Count, "step", "steps")} · {Order(sequence.RunOrder)} · {FormatSeconds(sequence.CycleSeconds())}",
-            ColorCycleFunction cycle =>
-                $"{Count(cycle.FixtureIds.Count, "fixture", "fixtures")} · {Count(cycle.Colors.Count, "colour", "colours")} · hold {FormatSeconds(cycle.HoldSeconds)} / fade {FormatSeconds(cycle.FadeSeconds)}",
-            FadeFunction fade =>
-                $"{SceneName(project, fade.FromSceneId, "current state")} → {SceneName(project, fade.ToSceneId, "no target")} · {FormatSeconds(fade.DurationSeconds)}",
-            PulseFunction pulse =>
-                $"{Count(pulse.FixtureIds.Count, "fixture", "fixtures")} · {(pulse.Color is null ? "dimmer only" : pulse.Shape.ToString().ToLowerInvariant())} · {FormatSeconds(pulse.PeriodSeconds)}",
-            FlashFunction flash =>
-                $"{Count(flash.FixtureIds.Count, "fixture", "fixtures")} · {(flash.DurationSeconds > 0 ? FormatSeconds(flash.DurationSeconds) : "while held")}",
-            StrobeFunction strobe =>
-                $"{Count(strobe.FixtureIds.Count, "fixture", "fixtures")} · {(strobe.Mode == StrobeMode.Hardware ? "fixture strobe channel" : strobe.RateHz.ToString("0.##", CultureInfo.CurrentCulture) + " Hz")}",
             _ => string.Empty,
         };
     }
-
-    private static string SceneName(Project project, Guid? id, string none) =>
-        id is { } sceneId ? project.FindFunction(sceneId)?.Name ?? "(missing scene)" : none;
 
     partial void OnSwatchChanged(string? value) => OnPropertyChanged(nameof(HasSwatch));
 

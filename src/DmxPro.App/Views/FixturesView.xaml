@@ -1009,7 +1009,7 @@
                                                 Foreground="{DynamicResource TextFillColorTertiaryBrush}"
                                                 Text="{Binding Position}"
                                                 TextAlignment="Right"
-                                                ToolTip="Position in the group (chasers and effects step through this order)" />
+                                                ToolTip="Position in the group (chasers step through this order)" />
                                             <c:DmxIcon
                                                 Margin="0,0,4,0"
                                                 VerticalAlignment="Center"

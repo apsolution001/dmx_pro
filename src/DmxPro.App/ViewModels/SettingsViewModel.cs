@@ -87,7 +87,7 @@ public sealed partial class SettingsViewModel : PageViewModel
         new(
             ShowOverrideModeSetting.MuteWholeShow,
             "Mute whole show (default)",
-            "While any console button, fader or effect is active, the running show is muted on all lights. " +
+            "While any console button or fader is active, the running show is muted on all lights. " +
             "Its timeline keeps running and reappears at the current position when you release the console."),
         new(
             ShowOverrideModeSetting.OnlyTouchedLights,

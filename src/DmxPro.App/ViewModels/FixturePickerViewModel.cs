@@ -28,7 +28,7 @@ public sealed partial class FixturePickerViewModel : ObservableObject
     private string _searchText = string.Empty;
 
     /// <param name="title">Window title, e.g. "Choose lights · Rainbow chase".</param>
-    /// <param name="ordered">The function plays its lights in list order (effects, sequences); false for a scene.</param>
+    /// <param name="ordered">The function plays its lights in list order (e.g. a chaser's steps); false for a scene.</param>
     /// <param name="lights">Every patched light, in patch order.</param>
     /// <param name="groups">Every group as (id, name, patched member ids).</param>
     /// <param name="existing">The function's current fixture ids, in order (also those no longer patched).</param>

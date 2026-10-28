@@ -237,7 +237,7 @@
                                         IsChecked="{Binding IsPickerOpen}"
                                         IsHitTestVisible="{Binding IsOpen, ElementName=AddPopup, Converter={StaticResource InvertBool}}"
                                         Style="{StaticResource ChaserAddToggle}"
-                                        ToolTip="Add from function: the step gets its own copy of a scene or other function; the original is never changed">
+                                        ToolTip="Add from function: the step gets its own copy of a scene or chaser; the original is never changed">
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock
                                                 Margin="0,0,4,0"
@@ -389,7 +389,7 @@
                                     <TextBlock
                                         Margin="0,2"
                                         Style="{StaticResource HintText}"
-                                        Text="Nothing to add yet. Create scenes or other functions first (New ▸ Scene); functions that would play this chaser are left out."
+                                        Text="Nothing to add yet. Create scenes or chasers first (New ▸ Scene); chasers that would play this chaser are left out."
                                         Visibility="{Binding HasNoCandidates, Converter={StaticResource BoolToVisibility}}" />
                                     <TextBlock
                                         Margin="0,2"

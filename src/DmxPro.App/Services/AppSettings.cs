@@ -27,10 +27,10 @@ public sealed class AppSettings
     // ── Safety ──
     public SafeFrameSetting SafeFrameOnExit { get; set; } = SafeFrameSetting.Blackout;
 
-    /// <summary>Global strobe switch (safety rule 8). When off, strobe channels/effects stay at their "no strobe" value.</summary>
+    /// <summary>Global strobe switch (safety rule 8). When off, strobe channels stay at their "no strobe" value.</summary>
     public bool AllowStrobe { get; set; }
 
-    /// <summary>Upper limit for any strobe effect or strobe channel rate, in flashes per second.</summary>
+    /// <summary>Upper limit for any strobe channel rate, in flashes per second.</summary>
     public int MaxStrobeRateHz { get; set; } = DefaultMaxStrobeRateHz;
 
     /// <summary>Ask before Release All (off by default: Release All is a panic button).</summary>

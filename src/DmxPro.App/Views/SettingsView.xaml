@@ -212,7 +212,7 @@
                                     Grid.Column="1"
                                     Margin="0,0,0,4"
                                     AutomationProperties.Name="Allow strobe"
-                                    Content="Allow strobe effects and channels"
+                                    Content="Allow strobe channels"
                                     IsChecked="{Binding AllowStrobe}" />
 
                                 <TextBlock
@@ -229,7 +229,7 @@
                                     Maximum="25"
                                     Minimum="1"
                                     Style="{StaticResource FormNumberBox}"
-                                    ToolTip="Fastest strobe any effect or strobe channel may run (1–25 flashes per second)"
+                                    ToolTip="Fastest any strobe channel may run (1–25 flashes per second)"
                                     Value="{Binding MaxStrobeRateHz, UpdateSourceTrigger=LostFocus}" />
 
                                 <!-- Photosensitivity warning (UI guideline: strobe controls warn) -->

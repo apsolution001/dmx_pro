@@ -97,7 +97,7 @@ public sealed partial class FunctionsViewModel : PageViewModel
         _virtualConsole = virtualConsole;
         _functionClipboard.Changed += (_, _) => PasteCommand.NotifyCanExecuteChanged();
         _preview = preview;
-        TypeOptions = [AllTypes, .. Enum.GetValues<FunctionType>().Where(t => t != FunctionType.Sequence).Select(t => new FunctionTypeOption(t, FunctionRowViewModel.TypeDisplayName(t)))];
+        TypeOptions = [AllTypes, .. FunctionTypeOption.Creatable()];
 
         // A different project replaces everything; the shell has already asked about saving the project.
         _projects.ProjectChanged += (_, _) =>
@@ -123,7 +123,7 @@ public sealed partial class FunctionsViewModel : PageViewModel
 
     public override string Title => "Functions";
 
-    public override string Subtitle => "Scenes, chasers and effects. Click to select, double-click to edit.";
+    public override string Subtitle => "Scenes and chasers. Click to select, double-click to edit.";
 
     /// <summary>Every visible function in tree order (type, then name). Keyboard/delete logic works on this list.</summary>
     public ObservableCollection<FunctionRowViewModel> Rows { get; } = [];
@@ -305,6 +305,12 @@ public sealed partial class FunctionsViewModel : PageViewModel
     [RelayCommand]
     private async Task NewFunctionAsync(FunctionType type)
     {
+        // Only scenes and chasers can be created; anything else (an old binding, a stale command parameter) does nothing.
+        if (!FunctionTypeOption.IsCreatable(type))
+        {
+            return;
+        }
+
         if (!await ConfirmCloseEditorAsync())
         {
             return;
@@ -373,7 +379,7 @@ public sealed partial class FunctionsViewModel : PageViewModel
                 referencedBy is null
                     ? $"Delete \"{function.Name}\"? Shows that use it keep their own copy."
                     : $"Delete \"{function.Name}\"? It is used by:{Environment.NewLine}{referencedBy}{Environment.NewLine}{Environment.NewLine}"
-                      + "Those steps and fades will play nothing until you pick another function. Shows keep their own copy.",
+                      + "Those steps will play nothing until you pick another function. Shows keep their own copy.",
                 "Delete");
         if (!confirmed)
         {
@@ -483,7 +489,7 @@ public sealed partial class FunctionsViewModel : PageViewModel
             "There is no free space for another button on the current Virtual Console page. Make room on that page, or select another page in the Virtual Console, then try again.");
     }
 
-    /// <summary>Bullet list of the chasers / fades (library or show copies) that play the function; null when none.</summary>
+    /// <summary>Bullet list of the chasers (library or show copies) that play the function; null when none.</summary>
     private static string? ReferencesText(Project project, LightFunction function)
     {
         var users = project.FunctionsReferencing(function.Id);
@@ -750,37 +756,24 @@ public sealed partial class FunctionsViewModel : PageViewModel
         SelectedPreviewLights.Clear();
         var project = _projects.Current;
 
-        // Lookup tables: a big scene or effect covers hundreds of lights; per-light project/scene scans were quadratic.
+        // Lookup table: a big scene covers hundreds of lights; per-light project/scene scans were quadratic.
         var fixtures = new Dictionary<Guid, Fixture>(project.Fixtures.Count);
         foreach (var fixture in project.Fixtures)
         {
             fixtures.TryAdd(fixture.Id, fixture);
         }
 
-        if (SelectedScene is { } scene)
+        if (SelectedScene is not { } scene)
         {
-            var values = scene.IndexValues();
-            foreach (var fixtureId in scene.TargetFixtureIds())
-            {
-                if (fixtures.TryGetValue(fixtureId, out var fixture))
-                {
-                    SelectedPreviewLights.Add(new PreviewLight(fixture.Name, PreviewLight.ToHex(values.PreviewColor(project, fixture))));
-                }
-            }
-
             return;
         }
 
-        // Effects: each fixture in the effect's (first) colour; a dimmer-only pulse shows warm white.
-        if (SelectedRow?.Function is FixtureEffectFunction effect)
+        var values = scene.IndexValues();
+        foreach (var fixtureId in scene.TargetFixtureIds())
         {
-            var color = ShowsLibraryItem.PreviewColor(effect, project) ?? new RgbColor(255, 236, 200);
-            foreach (var fixtureId in effect.FixtureIds)
+            if (fixtures.TryGetValue(fixtureId, out var fixture))
             {
-                if (fixtures.TryGetValue(fixtureId, out var fixture))
-                {
-                    SelectedPreviewLights.Add(new PreviewLight(fixture.Name, color.ToHex()));
-                }
+                SelectedPreviewLights.Add(new PreviewLight(fixture.Name, PreviewLight.ToHex(values.PreviewColor(project, fixture))));
             }
         }
     }

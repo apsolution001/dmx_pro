@@ -85,51 +85,6 @@
                         <c:DmxIcon Kind="Chaser" Size="{StaticResource Dmx.SmallIconSize}" />
                     </MenuItem.Icon>
                 </MenuItem>
-                <MenuItem
-                    Command="{Binding NewFunctionCommand}"
-                    CommandParameter="{x:Static fn:FunctionType.ColorCycle}"
-                    Header="Color cycle"
-                    ToolTip="Fixtures cycle through a list of colours">
-                    <MenuItem.Icon>
-                        <c:DmxIcon Kind="ColorCycle" Size="{StaticResource Dmx.SmallIconSize}" />
-                    </MenuItem.Icon>
-                </MenuItem>
-                <MenuItem
-                    Command="{Binding NewFunctionCommand}"
-                    CommandParameter="{x:Static fn:FunctionType.Fade}"
-                    Header="Fade"
-                    ToolTip="Moves from one scene to another over a time">
-                    <MenuItem.Icon>
-                        <c:DmxIcon Kind="Fade" Size="{StaticResource Dmx.SmallIconSize}" />
-                    </MenuItem.Icon>
-                </MenuItem>
-                <MenuItem
-                    Command="{Binding NewFunctionCommand}"
-                    CommandParameter="{x:Static fn:FunctionType.Pulse}"
-                    Header="Pulse"
-                    ToolTip="Brightness rises and falls (breathing)">
-                    <MenuItem.Icon>
-                        <c:DmxIcon Kind="Pulse" Size="{StaticResource Dmx.SmallIconSize}" />
-                    </MenuItem.Icon>
-                </MenuItem>
-                <MenuItem
-                    Command="{Binding NewFunctionCommand}"
-                    CommandParameter="{x:Static fn:FunctionType.Flash}"
-                    Header="Flash"
-                    ToolTip="Full-brightness colour while a button is held">
-                    <MenuItem.Icon>
-                        <c:DmxIcon Kind="Flash" Size="{StaticResource Dmx.SmallIconSize}" />
-                    </MenuItem.Icon>
-                </MenuItem>
-                <MenuItem
-                    Command="{Binding NewFunctionCommand}"
-                    CommandParameter="{x:Static fn:FunctionType.Strobe}"
-                    Header="Strobe"
-                    ToolTip="Flashing light (respects the strobe safety settings)">
-                    <MenuItem.Icon>
-                        <c:DmxIcon Kind="Strobe" Size="{StaticResource Dmx.SmallIconSize}" />
-                    </MenuItem.Icon>
-                </MenuItem>
             </MenuItem>
             <Separator />
             <MenuItem
@@ -205,7 +160,7 @@
                         AutomationProperties.Name="New function"
                         Click="OnNewMenuButtonClick"
                         Style="{StaticResource ToolbarPrimaryButton}"
-                        ToolTip="Create a new function: scene, chaser, color cycle, fade, pulse, flash or strobe">
+                        ToolTip="Create a new function: scene or chaser">
                         <StackPanel Orientation="Horizontal">
                             <c:DmxIcon Kind="Add" Size="{StaticResource Dmx.ButtonIconSize}" />
                             <TextBlock Style="{StaticResource ButtonLabel}" Text="New" />
@@ -233,51 +188,6 @@
                                     ToolTip="Plays steps one after another; each step can have its own colours">
                                     <MenuItem.Icon>
                                         <c:DmxIcon Kind="Chaser" Size="{StaticResource Dmx.SmallIconSize}" />
-                                    </MenuItem.Icon>
-                                </MenuItem>
-                                <MenuItem
-                                    Command="{Binding NewFunctionCommand}"
-                                    CommandParameter="{x:Static fn:FunctionType.ColorCycle}"
-                                    Header="Color cycle"
-                                    ToolTip="Fixtures cycle through a list of colours">
-                                    <MenuItem.Icon>
-                                        <c:DmxIcon Kind="ColorCycle" Size="{StaticResource Dmx.SmallIconSize}" />
-                                    </MenuItem.Icon>
-                                </MenuItem>
-                                <MenuItem
-                                    Command="{Binding NewFunctionCommand}"
-                                    CommandParameter="{x:Static fn:FunctionType.Fade}"
-                                    Header="Fade"
-                                    ToolTip="Moves from one scene to another over a time">
-                                    <MenuItem.Icon>
-                                        <c:DmxIcon Kind="Fade" Size="{StaticResource Dmx.SmallIconSize}" />
-                                    </MenuItem.Icon>
-                                </MenuItem>
-                                <MenuItem
-                                    Command="{Binding NewFunctionCommand}"
-                                    CommandParameter="{x:Static fn:FunctionType.Pulse}"
-                                    Header="Pulse"
-                                    ToolTip="Brightness rises and falls (breathing)">
-                                    <MenuItem.Icon>
-                                        <c:DmxIcon Kind="Pulse" Size="{StaticResource Dmx.SmallIconSize}" />
-                                    </MenuItem.Icon>
-                                </MenuItem>
-                                <MenuItem
-                                    Command="{Binding NewFunctionCommand}"
-                                    CommandParameter="{x:Static fn:FunctionType.Flash}"
-                                    Header="Flash"
-                                    ToolTip="Full-brightness colour while a button is held">
-                                    <MenuItem.Icon>
-                                        <c:DmxIcon Kind="Flash" Size="{StaticResource Dmx.SmallIconSize}" />
-                                    </MenuItem.Icon>
-                                </MenuItem>
-                                <MenuItem
-                                    Command="{Binding NewFunctionCommand}"
-                                    CommandParameter="{x:Static fn:FunctionType.Strobe}"
-                                    Header="Strobe"
-                                    ToolTip="Flashing light (respects the strobe safety settings)">
-                                    <MenuItem.Icon>
-                                        <c:DmxIcon Kind="Strobe" Size="{StaticResource Dmx.SmallIconSize}" />
                                     </MenuItem.Icon>
                                 </MenuItem>
                             </ContextMenu>
@@ -457,7 +367,7 @@
                                 <DataTemplate DataType="{x:Type vm:FunctionRowViewModel}">
                                     <!-- DockPanel, not a horizontal StackPanel: a long name trims instead of pushing the badge and details out of view. -->
                                     <DockPanel MinHeight="{StaticResource Dmx.ListRowMinHeight}" LastChildFill="True">
-                                        <!-- Colour (scene: first fixture; effects: their colour); a hollow ring when there is none -->
+                                        <!-- Colour (scene: first fixture; chaser: its first coloured step); a hollow ring when there is none -->
                                         <Grid
                                             Width="10"
                                             DockPanel.Dock="Left"

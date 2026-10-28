@@ -461,46 +461,6 @@
                         <c:DmxIcon Kind="Chaser" Size="{StaticResource Dmx.MenuIconSize}" />
                     </MenuItem.Icon>
                 </MenuItem>
-                <MenuItem
-                    Command="{Binding NewFunctionCommand}"
-                    CommandParameter="{x:Static fn:FunctionType.ColorCycle}"
-                    Header="New color c_ycle">
-                    <MenuItem.Icon>
-                        <c:DmxIcon Kind="ColorCycle" Size="{StaticResource Dmx.MenuIconSize}" />
-                    </MenuItem.Icon>
-                </MenuItem>
-                <MenuItem
-                    Command="{Binding NewFunctionCommand}"
-                    CommandParameter="{x:Static fn:FunctionType.Fade}"
-                    Header="New _fade">
-                    <MenuItem.Icon>
-                        <c:DmxIcon Kind="Fade" Size="{StaticResource Dmx.MenuIconSize}" />
-                    </MenuItem.Icon>
-                </MenuItem>
-                <MenuItem
-                    Command="{Binding NewFunctionCommand}"
-                    CommandParameter="{x:Static fn:FunctionType.Pulse}"
-                    Header="New _pulse">
-                    <MenuItem.Icon>
-                        <c:DmxIcon Kind="Pulse" Size="{StaticResource Dmx.MenuIconSize}" />
-                    </MenuItem.Icon>
-                </MenuItem>
-                <MenuItem
-                    Command="{Binding NewFunctionCommand}"
-                    CommandParameter="{x:Static fn:FunctionType.Flash}"
-                    Header="New f_lash">
-                    <MenuItem.Icon>
-                        <c:DmxIcon Kind="Flash" Size="{StaticResource Dmx.MenuIconSize}" />
-                    </MenuItem.Icon>
-                </MenuItem>
-                <MenuItem
-                    Command="{Binding NewFunctionCommand}"
-                    CommandParameter="{x:Static fn:FunctionType.Strobe}"
-                    Header="New st_robe">
-                    <MenuItem.Icon>
-                        <c:DmxIcon Kind="Strobe" Size="{StaticResource Dmx.MenuIconSize}" />
-                    </MenuItem.Icon>
-                </MenuItem>
                 <Separator />
                 <MenuItem
                     Header="Create starter sce_nes"
