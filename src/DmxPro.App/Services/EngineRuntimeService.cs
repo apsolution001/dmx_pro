@@ -18,6 +18,14 @@ public sealed class EngineRuntimeService
     /// </summary>
     public const string RefreshFailedMessage = "Engine could not apply the latest edit — press Release All";
 
+    /// <summary>
+    /// Shown (error severity, stays until closed or the next good load) when the engine could not load the opened
+    /// project: it keeps the previous project, whose lights may still be active. Needs its own text because Release All
+    /// alone does not load the new project.
+    /// </summary>
+    public const string LoadFailedMessage =
+        "The lights engine could not load this project — the previous project's lights may still be active. Press Release All, then reopen the project.";
+
     private readonly ShowMusicService _music;
     private readonly DmxEngine _engine;
     private readonly EngineHost _host;
@@ -79,6 +87,12 @@ public sealed class EngineRuntimeService
     /// edit. Cleared by the next successful refresh or project load. UI thread only.
     /// </summary>
     public bool HasRefreshFailure { get; private set; }
+
+    /// <summary>
+    /// True while the last project load into the engine failed: the engine still plays the project from before.
+    /// Cleared by the next successful load. UI thread only.
+    /// </summary>
+    public bool HasLoadFailure { get; private set; }
 
     /// <summary>Frame sent once on close (safety rule 6). Settings sets this; default profile defaults.</summary>
     public SafeFrameMode SafeFrameMode
@@ -248,6 +262,12 @@ public sealed class EngineRuntimeService
     {
         HasRefreshFailure = true;
 
+        // The failed load already showed the more specific message (a project open also triggers a refresh).
+        if (HasLoadFailure)
+        {
+            return;
+        }
+
         // Also re-shows the message when the user closed the bar and a later edit fails again.
         _infoBar.Show(InfoBarSeverity.Error, RefreshFailedMessage, autoHide: false);
     }
@@ -277,10 +297,28 @@ public sealed class EngineRuntimeService
 
             // A fresh model replaced the stale one (and released everything): the old refresh failure no longer applies.
             ClearRefreshFailure();
+            ClearLoadFailure();
         }
         catch (Exception ex)
         {
+            // The engine keeps the previous project. Safety rules 4 + 10: say so visibly; never release automatically.
             _logger.LogError(ex, "Loading the project into the engine failed");
+            HasLoadFailure = true;
+            _infoBar.Show(InfoBarSeverity.Error, LoadFailedMessage, autoHide: false);
+        }
+    }
+
+    private void ClearLoadFailure()
+    {
+        if (!HasLoadFailure)
+        {
+            return;
+        }
+
+        HasLoadFailure = false;
+        if (_infoBar.Message == LoadFailedMessage)
+        {
+            _infoBar.Show(InfoBarSeverity.Informational, null);
         }
     }
 

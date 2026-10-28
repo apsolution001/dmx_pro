@@ -12,6 +12,7 @@ public sealed class EngineRuntimeRefreshFailureTests : IDisposable
 {
     private readonly SynchronizationContext? _previousContext;
     private readonly AppRig _rig = new();
+    private bool _breakNextOpenedProject;
 
     public EngineRuntimeRefreshFailureTests()
     {
@@ -19,6 +20,15 @@ public sealed class EngineRuntimeRefreshFailureTests : IDisposable
         // tests can assert right after MarkChanged.
         _previousContext = SynchronizationContext.Current;
         SynchronizationContext.SetSynchronizationContext(null);
+
+        // Subscribed before the runtime (StartEngine), so it runs first and the engine load sees the broken project.
+        _rig.Projects.ProjectChanged += (_, _) =>
+        {
+            if (_breakNextOpenedProject)
+            {
+                _rig.Projects.Current.Fixtures.Add(null!);
+            }
+        };
         _rig.StartEngine();
     }
 
@@ -127,6 +137,48 @@ public sealed class EngineRuntimeRefreshFailureTests : IDisposable
 
         Assert.False(_rig.Runtime.HasRefreshFailure);
         Assert.Null(_rig.InfoBar.Message);
+    }
+
+    [Fact]
+    public void ProjectLoaded_LoadFails_ShowsLoadErrorMessage()
+    {
+        OpenBrokenProject();
+
+        Assert.True(_rig.Runtime.HasLoadFailure);
+        Assert.Equal(EngineRuntimeService.LoadFailedMessage, _rig.InfoBar.Message);
+        Assert.Equal(InfoBarSeverity.Error, _rig.InfoBar.Severity);
+        Assert.True(_rig.InfoBar.IsOpen);
+    }
+
+    [Fact]
+    public void ProjectLoaded_GoodLoadAfterLoadFailure_ClearsMessage()
+    {
+        OpenBrokenProject();
+
+        _rig.Projects.New();
+
+        Assert.False(_rig.Runtime.HasLoadFailure);
+        Assert.Null(_rig.InfoBar.Message);
+    }
+
+    [Fact]
+    public void ProjectLoaded_GoodLoadWithNewerMessage_KeepsNewerMessage()
+    {
+        OpenBrokenProject();
+        _rig.InfoBar.Show(InfoBarSeverity.Error, "Nothing imported.");
+
+        _rig.Projects.New();
+
+        Assert.False(_rig.Runtime.HasLoadFailure);
+        Assert.Equal("Nothing imported.", _rig.InfoBar.Message);
+    }
+
+    /// <summary>Opens a project whose fixture list holds a null entry, so the engine load throws.</summary>
+    private void OpenBrokenProject()
+    {
+        _breakNextOpenedProject = true;
+        _rig.Projects.New();
+        _breakNextOpenedProject = false;
     }
 
     /// <summary>A null fixture makes the engine model builder throw, like any compiler bug would.</summary>
