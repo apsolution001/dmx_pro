@@ -254,18 +254,19 @@ docked panels with splitters:
 - **On-screen preview:** one round as a strip (hold, then blend) and the colour of each light (up to 24) at the start.
   The real lights follow the draft as for every editor. No playback options: a colour cycle loops until stopped.
 
-**Sequence editor: merged into the Chaser editor (decided 2026-10-27, being built).** There is no Sequence type or editor any
+**Sequence editor: merged into the Chaser editor (done 2026-10-28).** There is no Sequence type or editor any
 more; `New ▸ Sequence` is gone and old sequences open as chasers. The step-look panel below reuses the former Sequence
 editor's Colours / All channels views. Design: `docs/superpowers/specs/2026-10-27-chaser-steps-design.md`.
 
-**Chaser steps (design 2026-10-27, being built; replaces the "Add steps…" picker above):** a step is either an **own look**
+**Chaser steps (built 2026-10-28; replaces the "Add steps…" picker above):** a step is either an **own look**
 (set right in the chaser, no function in the list) or a **function step** (a copy of a colour cycle / fade / pulse / flash /
 strobe / chaser). Both are owned by the chaser, hidden from the Functions list, and can be mixed and reordered.
 - **Toolbar:** **Add step** (new own look; copies the selected step's look, or starts blank with the lights of the nearest
   own-look step above when a function step is selected), **Add blank step**, **Add from function…** (the searchable picker;
   a scene becomes an own-look step, other types a function step; always a copy, the original is never changed),
   **Save as function…** (makes a library copy of the selected step; the step keeps its own). Duplicate / Remove / Move stay
-  as above.
+  as above. Keys: Ins = Add step, Ctrl+E = Edit step, Ctrl+Up/Down = move. New step functions stay in the editor draft
+  until Save; the live preview includes them.
 - **Step-look panel** (right, own-look step selected): Choose lights for this step (defaults to the previous step's
   lights), colour presets / **Off** / level sliders, and the **All channels** view; the live preview holds the selected
   step, with the header switch **This step / Whole chaser**.

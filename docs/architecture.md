@@ -126,7 +126,7 @@ Details (`src/DmxPro.Engine/DmxEngine.cs`, `Runtime/`):
   (`CHASER_MISSING_FUNCTION`, `FADE_MISSING_SCENE`, `FUNCTION_MISSING_FIXTURE`, `SEQUENCE_UNKNOWN_CHANNEL`,
   `FUNCTION_REFERENCE_LOOP`). `RgbColor` is saved as `"#RRGGBB"`.
 
-- **Function ownership (design 2026-10-27, being built):** `LightFunction.OwnerShowId` (show copies) and
+- **Function ownership (built 2026-10-28):** `LightFunction.OwnerShowId` (show copies) and
   `OwnerFunctionId` (chaser steps) mark a function as owned; a function has **at most one owner**. Owned functions are
   hidden from every list (`FunctionListItems`, Virtual Console targets, Shows library, pickers, fade scene lists). A
   chaser step is an own look (owned hidden `SceneFunction`) or a deep copy of a library function; the engine plays steps
@@ -134,9 +134,14 @@ Details (`src/DmxPro.Engine/DmxEngine.cs`, `Runtime/`):
   function; duplicate / clipboard copy-paste / `PlaceFunctionInShow` = deep copy of the chaser and its owned functions
   (re-pointed, nothing shared); deleting a show cleans up its chaser copies' owned functions. The chaser editor keeps new
   step functions in its draft until Save, then commits chaser and owned functions as one undo step. Old chasers whose
-  steps point at library functions keep working; the first edit of such a step makes it an owned copy.
+  steps point at library functions keep working; the first edit of such a step makes it an owned copy. Step helpers:
+`src/DmxPro.Core/Functions/ChaserSteps.cs` (`NewOwnLookScene`, owned copies).
+- **Preview with draft functions:** `DmxEngine.SetPreviewFunction(project, draft, draftFunctions)` takes the editor's
+  unsaved owned step functions too (compiled next to the project's own), so the live preview of a chaser shows steps
+  that are not saved yet. The chaser editor's preview is "This step" or "Whole chaser".
 - **Sequence → Chaser migration:** on load each `SequenceFunction` becomes a `ChaserFunction` with the same id, name, run
-  order, direction and timing; each step becomes an own-look step (owned hidden scene limited to the sequence's lights).
+  order, direction and timing; each step becomes an own-look step (owned hidden scene limited to the sequence's lights, fades 0).
+  Code: `src/DmxPro.Core/Projects/SequenceMigration.cs`. A new Sequence can no longer be created.
   References (VC widgets, show items, chaser steps, fades) keep working; output is frame-identical (engine test). Files
   are saved as chasers.
 
